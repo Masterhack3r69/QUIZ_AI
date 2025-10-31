@@ -51,81 +51,94 @@ export function QuestionCard({
     return labels[index] || String.fromCharCode(65 + index);
   };
 
+  const getAnswerStatus = (index: number) => {
+    if (!showCorrectAnswer || correctAnswer === undefined) return '';
+    if (index === correctAnswer) return 'Correct answer';
+    if (index === selectedAnswer) return 'Your incorrect answer';
+    return '';
+  };
+
   return (
-    <div className="w-full max-w-3xl mx-auto">
+    <div className="w-full max-w-3xl mx-auto" role="group" aria-labelledby="question-text">
       {/* Question Header */}
       <div className="mb-6">
-        <div className="text-sm font-medium text-gray-500 mb-2">
+        <div className="text-sm font-medium text-gray-500 mb-2" aria-label={`Question ${questionNumber} of ${totalQuestions}`}>
           Question {questionNumber} of {totalQuestions}
         </div>
-        <h2 className="text-xl md:text-2xl font-semibold text-gray-900 leading-relaxed">
+        <h2 id="question-text" className="text-xl md:text-2xl font-semibold text-gray-900 leading-relaxed">
           {question}
         </h2>
       </div>
 
       {/* Answer Options */}
-      <div className="space-y-3">
-        {options.map((option, index) => (
-          <button
-            key={index}
-            onClick={() => !showCorrectAnswer && onSelectAnswer(index)}
-            disabled={showCorrectAnswer}
-            className={getOptionStyles(index)}
-            aria-label={`Option ${getOptionLabel(index)}: ${option}`}
-            aria-pressed={selectedAnswer === index}
-          >
-            <div className="flex items-start gap-3">
-              {/* Option Label */}
-              <span className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-700 font-semibold text-sm">
-                {getOptionLabel(index)}
-              </span>
-              
-              {/* Option Text */}
-              <span className="flex-1 text-base md:text-lg pt-1">
-                {option}
-              </span>
-              
-              {/* Correct/Incorrect Indicator (Results Page) */}
-              {showCorrectAnswer && correctAnswer !== undefined && (
-                <>
-                  {index === correctAnswer && (
-                    <svg
-                      className="flex-shrink-0 w-6 h-6 text-green-600"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                  )}
-                  {index === selectedAnswer && index !== correctAnswer && (
-                    <svg
-                      className="flex-shrink-0 w-6 h-6 text-red-600"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  )}
-                </>
-              )}
-            </div>
-          </button>
-        ))}
-      </div>
+      <fieldset className="space-y-3">
+        <legend className="sr-only">Select your answer</legend>
+        {options.map((option, index) => {
+          const answerStatus = getAnswerStatus(index);
+          return (
+            <button
+              key={index}
+              onClick={() => !showCorrectAnswer && onSelectAnswer(index)}
+              disabled={showCorrectAnswer}
+              className={getOptionStyles(index)}
+              aria-label={`Option ${getOptionLabel(index)}: ${option}${answerStatus ? `. ${answerStatus}` : ''}`}
+              aria-pressed={selectedAnswer === index}
+              role="radio"
+              aria-checked={selectedAnswer === index}
+            >
+              <div className="flex items-start gap-3">
+                {/* Option Label */}
+                <span className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-700 font-semibold text-sm" aria-hidden="true">
+                  {getOptionLabel(index)}
+                </span>
+                
+                {/* Option Text */}
+                <span className="flex-1 text-base md:text-lg pt-1">
+                  {option}
+                </span>
+                
+                {/* Correct/Incorrect Indicator (Results Page) */}
+                {showCorrectAnswer && correctAnswer !== undefined && (
+                  <>
+                    {index === correctAnswer && (
+                      <svg
+                        className="flex-shrink-0 w-6 h-6 text-green-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                    )}
+                    {index === selectedAnswer && index !== correctAnswer && (
+                      <svg
+                        className="flex-shrink-0 w-6 h-6 text-red-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    )}
+                  </>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </fieldset>
     </div>
   );
 }

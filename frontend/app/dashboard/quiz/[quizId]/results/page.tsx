@@ -1,14 +1,18 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, lazy, Suspense } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { apiClient, APIRequestError } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Toast } from '@/components/ui/Toast';
 import { AnalyticsCardsSkeleton, SubmissionsTableSkeleton } from '@/components/ui/SkeletonLoader';
-import { exportToPDF, exportToExcel } from '@/lib/export';
 import type { Analytics, Quiz } from '@/types';
+
+// Lazy load the export buttons component to reduce initial bundle size
+const ExportButtons = lazy(() => 
+  import('@/components/analytics/ExportButtons').then(mod => ({ default: mod.ExportButtons }))
+);
 
 const ITEMS_PER_PAGE = 20;
 
@@ -22,9 +26,6 @@ export default function QuizResultsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [isExporting, setIsExporting] = useState(false);
-  const [exportError, setExportError] = useState<string | null>(null);
-  const [exportSuccess, setExportSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     loadAnalytics();
@@ -57,48 +58,6 @@ export default function QuizResultsPage() {
       }
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleExportPDF = async () => {
-    if (!analytics || !quiz) return;
-    
-    try {
-      setIsExporting(true);
-      setExportError(null);
-      setExportSuccess(null);
-      
-      await exportToPDF(analytics, quiz.title);
-      
-      setExportSuccess('PDF exported successfully!');
-      setTimeout(() => setExportSuccess(null), 3000);
-    } catch (err) {
-      console.error('PDF export error:', err);
-      setExportError('Failed to export PDF. Please try again.');
-      setTimeout(() => setExportError(null), 5000);
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const handleExportExcel = async () => {
-    if (!analytics || !quiz) return;
-    
-    try {
-      setIsExporting(true);
-      setExportError(null);
-      setExportSuccess(null);
-      
-      await exportToExcel(analytics, quiz.title);
-      
-      setExportSuccess('Excel file exported successfully!');
-      setTimeout(() => setExportSuccess(null), 3000);
-    } catch (err) {
-      console.error('Excel export error:', err);
-      setExportError('Failed to export Excel. Please try again.');
-      setTimeout(() => setExportError(null), 5000);
-    } finally {
-      setIsExporting(false);
     }
   };
 
@@ -211,58 +170,18 @@ export default function QuizResultsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h1 className="text-3xl font-bold text-gray-900">Quiz Results & Analytics</h1>
           
-          {analytics && analytics.totalSubmissions > 0 && (
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="secondary"
-                size="md"
-                onClick={handleExportPDF}
-                disabled={isExporting}
-              >
-                {isExporting ? (
-                  <>
-                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent mr-2"></span>
-                    Exporting...
-                  </>
-                ) : (
-                  <>📄 Export to PDF</>
-                )}
-              </Button>
-              <Button
-                variant="secondary"
-                size="md"
-                onClick={handleExportExcel}
-                disabled={isExporting}
-              >
-                {isExporting ? (
-                  <>
-                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent mr-2"></span>
-                    Exporting...
-                  </>
-                ) : (
-                  <>📊 Export to Excel</>
-                )}
-              </Button>
-            </div>
+          {analytics && analytics.totalSubmissions > 0 && quiz && (
+            <Suspense fallback={
+              <div className="flex gap-2">
+                <div className="h-10 w-32 bg-gray-200 rounded animate-pulse" />
+                <div className="h-10 w-32 bg-gray-200 rounded animate-pulse" />
+              </div>
+            }>
+              <ExportButtons analytics={analytics} quiz={quiz} />
+            </Suspense>
           )}
         </div>
       </div>
-
-      {/* Toast Notifications */}
-      {exportSuccess && (
-        <Toast
-          type="success"
-          message={exportSuccess}
-          onClose={() => setExportSuccess(null)}
-        />
-      )}
-      {exportError && (
-        <Toast
-          type="error"
-          message={exportError}
-          onClose={() => setExportError(null)}
-        />
-      )}
 
       {/* Summary Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">

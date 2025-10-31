@@ -40,8 +40,10 @@ export function QuizCard({ quiz, submissionCount = 0 }: QuizCardProps) {
                 ? 'bg-green-100 text-green-800'
                 : 'bg-gray-100 text-gray-800'
             }`}
+            role="status"
+            aria-label={`Quiz status: ${status}`}
           >
-            {status === 'active' ? '✓ Active' : '⏱ Expired'}
+            <span aria-hidden="true">{status === 'active' ? '✓ Active' : '⏱ Expired'}</span>
           </span>
         </div>
 
@@ -53,38 +55,38 @@ export function QuizCard({ quiz, submissionCount = 0 }: QuizCardProps) {
         {/* Access Code */}
         <div className="mb-4">
           <p className="text-sm text-gray-600 mb-1">Access Code</p>
-          <p className="text-xl font-mono font-bold text-blue-600">
+          <p className="text-xl font-mono font-bold text-blue-600" aria-label={`Access code: ${quiz.accessCode}`}>
             {quiz.accessCode}
           </p>
         </div>
 
         {/* Quiz Info */}
-        <div className="space-y-2 text-sm text-gray-600">
+        <dl className="space-y-2 text-sm text-gray-600">
           <div className="flex items-center justify-between">
-            <span>Questions:</span>
-            <span className="font-medium text-gray-900">
+            <dt>Questions:</dt>
+            <dd className="font-medium text-gray-900">
               {quiz.questions?.length || quiz.questionsPerStudent || 0}
-            </span>
+            </dd>
           </div>
           <div className="flex items-center justify-between">
-            <span>Duration:</span>
-            <span className="font-medium text-gray-900">
+            <dt>Duration:</dt>
+            <dd className="font-medium text-gray-900">
               {quiz.duration} min
-            </span>
+            </dd>
           </div>
           <div className="flex items-center justify-between">
-            <span>Submissions:</span>
-            <span className="font-medium text-gray-900">
+            <dt>Submissions:</dt>
+            <dd className="font-medium text-gray-900">
               {submissionCount}
-            </span>
+            </dd>
           </div>
           <div className="flex items-center justify-between">
-            <span>Expires:</span>
-            <span className="font-medium text-gray-900">
+            <dt>Expires:</dt>
+            <dd className="font-medium text-gray-900">
               {new Date(quiz.expiresAt).toLocaleDateString()}
-            </span>
+            </dd>
           </div>
-        </div>
+        </dl>
 
         {/* Actions */}
         <div className="mt-4 pt-4 border-t border-gray-200">
@@ -93,6 +95,7 @@ export function QuizCard({ quiz, submissionCount = 0 }: QuizCardProps) {
             size="sm"
             onClick={handleManageClick}
             className="w-full"
+            aria-label={`Manage quiz: ${quiz.title}`}
           >
             Manage Quiz
           </Button>

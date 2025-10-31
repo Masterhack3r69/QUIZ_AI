@@ -106,11 +106,11 @@ export default function JoinPage() {
         />
       )}
       
-      <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
+      <main id="main-content" className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
         <div className="max-w-md mx-auto">
           <div className="bg-white rounded-xl shadow-lg p-8">
             <div className="text-center mb-8">
-              <div className="text-5xl mb-4">🎓</div>
+              <div className="text-5xl mb-4" role="img" aria-label="Student graduation cap">🎓</div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
                 Join Quiz
               </h1>
@@ -119,7 +119,7 @@ export default function JoinPage() {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6" aria-label="Join quiz form">
               <Input
                 type="text"
                 label="Student Name"
@@ -129,6 +129,7 @@ export default function JoinPage() {
                 required
                 placeholder="Enter your full name"
                 disabled={isLoading}
+                showValidIndicator={true}
               />
 
               <Input
@@ -140,6 +141,7 @@ export default function JoinPage() {
                 required
                 placeholder="Enter your student ID"
                 disabled={isLoading}
+                showValidIndicator={true}
               />
 
               <Input
@@ -152,6 +154,7 @@ export default function JoinPage() {
                 placeholder="Enter 6-character code"
                 maxLength={6}
                 disabled={isLoading}
+                showValidIndicator={true}
               />
 
               <Button
@@ -161,6 +164,7 @@ export default function JoinPage() {
                 loading={isLoading}
                 disabled={isLoading}
                 className="w-full"
+                aria-label={isLoading ? "Joining quiz..." : "Join quiz with access code"}
               >
                 Join Quiz
               </Button>
@@ -177,31 +181,31 @@ export default function JoinPage() {
           </div>
 
           {/* Info Section */}
-          <div className="mt-8 bg-blue-50 rounded-lg p-6">
-            <h3 className="font-semibold text-gray-900 mb-3">
+          <section className="mt-8 bg-blue-50 rounded-lg p-6" aria-labelledby="quiz-instructions">
+            <h2 id="quiz-instructions" className="font-semibold text-gray-900 mb-3">
               Before you start:
-            </h3>
+            </h2>
             <ul className="space-y-2 text-sm text-gray-700">
               <li className="flex items-start">
-                <span className="text-blue-600 mr-2">•</span>
+                <span className="text-blue-600 mr-2" aria-hidden="true">•</span>
                 Make sure you have a stable internet connection
               </li>
               <li className="flex items-start">
-                <span className="text-blue-600 mr-2">•</span>
+                <span className="text-blue-600 mr-2" aria-hidden="true">•</span>
                 The quiz will have a countdown timer
               </li>
               <li className="flex items-start">
-                <span className="text-blue-600 mr-2">•</span>
+                <span className="text-blue-600 mr-2" aria-hidden="true">•</span>
                 Your quiz will auto-submit when time expires
               </li>
               <li className="flex items-start">
-                <span className="text-blue-600 mr-2">•</span>
+                <span className="text-blue-600 mr-2" aria-hidden="true">•</span>
                 You cannot pause or restart once you begin
               </li>
             </ul>
-          </div>
+          </section>
         </div>
-      </div>
+      </main>
     </PublicLayout>
   );
 }

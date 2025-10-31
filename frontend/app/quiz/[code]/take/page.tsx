@@ -28,6 +28,7 @@ interface StudentInfo {
 
 const QUIZ_SESSION_KEY = 'quizSession';
 const ANSWERS_KEY = 'quizAnswers';
+const CURRENT_QUESTION_KEY = 'currentQuestionIndex';
 
 export default function QuizTakePage() {
   const params = useParams();
@@ -49,6 +50,7 @@ export default function QuizTakePage() {
     const sessionStr = sessionStorage.getItem(QUIZ_SESSION_KEY);
     const studentInfoStr = sessionStorage.getItem('studentInfo');
     const answersStr = sessionStorage.getItem(ANSWERS_KEY);
+    const currentQuestionStr = sessionStorage.getItem(CURRENT_QUESTION_KEY);
 
     if (!sessionStr || !studentInfoStr) {
       setToast({ type: 'error', message: 'Quiz session not found. Please start the quiz again.' });
@@ -70,6 +72,14 @@ export default function QuizTakePage() {
         const savedAnswers = JSON.parse(answersStr);
         setAnswers(new Map(Object.entries(savedAnswers)));
       }
+
+      // Restore current question index if it exists
+      if (currentQuestionStr) {
+        const savedIndex = parseInt(currentQuestionStr, 10);
+        if (!isNaN(savedIndex) && savedIndex >= 0 && savedIndex < session.questions.length) {
+          setCurrentQuestionIndex(savedIndex);
+        }
+      }
     } catch (error) {
       console.error('Error parsing session data:', error);
       setToast({ type: 'error', message: 'Invalid session data. Please start the quiz again.' });
@@ -86,6 +96,13 @@ export default function QuizTakePage() {
       sessionStorage.setItem(ANSWERS_KEY, JSON.stringify(answersObj));
     }
   }, [answers]);
+
+  // Save current question index to sessionStorage whenever it changes
+  useEffect(() => {
+    if (quizSession) {
+      sessionStorage.setItem(CURRENT_QUESTION_KEY, currentQuestionIndex.toString());
+    }
+  }, [currentQuestionIndex, quizSession]);
 
   // Prevent navigation away from quiz
   useEffect(() => {
@@ -177,6 +194,7 @@ export default function QuizTakePage() {
 
       // Clear temporary data but keep quizSession for results page
       sessionStorage.removeItem(ANSWERS_KEY);
+      sessionStorage.removeItem(CURRENT_QUESTION_KEY);
       sessionStorage.removeItem('quiz_timer_state');
 
       // Navigate to results page

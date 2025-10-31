@@ -87,15 +87,22 @@ export function Toast({
   
   const styles = typeStyles[type];
   
+  const getAriaLabel = () => {
+    const typeLabel = type.charAt(0).toUpperCase() + type.slice(1);
+    return `${typeLabel}: ${message}`;
+  };
+
   return (
     <div
       className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-lg border-l-4 shadow-lg transition-all duration-300 ${
         isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full'
       } ${styles.bg} ${styles.border}`}
       role="alert"
-      aria-live="assertive"
+      aria-live={type === 'error' ? 'assertive' : 'polite'}
+      aria-atomic="true"
+      aria-label={getAriaLabel()}
     >
-      <div className={styles.text}>
+      <div className={styles.text} aria-hidden="true">
         {styles.icon}
       </div>
       <p className={`text-sm font-medium ${styles.text}`}>
@@ -109,7 +116,7 @@ export function Toast({
         className={`ml-2 ${styles.text} hover:opacity-70 transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 rounded`}
         aria-label="Close notification"
       >
-        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
           <path
             fillRule="evenodd"
             d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"

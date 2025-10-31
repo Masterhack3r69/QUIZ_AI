@@ -453,6 +453,7 @@ export default function QuizManagementPage() {
             required
             disabled={isUpdating}
             placeholder="Enter quiz title"
+            showValidIndicator={true}
           />
           
           <Input
@@ -466,6 +467,7 @@ export default function QuizManagementPage() {
             min="1"
             max="300"
             placeholder="e.g., 30"
+            showValidIndicator={true}
           />
           
           <Input
@@ -476,6 +478,7 @@ export default function QuizManagementPage() {
             error={editFormErrors.expiresAt}
             required
             disabled={isUpdating}
+            showValidIndicator={true}
           />
           
           <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">

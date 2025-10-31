@@ -32,12 +32,14 @@ function LoginForm() {
   const validateForm = (): boolean => {
     const newErrors: { email?: string; password?: string } = {};
 
+    // Validate email
     if (!email) {
       newErrors.email = ERROR_MESSAGES.REQUIRED_FIELD;
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       newErrors.email = ERROR_MESSAGES.INVALID_EMAIL;
     }
 
+    // Validate password
     if (!password) {
       newErrors.password = ERROR_MESSAGES.REQUIRED_FIELD;
     } else if (password.length < 6) {
@@ -46,6 +48,26 @@ function LoginForm() {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newEmail = e.target.value;
+    setEmail(newEmail);
+    
+    // Clear error when user starts typing
+    if (errors.email) {
+      setErrors(prev => ({ ...prev, email: undefined }));
+    }
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newPassword = e.target.value;
+    setPassword(newPassword);
+    
+    // Clear error when user starts typing
+    if (errors.password) {
+      setErrors(prev => ({ ...prev, password: undefined }));
+    }
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -79,34 +101,36 @@ function LoginForm() {
   return (
     <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">AI Quiz Generator</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Teacher Login</h1>
           <p className="mt-2 text-gray-600">Sign in to your teacher account</p>
         </div>
 
         <Card>
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6" aria-label="Login form">
             <Input
               type="email"
               label="Email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={handleEmailChange}
               error={errors.email}
               placeholder="teacher@example.com"
               required
               autoComplete="email"
               disabled={isLoading}
+              showValidIndicator={true}
             />
 
             <Input
               type="password"
               label="Password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={handlePasswordChange}
               error={errors.password}
               placeholder="Enter your password"
               required
               autoComplete="current-password"
               disabled={isLoading}
+              showValidIndicator={true}
             />
 
             <Button
@@ -115,6 +139,7 @@ function LoginForm() {
               className="w-full"
               loading={isLoading}
               disabled={isLoading}
+              aria-label={isLoading ? "Signing in..." : "Sign in to your account"}
             >
               Sign In
             </Button>
@@ -125,7 +150,7 @@ function LoginForm() {
               Don't have an account?{' '}
               <Link
                 href="/register"
-                className="font-medium text-blue-600 hover:text-blue-500"
+                className="font-medium text-blue-600 hover:text-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
               >
                 Sign up
               </Link>
@@ -135,7 +160,8 @@ function LoginForm() {
           <div className="mt-4 text-center">
             <Link
               href="/"
-              className="text-sm text-gray-500 hover:text-gray-700"
+              className="text-sm text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+              aria-label="Back to home page"
             >
               ← Back to home
             </Link>
@@ -148,17 +174,18 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <PublicLayout>
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-gray-50 px-4 py-12">
+      <main id="main-content" className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-gray-50 px-4 py-12">
         <Suspense fallback={
           <div className="w-full max-w-md">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <div className="text-center" role="status" aria-live="polite">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" aria-label="Loading"></div>
+              <span className="sr-only">Loading login form...</span>
             </div>
           </div>
         }>
           <LoginForm />
         </Suspense>
-      </div>
+      </main>
     </PublicLayout>
   );
 }

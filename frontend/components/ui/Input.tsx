@@ -6,24 +6,38 @@ export interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElem
   label?: string;
   error?: string;
   helperText?: string;
+  showValidIndicator?: boolean;
 }
 
 export function Input({
   label,
   error,
   helperText,
+  showValidIndicator = false,
   className = '',
   id,
   required,
+  value,
   ...props
 }: InputProps) {
   const inputId = id || label?.toLowerCase().replace(/\s+/g, '-');
   const hasError = !!error;
+  const hasValue = value !== undefined && value !== null && String(value).length > 0;
+  const isValid = showValidIndicator && hasValue && !hasError;
   
   const baseStyles = 'block w-full px-3 py-2.5 text-base border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-0 transition-colors touch-manipulation min-h-[44px]';
   const normalStyles = 'border-gray-300 focus:border-blue-500 focus:ring-blue-500';
-  const errorStyles = 'border-red-500 focus:border-red-500 focus:ring-red-500';
+  const errorStyles = 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50';
+  const validStyles = 'border-green-500 focus:border-green-500 focus:ring-green-500 bg-green-50';
   const disabledStyles = 'disabled:bg-gray-100 disabled:cursor-not-allowed';
+  
+  // Determine which styles to apply
+  let inputStyles = normalStyles;
+  if (hasError) {
+    inputStyles = errorStyles;
+  } else if (isValid) {
+    inputStyles = validStyles;
+  }
   
   return (
     <div className="w-full">
@@ -36,20 +50,74 @@ export function Input({
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
       )}
-      <input
-        id={inputId}
-        className={`${baseStyles} ${hasError ? errorStyles : normalStyles} ${disabledStyles} ${className}`}
-        required={required}
-        aria-invalid={hasError}
-        aria-describedby={error ? `${inputId}-error` : helperText ? `${inputId}-helper` : undefined}
-        {...props}
-      />
+      <div className="relative">
+        <input
+          id={inputId}
+          className={`${baseStyles} ${inputStyles} ${disabledStyles} ${isValid ? 'pr-10' : ''} ${className}`}
+          required={required}
+          value={value}
+          aria-invalid={hasError}
+          aria-describedby={error ? `${inputId}-error` : helperText ? `${inputId}-helper` : undefined}
+          {...props}
+        />
+        {/* Valid indicator checkmark */}
+        {isValid && (
+          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+            <svg
+              className="w-5 h-5 text-green-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+          </div>
+        )}
+        {/* Error indicator */}
+        {hasError && (
+          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+            <svg
+              className="w-5 h-5 text-red-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          </div>
+        )}
+      </div>
       {error && (
         <p
           id={`${inputId}-error`}
-          className="mt-1 text-sm text-red-600"
+          className="mt-1 text-sm text-red-600 flex items-start"
           role="alert"
         >
+          <svg
+            className="w-4 h-4 mr-1 mt-0.5 flex-shrink-0"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
           {error}
         </p>
       )}

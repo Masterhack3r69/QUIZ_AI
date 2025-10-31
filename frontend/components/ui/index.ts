@@ -21,3 +21,4 @@ export type { SkeletonLoaderProps } from './SkeletonLoader';
 
 export { ProgressBar, IndeterminateProgressBar } from './ProgressBar';
 export type { ProgressBarProps } from './ProgressBar';
+export { OptimizedImage } from './OptimizedImage';

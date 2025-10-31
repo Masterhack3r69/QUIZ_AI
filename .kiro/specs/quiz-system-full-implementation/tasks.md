@@ -275,7 +275,6 @@
 
 - [x] 28. Implement quiz status management
 
-
   - Add automatic status update check when quiz is accessed
   - Mark quiz as expired if current date > expiration date
   - Display expired status in quiz list and management page
@@ -283,7 +282,7 @@
   - Show appropriate error message for expired quiz access attempts
   - _Requirements: 12.1, 12.2, 12.3, 12.4_
 
-- [ ] 29. Add form validation across all forms
+- [x] 29. Add form validation across all forms
 
   - Implement email format validation on login/register
   - Add password strength validation (min 6 characters)
@@ -293,7 +292,7 @@
   - Add visual indicators for valid/invalid fields
   - _Requirements: 10.4_
 
-- [ ] 30. Implement accessibility features
+- [x] 30. Implement accessibility features
 
   - Add ARIA labels to all interactive elements
   - Ensure proper heading hierarchy (h1, h2, h3)
@@ -304,7 +303,7 @@
   - Add alt text for any images or icons
   - _Requirements: 11.1, 11.2, 11.3, 11.4_
 
-- [ ]\* 31. Add account settings page
+- [x] 31. Add account settings page
 
   - Create settings page layout
   - Display teacher profile information (name, email)
@@ -314,13 +313,14 @@
   - Display success/error messages
   - _Requirements: 9.4_
 
-- [ ]\* 32. Add quiz session persistence
+- [x] 32. Add quiz session persistence
 
   - Store quiz session data in sessionStorage on quiz start
   - Restore quiz state on page refresh during active quiz
   - Restore timer state from sessionStorage
   - Restore selected answers from sessionStorage
   - Clear sessionStorage after quiz submission
+
   - _Requirements: 6.4_
 
 - [ ]\* 33. Add copy-to-clipboard functionality
@@ -332,7 +332,8 @@
   - Add fallback for browsers without clipboard API
   - _Requirements: 3.2_
 
-- [ ]\* 34. Optimize performance
+- [x] 34. Optimize performance
+
 
   - Enable React 19 compiler optimizations
   - Implement lazy loading for heavy components (analytics charts)

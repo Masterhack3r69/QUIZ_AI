@@ -37,6 +37,7 @@ export function Button({
     <button
       className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
       disabled={disabled || loading}
+      aria-busy={loading}
       {...props}
     >
       {loading && (
@@ -45,6 +46,7 @@ export function Button({
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 24 24"
+          aria-hidden="true"
         >
           <circle
             className="opacity-25"
@@ -61,6 +63,7 @@ export function Button({
           />
         </svg>
       )}
+      {loading && <span className="sr-only">Loading...</span>}
       {children}
     </button>
   );

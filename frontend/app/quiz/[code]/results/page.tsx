@@ -80,6 +80,7 @@ export default function QuizResultsPage() {
     sessionStorage.removeItem('quizSession');
     sessionStorage.removeItem('studentInfo');
     sessionStorage.removeItem('quizAnswers');
+    sessionStorage.removeItem('currentQuestionIndex');
     sessionStorage.removeItem('quiz_timer_state');
     
     router.push('/join');

@@ -42,7 +42,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div>
+    <main id="main-content">
       {/* Header with Create Button */}
       <div className="mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -56,8 +56,9 @@ export default function DashboardPage() {
             variant="primary"
             size="lg"
             onClick={() => router.push('/dashboard/create')}
+            aria-label="Create new quiz"
           >
-            ➕ Create New Quiz
+            <span role="img" aria-label="Plus">➕</span> Create New Quiz
           </Button>
         </div>
       </div>
@@ -72,21 +73,27 @@ export default function DashboardPage() {
       )}
 
       {/* Loading State */}
-      {isLoading && <QuizListSkeleton count={6} />}
+      {isLoading && (
+        <div role="status" aria-live="polite" aria-label="Loading quizzes">
+          <QuizListSkeleton count={6} />
+          <span className="sr-only">Loading your quizzes...</span>
+        </div>
+      )}
 
       {/* Empty State */}
       {!isLoading && quizzes.length === 0 && (
         <Card className="text-center py-12">
-          <div className="text-6xl mb-4">📝</div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+          <div className="text-6xl mb-4" role="img" aria-label="Document">📝</div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
             No quizzes yet
-          </h3>
+          </h2>
           <p className="text-gray-600 mb-6">
             Get started by creating your first AI-powered quiz
           </p>
           <Button
             variant="primary"
             onClick={() => router.push('/dashboard/create')}
+            aria-label="Create your first quiz"
           >
             Create Your First Quiz
           </Button>
@@ -95,16 +102,18 @@ export default function DashboardPage() {
 
       {/* Quiz Grid */}
       {!isLoading && quizzes.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {quizzes.map((quiz) => (
-            <QuizCard
-              key={quiz._id}
-              quiz={quiz}
-              submissionCount={getSubmissionCount(quiz)}
-            />
-          ))}
-        </div>
+        <section aria-label="Your quizzes">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {quizzes.map((quiz) => (
+              <QuizCard
+                key={quiz._id}
+                quiz={quiz}
+                submissionCount={getSubmissionCount(quiz)}
+              />
+            ))}
+          </div>
+        </section>
       )}
-    </div>
+    </main>
   );
 }

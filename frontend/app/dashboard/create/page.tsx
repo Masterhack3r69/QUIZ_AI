@@ -967,6 +967,7 @@ export default function CreateQuizPage() {
                 placeholder="e.g., Chapter 5: Photosynthesis Quiz"
                 required
                 helperText="Give your quiz a descriptive title"
+                showValidIndicator={true}
               />
 
               {/* Duration and Questions Per Student - Side by Side */}
@@ -983,6 +984,7 @@ export default function CreateQuizPage() {
                   max="300"
                   required
                   helperText="Time limit for students to complete the quiz"
+                  showValidIndicator={true}
                 />
 
                 {/* Questions Per Student */}
@@ -997,6 +999,7 @@ export default function CreateQuizPage() {
                   max={generatedQuestions.length}
                   required
                   helperText={`Max: ${generatedQuestions.length} questions available`}
+                  showValidIndicator={true}
                 />
               </div>
 

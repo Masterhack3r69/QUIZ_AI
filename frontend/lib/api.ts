@@ -3,6 +3,7 @@
 import { getAuthToken } from './auth';
 import type {
   AuthResponse,
+  User,
   Quiz,
   QuizInfo,
   QuizSession,
@@ -176,6 +177,46 @@ class APIClient {
         throw error;
       }
       throw new APIRequestError('Registration failed. Please try again.', 500);
+    }
+  }
+  
+  /**
+   * Update user profile (name)
+   */
+  async updateProfile(name: string): Promise<{ user: User }> {
+    try {
+      const response = await fetchWithErrorHandling(`${this.baseURL}/api/auth/profile`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ name }),
+      });
+      
+      return handleResponse<{ user: User }>(response);
+    } catch (error) {
+      if (error instanceof APIRequestError) {
+        throw error;
+      }
+      throw new APIRequestError('Failed to update profile. Please try again.', 500);
+    }
+  }
+  
+  /**
+   * Change password
+   */
+  async changePassword(currentPassword: string, newPassword: string): Promise<{ message: string }> {
+    try {
+      const response = await fetchWithErrorHandling(`${this.baseURL}/api/auth/password`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      
+      return handleResponse<{ message: string }>(response);
+    } catch (error) {
+      if (error instanceof APIRequestError) {
+        throw error;
+      }
+      throw new APIRequestError('Failed to change password. Please try again.', 500);
     }
   }
   
