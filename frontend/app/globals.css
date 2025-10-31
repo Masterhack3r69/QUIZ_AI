@@ -24,3 +24,41 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Responsive and touch-friendly improvements */
+@media (max-width: 640px) {
+  /* Ensure text is readable on mobile */
+  body {
+    font-size: 16px; /* Prevents zoom on iOS when focusing inputs */
+  }
+  
+  /* Improve tap targets on mobile */
+  button, a, input, select, textarea {
+    min-height: 44px; /* iOS recommended minimum tap target */
+  }
+}
+
+/* Smooth scrolling for better UX */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Prevent text selection on buttons for better mobile experience */
+button {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* Loading animations */
+@keyframes indeterminate-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+.animate-indeterminate-progress {
+  animation: indeterminate-progress 1.5s ease-in-out infinite;
+}
