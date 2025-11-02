@@ -23,6 +23,7 @@ export default function EditQuestionsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadQuiz();
@@ -31,13 +32,16 @@ export default function EditQuestionsPage() {
   const loadQuiz = async () => {
     try {
       setIsLoading(true);
+      setError(null);
       const data = await apiClient.getQuiz(quizId);
       setQuiz(data);
       setQuestions(data.questions || []);
     } catch (err) {
       if (err instanceof APIRequestError) {
+        setError(err.message);
         showError(err.message);
       } else {
+        setError('Failed to load quiz. Please try again.');
         showError('Failed to load quiz. Please try again.');
       }
     } finally {

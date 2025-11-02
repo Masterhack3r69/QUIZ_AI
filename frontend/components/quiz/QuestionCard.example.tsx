@@ -3,6 +3,7 @@
  * This file demonstrates how to use the QuestionCard component for different question types
  */
 
+import { useState } from 'react';
 import { QuestionCard } from './QuestionCard';
 import type { Question } from '@/types';
 
@@ -49,7 +50,7 @@ const matchingQuestion: Question = {
 
 // Example usage in a quiz taking interface
 export function QuizTakingExample() {
-  const [answer, setAnswer] = React.useState<any>(undefined);
+  const [answer, setAnswer] = useState<any>(undefined);
 
   return (
     <div className="p-8">

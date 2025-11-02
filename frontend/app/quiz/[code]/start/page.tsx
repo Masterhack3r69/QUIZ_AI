@@ -140,13 +140,6 @@ export default function QuizLobbyPage() {
   if (error || !quizInfo) {
     return (
       <PublicLayout>
-        {toast && (
-          <Toast
-            type={toast.type}
-            message={toast.message}
-            onClose={() => setToast(null)}
-          />
-        )}
         <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
           <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full mx-4">
             <div className="text-center">
@@ -174,14 +167,6 @@ export default function QuizLobbyPage() {
 
   return (
     <PublicLayout>
-      {toast && (
-        <Toast
-          type={toast.type}
-          message={toast.message}
-          onClose={() => setToast(null)}
-        />
-      )}
-      
       <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
         <div className="max-w-2xl mx-auto">
           {/* Quiz Info Card */}
