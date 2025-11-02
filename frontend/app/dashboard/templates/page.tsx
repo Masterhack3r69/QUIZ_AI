@@ -145,7 +145,7 @@ export default function TemplatesPage() {
       setIsSubmitting(true);
       const duplicateData = {
         name: `${template.name} (Copy)`,
-        type: template.type,
+        type: 'custom' as const, // Always use 'custom' type for duplicated templates
         questionCount: template.questionCount,
         duration: template.duration,
         questionDistribution: template.questionDistribution,

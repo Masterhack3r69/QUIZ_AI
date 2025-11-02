@@ -182,6 +182,7 @@ export function QuestionCard({
 
     const isCorrect = showCorrectAnswer && 
       typeof selectedAnswer === 'string' && 
+      typeof question.correctAnswer === 'string' &&
       selectedAnswer.trim().toLowerCase() === question.correctAnswer.toLowerCase();
 
     const inputStyles = showCorrectAnswer
@@ -216,7 +217,7 @@ export function QuestionCard({
             </div>
           )}
         </div>
-        {showCorrectAnswer && !isCorrect && (
+        {showCorrectAnswer && !isCorrect && typeof question.correctAnswer === 'string' && (
           <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
             <p className="text-sm text-green-800">
               <span className="font-semibold">Correct answer:</span> {question.correctAnswer}

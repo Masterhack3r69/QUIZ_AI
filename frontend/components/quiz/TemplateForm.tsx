@@ -114,10 +114,14 @@ export function TemplateForm({ template, onSubmit, onCancel, isLoading = false }
       return;
     }
 
-    onSubmit({
+    // Force type to 'custom' for new templates (predefined types are read-only)
+    const submitData = {
       ...formData,
+      type: 'custom' as const,
       questionDistribution: distribution,
-    });
+    };
+
+    onSubmit(submitData);
   };
 
   const handleDistributionChange = (type: keyof QuizDistribution, value: number) => {
@@ -176,8 +180,11 @@ export function TemplateForm({ template, onSubmit, onCancel, isLoading = false }
       {/* Template Type */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Template Type
+          Start from Preset
         </label>
+        <p className="text-xs text-gray-500 mb-2">
+          Choose a preset to auto-fill settings, or start with custom values
+        </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {[
             { value: 'short', label: 'Short Quiz', desc: '10 questions, 15 min' },
