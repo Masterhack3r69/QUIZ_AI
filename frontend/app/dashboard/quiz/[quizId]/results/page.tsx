@@ -3,9 +3,10 @@
 import { useEffect, useState, useMemo, lazy, Suspense } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { apiClient, APIRequestError } from '@/lib/api';
+import { useToast } from '@/contexts/ToastContext';
 import { Button } from '@/components/ui/Button';
+import { Icon } from '@/components/ui/Icon';
 import { Card } from '@/components/ui/Card';
-import { Toast } from '@/components/ui/Toast';
 import { AnalyticsCardsSkeleton, SubmissionsTableSkeleton } from '@/components/ui/SkeletonLoader';
 import type { Analytics, Quiz } from '@/types';
 
@@ -20,11 +21,11 @@ export default function QuizResultsPage() {
   const router = useRouter();
   const params = useParams();
   const quizId = params.quizId as string;
+  const { showError } = useToast();
 
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
@@ -34,7 +35,6 @@ export default function QuizResultsPage() {
   const loadAnalytics = async () => {
     try {
       setIsLoading(true);
-      setError(null);
       
       // Load both analytics and quiz details
       const [analyticsData, quizData] = await Promise.all([
@@ -45,23 +45,23 @@ export default function QuizResultsPage() {
       console.log('📊 Analytics Data:', analyticsData);
       console.log('📝 Quiz Data:', quizData);
       console.log('👥 Submissions:', analyticsData?.submissions);
-      console.log('📈 Total Submissions:', analyticsData?.totalSubmissions);
+      console.log('📈 Total Submissions:', analyticsData?.summary.totalSubmissions);
       
       setAnalytics(analyticsData);
       setQuiz(quizData);
     } catch (err) {
       console.error('❌ Error loading analytics:', err);
       if (err instanceof APIRequestError) {
-        setError(err.message);
+        showError(err.message);
       } else {
-        setError('Failed to load analytics. Please try again.');
+        showError('Failed to load analytics. Please try again.');
       }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const formatTime = (seconds: number): string => {
+  const formatTime = (seconds?: number): string => {
     if (!seconds) return 'N/A';
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -122,23 +122,6 @@ export default function QuizResultsPage() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="max-w-2xl mx-auto">
-        <Card className="text-center py-12">
-          <div className="text-6xl mb-4">⚠️</div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
-            Error Loading Results
-          </h3>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <Button variant="primary" onClick={() => router.push(`/dashboard/quiz/${quizId}`)}>
-            Back to Quiz
-          </Button>
-        </Card>
-      </div>
-    );
-  }
-
   if (!analytics) {
     return null;
   }
@@ -170,7 +153,7 @@ export default function QuizResultsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h1 className="text-3xl font-bold text-gray-900">Quiz Results & Analytics</h1>
           
-          {analytics && analytics.totalSubmissions > 0 && quiz && (
+          {analytics && analytics.summary.totalSubmissions > 0 && quiz && (
             <Suspense fallback={
               <div className="flex gap-2">
                 <div className="h-10 w-32 bg-gray-200 rounded animate-pulse" />
@@ -190,10 +173,10 @@ export default function QuizResultsPage() {
             <div className="text-sm font-medium text-gray-600">
               Total Submissions
             </div>
-            <div className="text-2xl">📊</div>
+            <Icon name="chart" size="lg" />
           </div>
           <div className="text-3xl font-bold text-blue-600">
-            {analytics.totalSubmissions}
+            {analytics.summary.totalSubmissions}
           </div>
         </Card>
 
@@ -205,10 +188,7 @@ export default function QuizResultsPage() {
             <div className="text-2xl">📈</div>
           </div>
           <div className="text-3xl font-bold text-green-600">
-            {analytics.averageScore}
-          </div>
-          <div className="text-sm text-gray-500">
-            out of {analytics.totalQuestions}
+            {analytics.summary.averageScore.toFixed(1)}
           </div>
         </Card>
 
@@ -220,10 +200,7 @@ export default function QuizResultsPage() {
             <div className="text-2xl">🏆</div>
           </div>
           <div className="text-3xl font-bold text-emerald-600">
-            {analytics.highestScore}
-          </div>
-          <div className="text-sm text-gray-500">
-            out of {analytics.totalQuestions}
+            {analytics.summary.highestScore}
           </div>
         </Card>
 
@@ -235,13 +212,98 @@ export default function QuizResultsPage() {
             <div className="text-2xl">📉</div>
           </div>
           <div className="text-3xl font-bold text-amber-600">
-            {analytics.lowestScore}
-          </div>
-          <div className="text-sm text-gray-500">
-            out of {analytics.totalQuestions}
+            {analytics.summary.lowestScore}
           </div>
         </Card>
       </div>
+
+      {/* Question Type Breakdown and Performance */}
+      {analytics.summary.questionTypeBreakdown && analytics.summary.averageScoreByType && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* Question Type Distribution */}
+          <Card className="p-6">
+            <h2 className="text-lg font-bold text-gray-900 mb-4">
+              Question Type Distribution
+            </h2>
+            <div className="space-y-3">
+              {Object.entries(analytics.summary.questionTypeBreakdown).map(([type, count]) => {
+                if (count === 0) return null;
+                const typeLabels: Record<string, string> = {
+                  multipleChoice: 'Multiple Choice',
+                  trueFalse: 'True/False',
+                  fillInBlank: 'Fill in the Blank',
+                  matching: 'Matching'
+                };
+                return (
+                  <div key={type} className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">
+                      {typeLabels[type]}
+                    </span>
+                    <span className="text-sm font-bold text-gray-900">
+                      {count} {count === 1 ? 'question' : 'questions'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+
+          {/* Average Score by Question Type */}
+          <Card className="p-6">
+            <h2 className="text-lg font-bold text-gray-900 mb-4">
+              Average Score by Question Type
+            </h2>
+            <div className="space-y-3">
+              {Object.entries(analytics.summary.averageScoreByType).map(([type, score]) => {
+                const count = analytics.summary.questionTypeBreakdown?.[type as keyof typeof analytics.summary.questionTypeBreakdown] || 0;
+                if (count === 0) return null;
+                const typeLabels: Record<string, string> = {
+                  multipleChoice: 'Multiple Choice',
+                  trueFalse: 'True/False',
+                  fillInBlank: 'Fill in the Blank',
+                  matching: 'Matching'
+                };
+                return (
+                  <div key={type}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium text-gray-700">
+                        {typeLabels[type]}
+                      </span>
+                      <span
+                        className={`text-sm font-bold ${
+                          score >= 80
+                            ? 'text-green-600'
+                            : score >= 60
+                            ? 'text-blue-600'
+                            : score >= 40
+                            ? 'text-amber-600'
+                            : 'text-red-600'
+                        }`}
+                      >
+                        {score.toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full transition-all ${
+                          score >= 80
+                            ? 'bg-green-600'
+                            : score >= 60
+                            ? 'bg-blue-600'
+                            : score >= 40
+                            ? 'bg-amber-600'
+                            : 'bg-red-600'
+                        }`}
+                        style={{ width: `${score}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* Submissions Table */}
       <Card>
@@ -250,9 +312,11 @@ export default function QuizResultsPage() {
             Student Submissions
           </h2>
 
-          {analytics.totalSubmissions === 0 ? (
+          {analytics.summary.totalSubmissions === 0 ? (
             <div className="text-center py-12">
-              <div className="text-6xl mb-4">📝</div>
+              <div className="flex justify-center mb-4">
+                <Icon name="document" className="w-16 h-16 text-gray-400" />
+              </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
                 No Submissions Yet
               </h3>
@@ -288,85 +352,90 @@ export default function QuizResultsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {paginatedSubmissions.map((submission, index) => (
-                      <tr
-                        key={index}
-                        className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                      >
-                        <td className="py-3 px-4 text-gray-900">
-                          {submission.studentName}
-                        </td>
-                        <td className="py-3 px-4 text-gray-600">
-                          {submission.studentId}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className="font-semibold text-gray-900">
-                            {submission.score} / {submission.totalQuestions || analytics.totalQuestions}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span
-                            className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
-                              parseFloat(submission.percentage) >= 80
-                                ? 'bg-green-100 text-green-800'
-                                : parseFloat(submission.percentage) >= 60
-                                ? 'bg-blue-100 text-blue-800'
-                                : parseFloat(submission.percentage) >= 40
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-red-100 text-red-800'
-                            }`}
-                          >
-                            {submission.percentage}%
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-center text-gray-600">
-                          {formatTime(submission.timeTaken)}
-                        </td>
-                        <td className="py-3 px-4 text-center text-gray-600">
-                          {new Date(submission.submittedAt).toLocaleString()}
-                        </td>
-                      </tr>
-                    ))}
+                    {paginatedSubmissions.map((submission, index) => {
+                      const percentage = Math.round((submission.score / submission.totalQuestions) * 100);
+                      return (
+                        <tr
+                          key={index}
+                          className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                        >
+                          <td className="py-3 px-4 text-gray-900">
+                            {submission.studentName}
+                          </td>
+                          <td className="py-3 px-4 text-gray-600">
+                            {submission.studentId}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className="font-semibold text-gray-900">
+                              {submission.score} / {submission.totalQuestions}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span
+                              className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
+                                percentage >= 80
+                                  ? 'bg-green-100 text-green-800'
+                                  : percentage >= 60
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : percentage >= 40
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-red-100 text-red-800'
+                              }`}
+                            >
+                              {percentage}%
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-center text-gray-600">
+                            {formatTime(submission.timeTaken)}
+                          </td>
+                          <td className="py-3 px-4 text-center text-gray-600">
+                            {new Date(submission.submittedAt).toLocaleString()}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
 
               {/* Mobile Stacked View */}
               <div className="md:hidden space-y-4">
-                {paginatedSubmissions.map((submission, index) => (
-                  <div
-                    key={index}
-                    className="border border-gray-200 rounded-lg p-4 bg-white hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <div className="font-semibold text-gray-900 text-lg">
-                          {submission.studentName}
+                {paginatedSubmissions.map((submission, index) => {
+                  const percentage = Math.round((submission.score / submission.totalQuestions) * 100);
+                  return (
+                    <div
+                      key={index}
+                      className="border border-gray-200 rounded-lg p-4 bg-white hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <div className="font-semibold text-gray-900 text-lg">
+                            {submission.studentName}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            ID: {submission.studentId}
+                          </div>
                         </div>
-                        <div className="text-sm text-gray-600">
-                          ID: {submission.studentId}
-                        </div>
+                        <span
+                          className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
+                            percentage >= 80
+                              ? 'bg-green-100 text-green-800'
+                              : percentage >= 60
+                              ? 'bg-blue-100 text-blue-800'
+                              : percentage >= 40
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}
+                        >
+                          {percentage}%
+                        </span>
                       </div>
-                      <span
-                        className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
-                          parseFloat(submission.percentage) >= 80
-                            ? 'bg-green-100 text-green-800'
-                            : parseFloat(submission.percentage) >= 60
-                            ? 'bg-blue-100 text-blue-800'
-                            : parseFloat(submission.percentage) >= 40
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}
-                      >
-                        {submission.percentage}%
-                      </span>
-                    </div>
                     
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div>
                         <div className="text-gray-600 mb-1">Score</div>
                         <div className="font-semibold text-gray-900">
-                          {submission.score} / {submission.totalQuestions || analytics.totalQuestions}
+                          {submission.score} / {submission.totalQuestions}
                         </div>
                       </div>
                       <div>
@@ -383,26 +452,29 @@ export default function QuizResultsPage() {
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="mt-6 flex items-center justify-between border-t border-gray-200 pt-4">
-                  <div className="text-sm text-gray-600">
+                <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-t border-gray-200 pt-4">
+                  <div className="text-sm text-gray-600 text-center sm:text-left">
                     Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{' '}
                     {Math.min(currentPage * ITEMS_PER_PAGE, sortedSubmissions.length)} of{' '}
                     {sortedSubmissions.length} submissions
                   </div>
                   
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-center gap-2">
                     <Button
                       variant="secondary"
                       size="sm"
                       onClick={() => handlePageChange(currentPage - 1)}
                       disabled={currentPage === 1}
+                      className="touch-manipulation"
                     >
-                      Previous
+                      <span className="hidden sm:inline">Previous</span>
+                      <span className="sm:hidden">Prev</span>
                     </Button>
                     
                     <div className="flex items-center gap-1">
@@ -419,7 +491,7 @@ export default function QuizResultsPage() {
 
                         if (showEllipsis) {
                           return (
-                            <span key={page} className="px-2 text-gray-500">
+                            <span key={page} className="px-1 sm:px-2 text-gray-500">
                               ...
                             </span>
                           );
@@ -433,10 +505,10 @@ export default function QuizResultsPage() {
                           <button
                             key={page}
                             onClick={() => handlePageChange(page)}
-                            className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                            className={`px-2 sm:px-3 py-1 rounded text-sm font-medium transition-colors touch-manipulation min-w-[32px] ${
                               currentPage === page
                                 ? 'bg-blue-600 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
                             }`}
                           >
                             {page}
@@ -450,6 +522,7 @@ export default function QuizResultsPage() {
                       size="sm"
                       onClick={() => handlePageChange(currentPage + 1)}
                       disabled={currentPage === totalPages}
+                      className="touch-manipulation"
                     >
                       Next
                     </Button>
@@ -480,6 +553,9 @@ export default function QuizResultsPage() {
                     <th className="text-left py-3 px-4 font-semibold text-gray-700 w-12">
                       #
                     </th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700 w-32">
+                      Type
+                    </th>
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">
                       Question
                     </th>
@@ -497,6 +573,18 @@ export default function QuizResultsPage() {
                 <tbody>
                   {analytics.questionStats.map((stat, index) => {
                     const isLowAccuracy = stat.accuracyRate < 50;
+                    const typeLabels: Record<string, string> = {
+                      multipleChoice: 'Multiple Choice',
+                      trueFalse: 'True/False',
+                      fillInBlank: 'Fill in Blank',
+                      matching: 'Matching'
+                    };
+                    const typeColors: Record<string, string> = {
+                      multipleChoice: 'bg-blue-100 text-blue-800',
+                      trueFalse: 'bg-purple-100 text-purple-800',
+                      fillInBlank: 'bg-green-100 text-green-800',
+                      matching: 'bg-orange-100 text-orange-800'
+                    };
                     return (
                       <tr
                         key={stat.questionId}
@@ -506,6 +594,11 @@ export default function QuizResultsPage() {
                       >
                         <td className="py-3 px-4 text-gray-600 font-medium">
                           {index + 1}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${typeColors[stat.questionType] || 'bg-gray-100 text-gray-800'}`}>
+                            {typeLabels[stat.questionType] || stat.questionType}
+                          </span>
                         </td>
                         <td className="py-3 px-4 text-gray-900">
                           {stat.question}
@@ -542,6 +635,18 @@ export default function QuizResultsPage() {
             <div className="md:hidden space-y-4">
               {analytics.questionStats.map((stat, index) => {
                 const isLowAccuracy = stat.accuracyRate < 50;
+                const typeLabels: Record<string, string> = {
+                  multipleChoice: 'Multiple Choice',
+                  trueFalse: 'True/False',
+                  fillInBlank: 'Fill in Blank',
+                  matching: 'Matching'
+                };
+                const typeColors: Record<string, string> = {
+                  multipleChoice: 'bg-blue-100 text-blue-800',
+                  trueFalse: 'bg-purple-100 text-purple-800',
+                  fillInBlank: 'bg-green-100 text-green-800',
+                  matching: 'bg-orange-100 text-orange-800'
+                };
                 return (
                   <div
                     key={stat.questionId}
@@ -553,8 +658,13 @@ export default function QuizResultsPage() {
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
-                        <div className="text-xs text-gray-500 mb-1">
-                          Question {index + 1}
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xs text-gray-500">
+                            Question {index + 1}
+                          </span>
+                          <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${typeColors[stat.questionType] || 'bg-gray-100 text-gray-800'}`}>
+                            {typeLabels[stat.questionType] || stat.questionType}
+                          </span>
                         </div>
                         <div className="text-sm text-gray-900 font-medium">
                           {stat.question}

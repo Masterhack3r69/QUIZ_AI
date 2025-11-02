@@ -1,7 +1,7 @@
 'use client';
 
 import PublicLayout from '@/components/layout/PublicLayout';
-import { Button } from '@/components/ui';
+import { Button, Icon } from '@/components/ui';
 import { Input } from '@/components/ui';
 import { Toast } from '@/components/ui/Toast';
 import { useState } from 'react';
@@ -73,8 +73,22 @@ export default function JoinPage() {
           setErrors({ accessCode: 'Invalid quiz code. Please check and try again.' });
           setToast({ type: 'error', message: 'Invalid quiz code' });
         } else if (error.status === 400) {
-          setErrors({ accessCode: error.message });
-          setToast({ type: 'error', message: error.message });
+          // Parse the error message to determine the specific issue
+          const errorMsg = error.message.toLowerCase();
+          
+          if (errorMsg.includes('not started') || errorMsg.includes('has not started yet')) {
+            setErrors({ accessCode: error.message });
+            setToast({ type: 'warning', message: 'Quiz has not started yet' });
+          } else if (errorMsg.includes('expired') || errorMsg.includes('no longer available')) {
+            setErrors({ accessCode: error.message });
+            setToast({ type: 'error', message: 'Quiz has expired' });
+          } else if (errorMsg.includes('maximum') || errorMsg.includes('full') || errorMsg.includes('reached')) {
+            setErrors({ accessCode: error.message });
+            setToast({ type: 'warning', message: 'Quiz is full' });
+          } else {
+            setErrors({ accessCode: error.message });
+            setToast({ type: 'error', message: error.message });
+          }
         } else {
           setErrors({ accessCode: 'Unable to validate quiz code. Please try again.' });
           setToast({ type: 'error', message: 'Server error. Please try again later.' });
@@ -110,7 +124,9 @@ export default function JoinPage() {
         <div className="max-w-md mx-auto">
           <div className="bg-white rounded-xl shadow-lg p-8">
             <div className="text-center mb-8">
-              <div className="text-5xl mb-4" role="img" aria-label="Student graduation cap">🎓</div>
+              <div className="flex justify-center mb-4">
+                <Icon name="graduation-cap" className="w-16 h-16 text-blue-600" />
+              </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
                 Join Quiz
               </h1>

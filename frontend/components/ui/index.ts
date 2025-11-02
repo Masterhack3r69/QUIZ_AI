@@ -22,3 +22,12 @@ export type { SkeletonLoaderProps } from './SkeletonLoader';
 export { ProgressBar, IndeterminateProgressBar } from './ProgressBar';
 export type { ProgressBarProps } from './ProgressBar';
 export { OptimizedImage } from './OptimizedImage';
+
+export { Icon } from './Icon';
+export type { IconName } from './Icon';
+
+export { Select } from './Select';
+export type { SelectProps, SelectOption } from './Select';
+
+export { Tabs, ControlledTabs } from './Tabs';
+export type { TabsProps, ControlledTabsProps, Tab } from './Tabs';

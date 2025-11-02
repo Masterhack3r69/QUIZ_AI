@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import PublicLayout from '@/components/layout/PublicLayout';
-import { Button } from '@/components/ui';
+import { Button, Icon } from '@/components/ui';
 import { QuestionCard } from '@/components/quiz/QuestionCard';
-import type { Answer } from '@/types';
+import type { Answer, Question } from '@/types';
 
 interface QuizResult {
   score: number;
@@ -18,11 +18,7 @@ interface QuizResult {
 interface QuizSessionData {
   quizId: string;
   title: string;
-  questions: {
-    _id: string;
-    question: string;
-    options: string[];
-  }[];
+  questions: Question[];
 }
 
 export default function QuizResultsPage() {
@@ -121,35 +117,10 @@ export default function QuizResultsPage() {
               <div className={`w-20 h-20 rounded-full flex items-center justify-center ${
                 isPassing ? 'bg-green-100' : 'bg-amber-100'
               }`}>
-                {isPassing ? (
-                  <svg
-                    className="w-12 h-12 text-green-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                ) : (
-                  <svg
-                    className="w-12 h-12 text-amber-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                    />
-                  </svg>
-                )}
+                <Icon 
+                  name={isPassing ? "check" : "warning"} 
+                  className={`w-12 h-12 ${isPassing ? 'text-green-600' : 'text-amber-600'}`}
+                />
               </div>
             </div>
 
@@ -182,19 +153,7 @@ export default function QuizResultsPage() {
 
             {/* Time Taken */}
             <div className="flex items-center justify-center gap-2 text-gray-600 mb-8">
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
+              <Icon name="clock" />
               <span>Time taken: {formatTime(result.timeTaken)}</span>
             </div>
 
@@ -266,124 +225,27 @@ export default function QuizResultsPage() {
                     <div className="flex items-center gap-2 mb-4">
                       {answer.isCorrect ? (
                         <div className="flex items-center gap-2 text-green-700 font-semibold">
-                          <svg
-                            className="w-5 h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
+                          <Icon name="check" />
                           <span>Correct</span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2 text-red-700 font-semibold">
-                          <svg
-                            className="w-5 h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M6 18L18 6M6 6l12 12"
-                            />
-                          </svg>
+                          <Icon name="close" />
                           <span>Incorrect</span>
                         </div>
                       )}
                     </div>
 
-                    {/* Display question with selected answer highlighted */}
-                    <div className="w-full max-w-3xl mx-auto">
-                      <div className="mb-6">
-                        <div className="text-sm font-medium text-gray-500 mb-2">
-                          Question {index + 1} of {quizSession.questions.length}
-                        </div>
-                        <h2 className="text-xl md:text-2xl font-semibold text-gray-900 leading-relaxed">
-                          {question.question}
-                        </h2>
-                      </div>
-
-                      <div className="space-y-3">
-                        {question.options.map((option, optIndex) => {
-                          const isSelected = answer.selectedAnswer === optIndex;
-                          const isCorrectAnswer = isSelected && answer.isCorrect;
-                          const isWrongAnswer = isSelected && !answer.isCorrect;
-                          
-                          const optionLabel = ['A', 'B', 'C', 'D'][optIndex] || String.fromCharCode(65 + optIndex);
-                          
-                          let optionStyles = 'w-full text-left p-4 rounded-lg border-2 transition-all duration-200';
-                          
-                          if (isCorrectAnswer) {
-                            optionStyles += ' bg-green-50 border-green-500 text-green-900 font-medium';
-                          } else if (isWrongAnswer) {
-                            optionStyles += ' bg-red-50 border-red-500 text-red-900';
-                          } else {
-                            optionStyles += ' bg-gray-50 border-gray-200 text-gray-700';
-                          }
-
-                          return (
-                            <div key={optIndex} className={optionStyles}>
-                              <div className="flex items-start gap-3">
-                                <span className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-700 font-semibold text-sm">
-                                  {optionLabel}
-                                </span>
-                                <span className="flex-1 text-base md:text-lg pt-1">
-                                  {option}
-                                </span>
-                                {isCorrectAnswer && (
-                                  <svg
-                                    className="flex-shrink-0 w-6 h-6 text-green-600"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M5 13l4 4L19 7"
-                                    />
-                                  </svg>
-                                )}
-                                {isWrongAnswer && (
-                                  <svg
-                                    className="flex-shrink-0 w-6 h-6 text-red-600"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M6 18L18 6M6 6l12 12"
-                                    />
-                                  </svg>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      
-                      {!answer.isCorrect && (
-                        <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                          <p className="text-sm text-amber-800">
-                            <span className="font-semibold">Note:</span> The correct answer is not shown to maintain quiz integrity. 
-                            Your selected answer is highlighted in red.
-                          </p>
-                        </div>
-                      )}
-                    </div>
+                    {/* Display question with selected answer */}
+                    <QuestionCard
+                      question={question}
+                      selectedAnswer={answer.selectedAnswer}
+                      onSelectAnswer={() => {}} // No-op in review mode
+                      questionNumber={index + 1}
+                      totalQuestions={quizSession.questions.length}
+                      showCorrectAnswer={true}
+                      isReview={true}
+                    />
                   </div>
                 );
               })}

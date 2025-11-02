@@ -1,5 +1,6 @@
 import PublicLayout from '@/components/layout/PublicLayout';
 import Link from 'next/link';
+import { Icon } from '@/components/ui';
 
 export default function Home() {
   return (
@@ -21,17 +22,19 @@ export default function Home() {
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                 <Link
                   href="/login"
-                  className="w-full sm:w-auto bg-white text-blue-600 hover:bg-blue-50 px-8 py-4 rounded-lg text-lg font-semibold transition-colors shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-600"
+                  className="w-full sm:w-auto bg-white text-blue-600 hover:bg-blue-50 px-8 py-4 rounded-lg text-lg font-semibold transition-colors shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-600 flex items-center justify-center gap-2"
                   aria-label="Teacher login - Sign in to create and manage quizzes"
                 >
-                  <span role="img" aria-label="Teacher">👨‍🏫</span> Teacher Login
+                  <Icon name="teacher" size="lg" />
+                  Teacher Login
                 </Link>
                 <Link
                   href="/join"
-                  className="w-full sm:w-auto bg-blue-500 text-white hover:bg-blue-400 px-8 py-4 rounded-lg text-lg font-semibold transition-colors shadow-lg hover:shadow-xl border-2 border-white focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-600"
+                  className="w-full sm:w-auto bg-blue-500 text-white hover:bg-blue-400 px-8 py-4 rounded-lg text-lg font-semibold transition-colors shadow-lg hover:shadow-xl border-2 border-white focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-600 flex items-center justify-center gap-2"
                   aria-label="Student join quiz - Enter quiz code to start"
                 >
-                  <span role="img" aria-label="Student">🎓</span> Student Join Quiz
+                  <Icon name="graduation-cap" size="lg" />
+                  Student Join Quiz
                 </Link>
               </div>
             </div>
@@ -52,7 +55,9 @@ export default function Home() {
           <div className="grid md:grid-cols-3 gap-8">
             {/* For Teachers */}
             <article className="bg-white rounded-xl shadow-md p-8 hover:shadow-lg transition-shadow">
-              <div className="text-5xl mb-4 text-center" role="img" aria-label="Books">📚</div>
+              <div className="flex justify-center mb-4">
+                <Icon name="books" className="w-16 h-16 text-blue-600" />
+              </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-3 text-center">
                 For Teachers
               </h3>
@@ -78,7 +83,9 @@ export default function Home() {
 
             {/* For Students */}
             <article className="bg-white rounded-xl shadow-md p-8 hover:shadow-lg transition-shadow">
-              <div className="text-5xl mb-4 text-center" role="img" aria-label="Pencil">✏️</div>
+              <div className="flex justify-center mb-4">
+                <Icon name="pencil" className="w-16 h-16 text-blue-600" />
+              </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-3 text-center">
                 For Students
               </h3>
@@ -104,7 +111,9 @@ export default function Home() {
 
             {/* Key Benefits */}
             <article className="bg-white rounded-xl shadow-md p-8 hover:shadow-lg transition-shadow">
-              <div className="text-5xl mb-4 text-center" role="img" aria-label="Target">🎯</div>
+              <div className="flex justify-center mb-4">
+                <Icon name="target" className="w-16 h-16 text-blue-600" />
+              </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-3 text-center">
                 Key Benefits
               </h3>

@@ -3,20 +3,17 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import PublicLayout from '@/components/layout/PublicLayout';
-import { Button } from '@/components/ui';
+import { Button, Icon } from '@/components/ui';
 import Timer from '@/components/quiz/Timer';
 import { QuestionCard } from '@/components/quiz/QuestionCard';
 import { Toast } from '@/components/ui/Toast';
+import type { Question, QuestionType } from '@/types';
 
 interface QuizSessionData {
   quizId: string;
   title: string;
   duration: number; // in minutes
-  questions: {
-    _id: string;
-    question: string;
-    options: string[];
-  }[];
+  questions: Question[];
   startTime: number;
   accessCode: string;
 }
@@ -30,6 +27,54 @@ const QUIZ_SESSION_KEY = 'quizSession';
 const ANSWERS_KEY = 'quizAnswers';
 const CURRENT_QUESTION_KEY = 'currentQuestionIndex';
 
+// Helper function to get default answer for unanswered questions
+const getDefaultAnswer = (questionType: QuestionType): number | boolean | string | { left: number; right: number }[] => {
+  switch (questionType) {
+    case 'multipleChoice':
+      return -1; // -1 indicates no answer selected
+    case 'trueFalse':
+      return false; // Default to false (could also be null, but backend expects boolean)
+    case 'fillInBlank':
+      return ''; // Empty string for no answer
+    case 'matching':
+      return []; // Empty array for no pairs
+    default:
+      return -1;
+  }
+};
+
+// Helper function to get readable question type label
+const getQuestionTypeLabel = (questionType: QuestionType): string => {
+  switch (questionType) {
+    case 'multipleChoice':
+      return 'Multiple Choice';
+    case 'trueFalse':
+      return 'True/False';
+    case 'fillInBlank':
+      return 'Fill in Blank';
+    case 'matching':
+      return 'Matching';
+    default:
+      return 'Unknown';
+  }
+};
+
+// Helper function to get question type icon
+const getQuestionTypeIcon = (questionType: QuestionType): string => {
+  switch (questionType) {
+    case 'multipleChoice':
+      return '◉';
+    case 'trueFalse':
+      return '✓✗';
+    case 'fillInBlank':
+      return '___';
+    case 'matching':
+      return '⇄';
+    default:
+      return '?';
+  }
+};
+
 export default function QuizTakePage() {
   const params = useParams();
   const router = useRouter();
@@ -38,7 +83,7 @@ export default function QuizTakePage() {
   const [quizSession, setQuizSession] = useState<QuizSessionData | null>(null);
   const [studentInfo, setStudentInfo] = useState<StudentInfo | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<Map<string, number>>(new Map());
+  const [answers, setAnswers] = useState<Map<string, number | boolean | string | { left: number; right: number }[]>>(new Map());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error' | 'warning' | 'info'; message: string } | null>(null);
   const [showNavigationWarning, setShowNavigationWarning] = useState(false);
@@ -121,13 +166,13 @@ export default function QuizTakePage() {
     };
   }, []);
 
-  const handleSelectAnswer = (answerIndex: number) => {
+  const handleSelectAnswer = (answer: number | boolean | string | { left: number; right: number }[]) => {
     if (!quizSession) return;
     
     const questionId = quizSession.questions[currentQuestionIndex]._id;
     setAnswers(prev => {
       const newAnswers = new Map(prev);
-      newAnswers.set(questionId, answerIndex);
+      newAnswers.set(questionId, answer);
       return newAnswers;
     });
   };
@@ -161,7 +206,8 @@ export default function QuizTakePage() {
         studentId: studentInfo.studentId,
         answers: quizSession.questions.map(q => ({
           questionId: q._id,
-          selectedAnswer: answers.get(q._id) ?? -1, // -1 for unanswered
+          questionType: q.type,
+          selectedAnswer: answers.get(q._id) ?? getDefaultAnswer(q.type),
         })),
         timeTaken,
       };
@@ -218,11 +264,29 @@ export default function QuizTakePage() {
     submitQuiz(true);
   }, [submitQuiz]);
 
+  const isQuestionAnswered = (question: Question): boolean => {
+    const answer = answers.get(question._id);
+    if (answer === undefined) return false;
+
+    switch (question.type) {
+      case 'multipleChoice':
+        return typeof answer === 'number' && answer >= 0;
+      case 'trueFalse':
+        return typeof answer === 'boolean';
+      case 'fillInBlank':
+        return typeof answer === 'string' && answer.trim().length > 0;
+      case 'matching':
+        return Array.isArray(answer) && answer.length === question.leftColumn.length;
+      default:
+        return false;
+    }
+  };
+
   const handleManualSubmit = () => {
     if (!quizSession) return;
 
     // Check if all questions are answered
-    const allAnswered = quizSession.questions.every(q => answers.has(q._id));
+    const allAnswered = quizSession.questions.every(q => isQuestionAnswered(q));
     
     if (!allAnswered) {
       setToast({ 
@@ -252,7 +316,7 @@ export default function QuizTakePage() {
 
   const currentQuestion = quizSession.questions[currentQuestionIndex];
   const selectedAnswer = answers.get(currentQuestion._id);
-  const allAnswered = quizSession.questions.every(q => answers.has(q._id));
+  const allAnswered = quizSession.questions.every(q => isQuestionAnswered(q));
   const durationInSeconds = quizSession.duration * 60;
 
   return (
@@ -288,12 +352,17 @@ export default function QuizTakePage() {
 
             {/* Progress Indicator */}
             <div className="mt-4">
-              <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm text-gray-600 mb-2">
+                <div className="flex items-center gap-2">
+                  <span>
+                    Question {currentQuestionIndex + 1} of {quizSession.questions.length}
+                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 font-medium">
+                    {getQuestionTypeIcon(currentQuestion.type)} {getQuestionTypeLabel(currentQuestion.type)}
+                  </span>
+                </div>
                 <span>
-                  Question {currentQuestionIndex + 1} of {quizSession.questions.length}
-                </span>
-                <span>
-                  {answers.size} / {quizSession.questions.length} answered
+                  {quizSession.questions.filter(q => isQuestionAnswered(q)).length} / {quizSession.questions.length} answered
                 </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
@@ -310,8 +379,7 @@ export default function QuizTakePage() {
           {/* Question Card */}
           <div className="bg-white rounded-xl shadow-lg p-6 md:p-8 mb-6">
             <QuestionCard
-              question={currentQuestion.question}
-              options={currentQuestion.options}
+              question={currentQuestion}
               selectedAnswer={selectedAnswer}
               onSelectAnswer={handleSelectAnswer}
               questionNumber={currentQuestionIndex + 1}
@@ -320,15 +388,15 @@ export default function QuizTakePage() {
           </div>
 
           {/* Navigation and Submit */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <div className="flex flex-col sm:flex-row gap-4">
+          <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               {/* Previous Button */}
               <Button
                 variant="secondary"
                 size="lg"
                 onClick={handlePrevious}
                 disabled={currentQuestionIndex === 0 || isSubmitting}
-                className="flex-1"
+                className="flex-1 touch-manipulation min-h-[48px]"
               >
                 ← Previous
               </Button>
@@ -340,7 +408,7 @@ export default function QuizTakePage() {
                   size="lg"
                   onClick={handleNext}
                   disabled={isSubmitting}
-                  className="flex-1"
+                  className="flex-1 touch-manipulation min-h-[48px]"
                 >
                   Next →
                 </Button>
@@ -351,7 +419,7 @@ export default function QuizTakePage() {
                   onClick={handleManualSubmit}
                   disabled={!allAnswered || isSubmitting}
                   loading={isSubmitting}
-                  className="flex-1"
+                  className="flex-1 touch-manipulation min-h-[48px]"
                 >
                   {isSubmitting ? 'Submitting...' : 'Submit Quiz'}
                 </Button>
@@ -360,20 +428,21 @@ export default function QuizTakePage() {
 
             {/* Submit button hint */}
             {!allAnswered && currentQuestionIndex === quizSession.questions.length - 1 && (
-              <p className="text-sm text-amber-600 mt-4 text-center">
-                ⚠️ Please answer all questions to enable submission
+              <p className="text-sm text-amber-600 mt-4 text-center flex items-center justify-center gap-2">
+                <Icon name="warning" size="sm" />
+                Please answer all questions to enable submission
               </p>
             )}
           </div>
 
           {/* Question Navigation Grid */}
-          <div className="bg-white rounded-xl shadow-lg p-6 mt-6">
+          <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mt-6">
             <h3 className="text-sm font-semibold text-gray-700 mb-3">
               Question Navigator
             </h3>
-            <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
+            <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-2">
               {quizSession.questions.map((q, index) => {
-                const isAnswered = answers.has(q._id);
+                const isAnswered = isQuestionAnswered(q);
                 const isCurrent = index === currentQuestionIndex;
                 
                 return (
@@ -381,26 +450,30 @@ export default function QuizTakePage() {
                     key={q._id}
                     onClick={() => setCurrentQuestionIndex(index)}
                     disabled={isSubmitting}
+                    title={`Question ${index + 1}: ${getQuestionTypeLabel(q.type)}${isAnswered ? ' (answered)' : ''}`}
                     className={`
-                      aspect-square rounded-lg font-semibold text-sm
-                      transition-all duration-200
+                      aspect-square rounded-lg font-semibold text-sm relative group
+                      transition-all duration-200 touch-manipulation min-h-[44px]
                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
                       ${isCurrent
                         ? 'bg-blue-600 text-white ring-2 ring-blue-600 ring-offset-2'
                         : isAnswered
-                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        ? 'bg-green-100 text-green-700 hover:bg-green-200 active:bg-green-300'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 active:bg-gray-300'
                       }
                       ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
                     `}
-                    aria-label={`Go to question ${index + 1}${isAnswered ? ' (answered)' : ''}`}
+                    aria-label={`Go to question ${index + 1}: ${getQuestionTypeLabel(q.type)}${isAnswered ? ' (answered)' : ''}`}
                   >
-                    {index + 1}
+                    <span className="block">{index + 1}</span>
+                    <span className="absolute -top-1 -right-1 text-xs opacity-60">
+                      {getQuestionTypeIcon(q.type)}
+                    </span>
                   </button>
                 );
               })}
             </div>
-            <div className="flex items-center gap-4 mt-4 text-xs text-gray-600">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-4 text-xs text-gray-600">
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-blue-600 rounded"></div>
                 <span>Current</span>

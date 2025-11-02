@@ -2,7 +2,14 @@ import express from 'express';
 import Quiz from '../models/Quiz.model.js';
 import Submission from '../models/Submission.model.js';
 import { protect } from '../middleware/auth.middleware.js';
-import { generateAccessCode, extractContent, generateQuestions } from '../utils/quiz.utils.js';
+import { 
+  generateAccessCode, 
+  extractContent, 
+  extractVideoContent,
+  extractWebContent,
+  validateTopicContent,
+  generateQuestions 
+} from '../utils/quiz.utils.js';
 import upload from '../middleware/upload.middleware.js';
 
 const router = express.Router();
@@ -10,7 +17,15 @@ const router = express.Router();
 // Test route without authentication (for testing only)
 router.post('/test-create', upload.single('file'), async (req, res) => {
   try {
-    const { title, duration, expiresAt, questionsPerStudent, textContent } = req.body;
+    const { 
+      title, 
+      duration, 
+      expiresAt, 
+      questionsPerStudent, 
+      textContent,
+      questionDistribution,
+      totalQuestions
+    } = req.body;
     
     let content = textContent || '';
     
@@ -23,8 +38,28 @@ router.post('/test-create', upload.single('file'), async (req, res) => {
       return res.status(400).json({ message: 'No content provided' });
     }
 
-    // Generate questions using AI
-    const questions = await generateQuestions(content);
+    // Parse distribution if provided
+    let distribution = null;
+    if (questionDistribution) {
+      try {
+        const parsed = typeof questionDistribution === 'string' 
+          ? JSON.parse(questionDistribution) 
+          : questionDistribution;
+        
+        distribution = {
+          multipleChoice: parseInt(parsed.multipleChoice) || 0,
+          trueFalse: parseInt(parsed.trueFalse) || 0,
+          fillInBlank: parseInt(parsed.fillInBlank) || 0,
+          matching: parseInt(parsed.matching) || 0
+        };
+      } catch (e) {
+        console.error('Error parsing questionDistribution:', e);
+      }
+    }
+
+    // Generate questions using AI with distribution
+    const total = totalQuestions ? parseInt(totalQuestions) : 20;
+    const questions = await generateQuestions(content, distribution, total);
 
     const accessCode = generateAccessCode();
 
@@ -36,6 +71,12 @@ router.post('/test-create', upload.single('file'), async (req, res) => {
       questionsPerStudent: parseInt(questionsPerStudent) || 10,
       duration: parseInt(duration) || 30,
       expiresAt: expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      questionDistribution: distribution || {
+        multipleChoice: questions.filter(q => q.type === 'multipleChoice').length,
+        trueFalse: questions.filter(q => q.type === 'trueFalse').length,
+        fillInBlank: questions.filter(q => q.type === 'fillInBlank').length,
+        matching: questions.filter(q => q.type === 'matching').length
+      },
       sourceContent: content.substring(0, 1000) // Limit content in response
     };
 
@@ -46,22 +87,177 @@ router.post('/test-create', upload.single('file'), async (req, res) => {
   }
 });
 
-// Create quiz (with file upload)
+// Process video URL and extract content
+router.post('/process-video', protect, async (req, res) => {
+  try {
+    const { videoUrl } = req.body;
+    
+    if (!videoUrl) {
+      return res.status(400).json({ message: 'Video URL is required' });
+    }
+    
+    const content = await extractVideoContent(videoUrl);
+    
+    res.json({ 
+      content,
+      contentLength: content.length,
+      message: 'Video transcript extracted successfully'
+    });
+  } catch (error) {
+    console.error('Process video error:', error);
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Process web URL and extract content
+router.post('/process-url', protect, async (req, res) => {
+  try {
+    const { webUrl } = req.body;
+    
+    if (!webUrl) {
+      return res.status(400).json({ message: 'Web URL is required' });
+    }
+    
+    const content = await extractWebContent(webUrl);
+    
+    res.json({ 
+      content,
+      contentLength: content.length,
+      message: 'Web content extracted successfully'
+    });
+  } catch (error) {
+    console.error('Process URL error:', error);
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Process topic text
+router.post('/process-topic', protect, async (req, res) => {
+  try {
+    const { topicText } = req.body;
+    
+    const content = validateTopicContent(topicText);
+    
+    res.json({ 
+      content,
+      contentLength: content.length,
+      message: 'Topic content validated successfully'
+    });
+  } catch (error) {
+    console.error('Process topic error:', error);
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Generate questions from content (unified endpoint)
+router.post('/generate-questions', protect, async (req, res) => {
+  try {
+    const { content, questionDistribution, totalQuestions } = req.body;
+    
+    if (!content) {
+      return res.status(400).json({ message: 'Content is required' });
+    }
+    
+    // Parse distribution if provided
+    let distribution = null;
+    if (questionDistribution) {
+      distribution = {
+        multipleChoice: parseInt(questionDistribution.multipleChoice) || 0,
+        trueFalse: parseInt(questionDistribution.trueFalse) || 0,
+        fillInBlank: parseInt(questionDistribution.fillInBlank) || 0,
+        matching: parseInt(questionDistribution.matching) || 0
+      };
+    }
+    
+    const total = totalQuestions ? parseInt(totalQuestions) : 20;
+    const questions = await generateQuestions(content, distribution, total);
+    
+    res.json({ 
+      questions,
+      questionCount: questions.length,
+      message: 'Questions generated successfully'
+    });
+  } catch (error) {
+    console.error('Generate questions error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Create quiz (with file upload or other content sources)
 router.post('/create', protect, upload.single('file'), async (req, res) => {
   try {
-    const { title, duration, expiresAt, questionsPerStudent, textContent } = req.body;
+    const { 
+      title, 
+      duration, 
+      expiresAt, 
+      questionsPerStudent, 
+      textContent,
+      sourceType, // 'file', 'topic', 'video', 'url'
+      videoUrl,
+      webUrl,
+      questionDistribution,
+      totalQuestions
+    } = req.body;
     
-    let content = textContent || '';
+    let content = '';
+    let sourceInfo = { type: 'text', content: '' };
     
-    // Extract content from uploaded file
+    // Extract content based on source type
     if (req.file) {
       content = await extractContent(req.file);
+      sourceInfo = { type: 'file', content: req.file.originalname };
+    } else if (sourceType === 'video' && videoUrl) {
+      content = await extractVideoContent(videoUrl);
+      sourceInfo = { type: 'video', content: videoUrl };
+    } else if (sourceType === 'url' && webUrl) {
+      content = await extractWebContent(webUrl);
+      sourceInfo = { type: 'url', content: webUrl };
+    } else if (sourceType === 'topic' && textContent) {
+      content = validateTopicContent(textContent);
+      sourceInfo = { type: 'topic', content: textContent.substring(0, 200) + '...' };
+    } else if (textContent) {
+      content = textContent;
+      sourceInfo = { type: 'text', content: textContent.substring(0, 200) + '...' };
     }
 
-    // Generate questions using AI
-    const questions = await generateQuestions(content);
+    if (!content) {
+      return res.status(400).json({ message: 'No content provided' });
+    }
+
+    // Parse distribution if provided
+    let distribution = null;
+    if (questionDistribution) {
+      try {
+        const parsed = typeof questionDistribution === 'string' 
+          ? JSON.parse(questionDistribution) 
+          : questionDistribution;
+        
+        distribution = {
+          multipleChoice: parseInt(parsed.multipleChoice) || 0,
+          trueFalse: parseInt(parsed.trueFalse) || 0,
+          fillInBlank: parseInt(parsed.fillInBlank) || 0,
+          matching: parseInt(parsed.matching) || 0
+        };
+      } catch (e) {
+        console.error('Error parsing questionDistribution:', e);
+      }
+    }
+
+    // Generate questions using AI with distribution
+    const total = totalQuestions ? parseInt(totalQuestions) : 20;
+    const questions = await generateQuestions(content, distribution, total);
 
     const accessCode = generateAccessCode();
+
+    // Determine initial status based on startDate
+    let initialStatus = 'active';
+    if (req.body.startDate) {
+      const startDate = new Date(req.body.startDate);
+      const now = new Date();
+      if (startDate > now) {
+        initialStatus = 'scheduled';
+      }
+    }
 
     const quiz = await Quiz.create({
       title,
@@ -70,12 +266,26 @@ router.post('/create', protect, upload.single('file'), async (req, res) => {
       questions,
       questionsPerStudent: parseInt(questionsPerStudent) || 10,
       duration: parseInt(duration),
+      startDate: req.body.startDate ? new Date(req.body.startDate) : undefined,
       expiresAt: new Date(expiresAt),
-      sourceContent: content
+      maxStudents: req.body.maxStudents ? parseInt(req.body.maxStudents) : undefined,
+      subjects: req.body.subjects ? (Array.isArray(req.body.subjects) ? req.body.subjects : JSON.parse(req.body.subjects)) : [],
+      status: initialStatus,
+      questionDistribution: distribution || {
+        multipleChoice: questions.filter(q => q.type === 'multipleChoice').length,
+        trueFalse: questions.filter(q => q.type === 'trueFalse').length,
+        fillInBlank: questions.filter(q => q.type === 'fillInBlank').length,
+        matching: questions.filter(q => q.type === 'matching').length
+      },
+      sourceContent: {
+        type: sourceInfo.type,
+        content: content.substring(0, 1000) // Store first 1000 chars
+      }
     });
 
     res.status(201).json(quiz);
   } catch (error) {
+    console.error('Create quiz error:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -93,11 +303,38 @@ router.get('/my-quizzes', protect, async (req, res) => {
     const quizzesWithCounts = await Promise.all(
       quizzes.map(async (quiz) => {
         const submissionCount = await Submission.countDocuments({ quiz: quiz._id });
+        let statusChanged = false;
         
-        // Automatically update status if quiz has expired
+        // Check if quiz has a start date
+        if (quiz.startDate) {
+          const startDate = new Date(quiz.startDate);
+          
+          // Quiz hasn't started yet
+          if (now < startDate && quiz.status !== 'scheduled') {
+            quiz.status = 'scheduled';
+            statusChanged = true;
+          }
+          // Quiz has started, update from scheduled to active
+          else if (now >= startDate && quiz.status === 'scheduled') {
+            quiz.status = 'active';
+            statusChanged = true;
+          }
+        }
+        
+        // Check if quiz has reached max students limit
+        if (quiz.maxStudents && submissionCount >= quiz.maxStudents && quiz.status !== 'full') {
+          quiz.status = 'full';
+          statusChanged = true;
+        }
+        
+        // Check if quiz has expired (but don't override 'full' status)
         const expiresAt = new Date(quiz.expiresAt);
-        if (quiz.status === 'active' && now > expiresAt) {
+        if (now > expiresAt && quiz.status !== 'expired' && quiz.status !== 'full') {
           quiz.status = 'expired';
+          statusChanged = true;
+        }
+        
+        if (statusChanged) {
           await quiz.save();
         }
         
@@ -126,11 +363,33 @@ router.get('/:quizId', protect, async (req, res) => {
       return res.status(404).json({ message: 'Quiz not found' });
     }
 
-    // Automatically update status if quiz has expired
     const now = new Date();
+    let statusChanged = false;
+    
+    // Check if quiz has a start date
+    if (quiz.startDate) {
+      const startDate = new Date(quiz.startDate);
+      
+      // Quiz hasn't started yet
+      if (now < startDate && quiz.status !== 'scheduled') {
+        quiz.status = 'scheduled';
+        statusChanged = true;
+      }
+      // Quiz has started, update from scheduled to active
+      else if (now >= startDate && quiz.status === 'scheduled') {
+        quiz.status = 'active';
+        statusChanged = true;
+      }
+    }
+    
+    // Check if quiz has expired
     const expiresAt = new Date(quiz.expiresAt);
-    if (quiz.status === 'active' && now > expiresAt) {
+    if (now > expiresAt && quiz.status !== 'expired' && quiz.status !== 'full') {
       quiz.status = 'expired';
+      statusChanged = true;
+    }
+    
+    if (statusChanged) {
       await quiz.save();
     }
 
@@ -146,26 +405,79 @@ router.post('/validate', async (req, res) => {
     const { accessCode } = req.body;
     
     const quiz = await Quiz.findOne({ accessCode: accessCode.toUpperCase() })
-      .select('title duration questionsPerStudent expiresAt status');
+      .select('title duration questionsPerStudent expiresAt startDate status maxStudents');
 
     if (!quiz) {
       return res.status(404).json({ message: 'Invalid quiz code' });
     }
 
-    // Automatically update status if quiz has expired
     const now = new Date();
-    const expiresAt = new Date(quiz.expiresAt);
-    if (quiz.status === 'active' && now > expiresAt) {
-      quiz.status = 'expired';
-      await quiz.save();
+    let statusChanged = false;
+
+    // Check if quiz has a start date and hasn't started yet
+    if (quiz.startDate) {
+      const startDate = new Date(quiz.startDate);
+      if (now < startDate) {
+        // Update status to scheduled if not already
+        if (quiz.status !== 'scheduled') {
+          quiz.status = 'scheduled';
+          statusChanged = true;
+        }
+        
+        if (statusChanged) await quiz.save();
+        
+        return res.status(400).json({ 
+          message: 'This quiz has not started yet',
+          startDate: quiz.startDate
+        });
+      }
+      
+      // Quiz has started, update from scheduled to active if needed
+      if (quiz.status === 'scheduled') {
+        quiz.status = 'active';
+        statusChanged = true;
+      }
     }
 
-    // Check if quiz is expired
-    if (quiz.status === 'expired') {
+    // Check if quiz has expired
+    const expiresAt = new Date(quiz.expiresAt);
+    if (now > expiresAt) {
+      if (quiz.status !== 'expired') {
+        quiz.status = 'expired';
+        statusChanged = true;
+      }
+      
+      if (statusChanged) await quiz.save();
+      
       return res.status(400).json({ message: 'This quiz has expired and is no longer available' });
     }
 
-    res.json(quiz);
+    // Check if quiz has reached max students limit
+    if (quiz.maxStudents) {
+      const submissionCount = await Submission.countDocuments({ quiz: quiz._id });
+      
+      if (submissionCount >= quiz.maxStudents) {
+        if (quiz.status !== 'full') {
+          quiz.status = 'full';
+          statusChanged = true;
+        }
+        
+        if (statusChanged) await quiz.save();
+        
+        return res.status(400).json({ 
+          message: 'This quiz has reached its maximum number of participants',
+          maxStudents: quiz.maxStudents,
+          currentSubmissions: submissionCount
+        });
+      }
+    }
+
+    if (statusChanged) await quiz.save();
+
+    res.json({
+      ...quiz.toObject(),
+      currentSubmissions: quiz.maxStudents ? await Submission.countDocuments({ quiz: quiz._id }) : undefined
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -182,29 +494,112 @@ router.post('/start', async (req, res) => {
       return res.status(404).json({ message: 'Quiz not found' });
     }
 
-    // Automatically update status if quiz has expired
     const now = new Date();
-    const expiresAt = new Date(quiz.expiresAt);
-    if (quiz.status === 'active' && now > expiresAt) {
-      quiz.status = 'expired';
-      await quiz.save();
+    let statusChanged = false;
+
+    // Check if quiz has a start date and hasn't started yet
+    if (quiz.startDate) {
+      const startDate = new Date(quiz.startDate);
+      if (now < startDate) {
+        // Update status to scheduled if not already
+        if (quiz.status !== 'scheduled') {
+          quiz.status = 'scheduled';
+          statusChanged = true;
+        }
+        
+        if (statusChanged) await quiz.save();
+        
+        return res.status(400).json({ 
+          message: 'This quiz has not started yet',
+          startDate: quiz.startDate
+        });
+      }
+      
+      // Quiz has started, update from scheduled to active if needed
+      if (quiz.status === 'scheduled') {
+        quiz.status = 'active';
+        statusChanged = true;
+      }
     }
 
-    // Check if quiz is expired
-    if (quiz.status === 'expired') {
+    // Check if quiz has expired
+    const expiresAt = new Date(quiz.expiresAt);
+    if (now > expiresAt) {
+      if (quiz.status !== 'expired') {
+        quiz.status = 'expired';
+        statusChanged = true;
+      }
+      
+      if (statusChanged) await quiz.save();
+      
       return res.status(400).json({ message: 'This quiz has expired and is no longer available' });
     }
+
+    // Check if quiz has reached max students limit
+    if (quiz.maxStudents) {
+      const submissionCount = await Submission.countDocuments({ quiz: quiz._id });
+      
+      if (submissionCount >= quiz.maxStudents) {
+        if (quiz.status !== 'full') {
+          quiz.status = 'full';
+          statusChanged = true;
+        }
+        
+        if (statusChanged) await quiz.save();
+        
+        return res.status(400).json({ 
+          message: 'This quiz has reached its maximum number of participants',
+          maxStudents: quiz.maxStudents,
+          currentSubmissions: submissionCount
+        });
+      }
+    }
+
+    if (statusChanged) await quiz.save();
 
     // Randomize and select questions
     const shuffled = [...quiz.questions].sort(() => Math.random() - 0.5);
     const selectedQuestions = shuffled.slice(0, quiz.questionsPerStudent);
 
-    // Remove correct answers from response
-    const questionsForStudent = selectedQuestions.map(q => ({
-      _id: q._id,
-      question: q.question,
-      options: q.options
-    }));
+    // Remove correct answers from response based on question type
+    const questionsForStudent = selectedQuestions.map(q => {
+      const baseQuestion = {
+        _id: q._id,
+        type: q.type || 'multipleChoice',
+        question: q.question
+      };
+      
+      // Add type-specific fields (without correct answers)
+      switch (q.type) {
+        case 'multipleChoice':
+          // Randomize options order for multiple choice
+          const optionsWithIndex = q.options.map((opt, idx) => ({ opt, idx }));
+          const shuffledOptions = optionsWithIndex.sort(() => Math.random() - 0.5);
+          baseQuestion.options = shuffledOptions.map(item => item.opt);
+          // Store mapping for grading (not sent to client)
+          break;
+        
+        case 'trueFalse':
+          // No additional fields needed
+          break;
+        
+        case 'fillInBlank':
+          baseQuestion.caseSensitive = q.caseSensitive || false;
+          break;
+        
+        case 'matching':
+          baseQuestion.leftColumn = q.leftColumn;
+          // Randomize right column
+          baseQuestion.rightColumn = [...q.rightColumn].sort(() => Math.random() - 0.5);
+          break;
+        
+        default:
+          // Fallback to multiple choice format
+          baseQuestion.options = q.options || [];
+      }
+      
+      return baseQuestion;
+    });
 
     res.json({
       quizId: quiz._id,

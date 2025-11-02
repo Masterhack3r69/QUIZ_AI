@@ -25,7 +25,36 @@ router.post('/submit', async (req, res) => {
 
     console.log('✅ Quiz found:', quiz.title);
 
-    // Grade answers
+    // Check if quiz has expired
+    const now = new Date();
+    const expiresAt = new Date(quiz.expiresAt);
+    if (now > expiresAt) {
+      if (quiz.status !== 'expired') {
+        quiz.status = 'expired';
+        await quiz.save();
+      }
+      console.log('❌ Quiz has expired');
+      return res.status(400).json({ 
+        message: 'This quiz has expired and is no longer accepting submissions',
+        expiresAt: quiz.expiresAt
+      });
+    }
+
+    // Check if quiz has reached max students limit before accepting submission
+    if (quiz.maxStudents) {
+      const currentSubmissionCount = await Submission.countDocuments({ quiz: quizId });
+      
+      if (currentSubmissionCount >= quiz.maxStudents) {
+        console.log('❌ Quiz is full:', currentSubmissionCount, '>=', quiz.maxStudents);
+        return res.status(400).json({ 
+          message: 'This quiz has reached its maximum number of participants',
+          maxStudents: quiz.maxStudents,
+          currentSubmissions: currentSubmissionCount
+        });
+      }
+    }
+
+    // Grade answers using the Submission model's grading method
     let score = 0;
     const gradedAnswers = answers.map(answer => {
       const question = quiz.questions.id(answer.questionId);
@@ -33,11 +62,14 @@ router.post('/submit', async (req, res) => {
         console.log('⚠️ Question not found:', answer.questionId);
         return null;
       }
-      const isCorrect = question.correctAnswer === answer.selectedAnswer;
+      
+      // Use the static grading method that handles all question types
+      const isCorrect = Submission.gradeAnswer(question, answer.selectedAnswer);
       if (isCorrect) score++;
       
       return {
         questionId: answer.questionId,
+        questionType: answer.questionType || question.type || 'multipleChoice',
         selectedAnswer: answer.selectedAnswer,
         isCorrect
       };
@@ -56,6 +88,17 @@ router.post('/submit', async (req, res) => {
     });
 
     console.log('✅ Submission saved:', submission._id);
+
+    // Check if quiz has now reached max students limit and update status
+    if (quiz.maxStudents) {
+      const newSubmissionCount = await Submission.countDocuments({ quiz: quizId });
+      
+      if (newSubmissionCount >= quiz.maxStudents && quiz.status !== 'full') {
+        quiz.status = 'full';
+        await quiz.save();
+        console.log('📊 Quiz status updated to full:', newSubmissionCount, '>=', quiz.maxStudents);
+      }
+    }
 
     res.status(201).json({
       score,
@@ -116,8 +159,14 @@ router.get('/analytics/:quizId', protect, async (req, res) => {
     const scores = submissions.map(s => s.score);
     const totalQuestions = submissions[0].totalQuestions;
 
-    // Calculate question statistics
+    // Calculate question statistics and type breakdown
     const questionStatsMap = new Map();
+    const typeStats = {
+      multipleChoice: { correct: 0, total: 0 },
+      trueFalse: { correct: 0, total: 0 },
+      fillInBlank: { correct: 0, total: 0 },
+      matching: { correct: 0, total: 0 }
+    };
     
     submissions.forEach(submission => {
       submission.answers.forEach(answer => {
@@ -129,6 +178,7 @@ router.get('/analytics/:quizId', protect, async (req, res) => {
           questionStatsMap.set(questionId, {
             questionId,
             question: question ? question.question : 'Unknown question',
+            questionType: question ? question.type : 'multipleChoice',
             correctCount: 0,
             totalAttempts: 0
           });
@@ -138,6 +188,15 @@ router.get('/analytics/:quizId', protect, async (req, res) => {
         stats.totalAttempts++;
         if (answer.isCorrect) {
           stats.correctCount++;
+        }
+
+        // Track by question type
+        const questionType = answer.questionType || 'multipleChoice';
+        if (typeStats[questionType]) {
+          typeStats[questionType].total++;
+          if (answer.isCorrect) {
+            typeStats[questionType].correct++;
+          }
         }
       });
     });
@@ -153,11 +212,30 @@ router.get('/analytics/:quizId', protect, async (req, res) => {
     // Sort by accuracy rate (lowest first) to highlight most missed questions
     questionStats.sort((a, b) => a.accuracyRate - b.accuracyRate);
 
+    // Calculate average score by question type
+    const scoresByType = {};
+    Object.keys(typeStats).forEach(type => {
+      const stats = typeStats[type];
+      scoresByType[type] = stats.total > 0
+        ? parseFloat(((stats.correct / stats.total) * 100).toFixed(1))
+        : 0;
+    });
+
+    // Calculate question type distribution
+    const questionTypeBreakdown = {};
+    Object.keys(typeStats).forEach(type => {
+      questionTypeBreakdown[type] = typeStats[type].total;
+    });
+
     const analytics = {
-      totalSubmissions: submissions.length,
-      averageScore: (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2),
-      highestScore: Math.max(...scores),
-      lowestScore: Math.min(...scores),
+      summary: {
+        totalSubmissions: submissions.length,
+        averageScore: parseFloat((scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2)),
+        highestScore: Math.max(...scores),
+        lowestScore: Math.min(...scores),
+        questionTypeBreakdown,
+        averageScoreByType: scoresByType
+      },
       totalQuestions,
       submissions: submissions.map(s => ({
         studentName: s.studentName,

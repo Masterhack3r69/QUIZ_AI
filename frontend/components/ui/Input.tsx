@@ -25,11 +25,11 @@ export function Input({
   const hasValue = value !== undefined && value !== null && String(value).length > 0;
   const isValid = showValidIndicator && hasValue && !hasError;
   
-  const baseStyles = 'block w-full px-3 py-2.5 text-base border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-0 transition-colors touch-manipulation min-h-[44px]';
-  const normalStyles = 'border-gray-300 focus:border-blue-500 focus:ring-blue-500';
-  const errorStyles = 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50';
-  const validStyles = 'border-green-500 focus:border-green-500 focus:ring-green-500 bg-green-50';
-  const disabledStyles = 'disabled:bg-gray-100 disabled:cursor-not-allowed';
+  const baseStyles = 'block w-full px-4 py-3 text-base border-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-0 transition-all duration-200 touch-manipulation min-h-[48px] text-gray-900 placeholder:text-gray-400';
+  const normalStyles = 'bg-white border-gray-300 hover:border-gray-400 focus:border-blue-500 focus:ring-blue-500/20';
+  const errorStyles = 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50';
+  const validStyles = 'border-green-500 focus:border-green-500 focus:ring-green-500/20 bg-green-50';
+  const disabledStyles = 'disabled:bg-gray-50 disabled:text-gray-500 disabled:border-gray-200 disabled:cursor-not-allowed disabled:opacity-60';
   
   // Determine which styles to apply
   let inputStyles = normalStyles;
@@ -44,10 +44,10 @@ export function Input({
       {label && (
         <label
           htmlFor={inputId}
-          className="block text-sm font-medium text-gray-700 mb-1"
+          className="block text-sm font-semibold text-gray-900 mb-2"
         >
           {label}
-          {required && <span className="text-red-500 ml-1">*</span>}
+          {required && <span className="text-red-600 ml-1">*</span>}
         </label>
       )}
       <div className="relative">

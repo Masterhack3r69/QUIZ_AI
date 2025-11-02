@@ -10,6 +10,8 @@ export interface CardProps {
   onClick?: () => void;
   className?: string;
   hover?: boolean;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
 }
 
 export function Card({
@@ -20,6 +22,8 @@ export function Card({
   onClick,
   className = '',
   hover = false,
+  onMouseEnter,
+  onMouseLeave,
 }: CardProps) {
   const baseStyles = 'bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden';
   const interactiveStyles = onClick ? 'cursor-pointer transition-shadow hover:shadow-lg' : '';
@@ -29,6 +33,8 @@ export function Card({
     <div
       className={`${baseStyles} ${interactiveStyles} ${hoverStyles} ${className}`}
       onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
       onKeyDown={onClick ? (e) => {

@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useToast } from '@/contexts/ToastContext';
 import PublicLayout from '@/components/layout/PublicLayout';
-import { Button } from '@/components/ui';
-import { Toast } from '@/components/ui/Toast';
+import { Button, Icon } from '@/components/ui';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { apiClient, APIRequestError } from '@/lib/api';
 import type { QuizInfo, QuizSession } from '@/types';
@@ -13,12 +13,12 @@ export default function QuizLobbyPage() {
   const params = useParams();
   const router = useRouter();
   const accessCode = params.code as string;
+  const { showError, showWarning } = useToast();
 
   const [quizInfo, setQuizInfo] = useState<QuizInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ type: 'success' | 'error' | 'warning' | 'info'; message: string } | null>(null);
 
   useEffect(() => {
     // Fetch quiz info on mount
@@ -33,23 +33,7 @@ export default function QuizLobbyPage() {
       // Validate quiz code and get quiz info
       const info = await apiClient.validateQuizCode(accessCode);
       
-      // Check if quiz is active and not expired
-      if (info.status === 'expired') {
-        setError('This quiz has expired and is no longer available.');
-        setToast({ type: 'error', message: 'Quiz has expired' });
-        return;
-      }
-
-      // Check if quiz has expired based on expiration date
-      const expirationDate = new Date(info.expiresAt);
-      const now = new Date();
-      
-      if (expirationDate < now) {
-        setError('This quiz has expired and is no longer available.');
-        setToast({ type: 'error', message: 'Quiz has expired' });
-        return;
-      }
-
+      // The backend already validates status, so if we get here, the quiz is accessible
       setQuizInfo(info);
     } catch (err) {
       console.error('Error fetching quiz info:', err);
@@ -57,17 +41,31 @@ export default function QuizLobbyPage() {
       if (err instanceof APIRequestError) {
         if (err.status === 404) {
           setError('Invalid quiz code. Please check the code and try again.');
-          setToast({ type: 'error', message: 'Invalid quiz code' });
+          showError('Invalid quiz code');
         } else if (err.status === 400) {
-          setError(err.message);
-          setToast({ type: 'error', message: err.message });
+          // Parse specific error messages
+          const errorMsg = err.message.toLowerCase();
+          
+          if (errorMsg.includes('not started') || errorMsg.includes('has not started yet')) {
+            setError(err.message);
+            showWarning('Quiz has not started yet');
+          } else if (errorMsg.includes('expired') || errorMsg.includes('no longer available')) {
+            setError(err.message);
+            showError('Quiz has expired');
+          } else if (errorMsg.includes('maximum') || errorMsg.includes('full') || errorMsg.includes('reached')) {
+            setError(err.message);
+            showWarning('Quiz is full');
+          } else {
+            setError(err.message);
+            showError(err.message);
+          }
         } else {
           setError('Unable to load quiz. Please try again later.');
-          setToast({ type: 'error', message: 'Server error' });
+          showError('Server error');
         }
       } else {
         setError('Network error. Please check your connection.');
-        setToast({ type: 'error', message: 'Network error' });
+        showError('Network error');
       }
     } finally {
       setIsLoading(false);
@@ -83,7 +81,7 @@ export default function QuizLobbyPage() {
       // Get student info from sessionStorage
       const studentInfoStr = sessionStorage.getItem('studentInfo');
       if (!studentInfoStr) {
-        setToast({ type: 'error', message: 'Student information not found. Please join again.' });
+        showError('Student information not found. Please join again.');
         router.push('/join');
         return;
       }
@@ -109,14 +107,14 @@ export default function QuizLobbyPage() {
       if (err instanceof APIRequestError) {
         if (err.status === 400) {
           setError(err.message);
-          setToast({ type: 'error', message: err.message });
+          showError(err.message);
         } else {
           setError('Unable to start quiz. Please try again.');
-          setToast({ type: 'error', message: 'Failed to start quiz' });
+          showError('Failed to start quiz');
         }
       } else {
         setError('Network error. Please check your connection.');
-        setToast({ type: 'error', message: 'Network error' });
+        showError('Network error');
       }
     } finally {
       setIsStarting(false);
@@ -189,7 +187,9 @@ export default function QuizLobbyPage() {
           {/* Quiz Info Card */}
           <div className="bg-white rounded-xl shadow-lg p-8 mb-6">
             <div className="text-center mb-8">
-              <div className="text-6xl mb-4">📝</div>
+              <div className="flex justify-center mb-4">
+                <Icon name="document" className="w-16 h-16 text-blue-600" />
+              </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
                 {quizInfo.title}
               </h1>
@@ -201,7 +201,9 @@ export default function QuizLobbyPage() {
             {/* Quiz Details */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
               <div className="bg-blue-50 rounded-lg p-4 text-center">
-                <div className="text-3xl mb-2">⏱️</div>
+                <div className="flex justify-center mb-2">
+                  <Icon name="clock" size="xl" className="text-blue-600" />
+                </div>
                 <div className="text-sm text-gray-600 mb-1">Duration</div>
                 <div className="text-xl font-bold text-gray-900">
                   {quizInfo.duration} minutes
@@ -225,10 +227,53 @@ export default function QuizLobbyPage() {
               </div>
             </div>
 
+            {/* Additional Info: Start Date and Remaining Spots */}
+            {(quizInfo.startDate || quizInfo.maxStudents) && (
+              <div className="bg-blue-50 rounded-lg p-4 mb-6">
+                <h3 className="font-semibold text-gray-900 mb-3">
+                  Quiz Information
+                </h3>
+                <div className="space-y-2 text-sm text-gray-700">
+                  {quizInfo.startDate && (
+                    <div className="flex items-start">
+                      <Icon name="calendar" className="mr-2 text-blue-600 mt-0.5" size="sm" />
+                      <div>
+                        <span className="font-medium">Start Date: </span>
+                        <span>
+                          {new Date(quizInfo.startDate).toLocaleString('en-US', {
+                            dateStyle: 'medium',
+                            timeStyle: 'short',
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  {quizInfo.maxStudents && (
+                    <div className="flex items-start">
+                      <Icon name="users" className="mr-2 text-blue-600 mt-0.5" size="sm" />
+                      <div>
+                        <span className="font-medium">Remaining Spots: </span>
+                        <span className={
+                          quizInfo.maxStudents - quizInfo.currentSubmissions <= 5
+                            ? 'text-orange-600 font-semibold'
+                            : 'text-gray-700'
+                        }>
+                          {quizInfo.maxStudents - quizInfo.currentSubmissions} of {quizInfo.maxStudents}
+                        </span>
+                        {quizInfo.maxStudents - quizInfo.currentSubmissions <= 5 && (
+                          <span className="ml-2 text-orange-600 text-xs">(Limited spots!)</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Instructions */}
             <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
               <h3 className="font-semibold text-gray-900 mb-2 flex items-center">
-                <span className="text-xl mr-2">⚠️</span>
+                <Icon name="warning" className="mr-2 text-yellow-600" />
                 Important Instructions
               </h3>
               <ul className="space-y-2 text-sm text-gray-700">
@@ -309,6 +354,14 @@ export default function QuizLobbyPage() {
             <p>
               Quiz Code: <span className="font-mono font-bold text-gray-900">{accessCode}</span>
             </p>
+            {quizInfo.expiresAt && (
+              <p className="mt-2">
+                Expires: {new Date(quizInfo.expiresAt).toLocaleString('en-US', {
+                  dateStyle: 'medium',
+                  timeStyle: 'short',
+                })}
+              </p>
+            )}
             <p className="mt-2">
               Good luck! 🍀
             </p>

@@ -48,6 +48,74 @@ export const config = {
     defaultPageSize: 20,
     pageSizeOptions: [10, 20, 50, 100],
   },
+  
+  /**
+   * Predefined quiz templates
+   */
+  predefinedTemplates: {
+    short: {
+      name: 'Short Quiz',
+      type: 'short' as const,
+      questionCount: 10,
+      duration: 15,
+      expirationPeriod: 7,
+      questionDistribution: {
+        multipleChoice: 100,
+        trueFalse: 0,
+        fillInBlank: 0,
+        matching: 0,
+      },
+    },
+    long: {
+      name: 'Long Quiz',
+      type: 'long' as const,
+      questionCount: 25,
+      duration: 45,
+      expirationPeriod: 14,
+      questionDistribution: {
+        multipleChoice: 70,
+        trueFalse: 20,
+        fillInBlank: 10,
+        matching: 0,
+      },
+    },
+    exam: {
+      name: 'Exam',
+      type: 'exam' as const,
+      questionCount: 50,
+      duration: 90,
+      expirationPeriod: 30,
+      questionDistribution: {
+        multipleChoice: 60,
+        trueFalse: 20,
+        fillInBlank: 10,
+        matching: 10,
+      },
+    },
+  },
+  
+  /**
+   * Available subjects for quiz categorization
+   */
+  subjects: [
+    'Mathematics',
+    'Science',
+    'English',
+    'History',
+    'Geography',
+    'Computer Science',
+    'Physics',
+    'Chemistry',
+    'Biology',
+    'Literature',
+    'Art',
+    'Music',
+    'Physical Education',
+    'Foreign Language',
+    'Social Studies',
+    'Economics',
+    'Other',
+  ],
 } as const;
 
 /**
@@ -65,6 +133,7 @@ export const ERROR_MESSAGES = {
   INVALID_CODE: 'Invalid quiz code',
   QUIZ_EXPIRED: 'This quiz has expired',
   QUIZ_NOT_STARTED: 'This quiz has not started yet',
+  QUIZ_FULL: 'This quiz has reached its maximum capacity',
   QUIZ_ALREADY_TAKEN: 'You have already taken this quiz',
   
   // File upload errors
@@ -97,7 +166,12 @@ export const SUCCESS_MESSAGES = {
   QUIZ_CREATED: 'Quiz created successfully',
   QUIZ_UPDATED: 'Quiz updated successfully',
   QUIZ_DELETED: 'Quiz deleted successfully',
+  TEMPLATE_CREATED: 'Template created successfully',
+  TEMPLATE_UPDATED: 'Template updated successfully',
+  TEMPLATE_DELETED: 'Template deleted successfully',
   SUBMISSION_SUCCESS: 'Quiz submitted successfully',
   COPIED_TO_CLIPBOARD: 'Copied to clipboard',
   SETTINGS_SAVED: 'Settings saved successfully',
+  PROFILE_UPDATED: 'Profile updated successfully',
+  PASSWORD_CHANGED: 'Password changed successfully',
 } as const;

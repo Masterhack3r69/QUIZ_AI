@@ -2,19 +2,15 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { apiClient, APIRequestError } from '@/lib/api';
 
-interface ToastMessage {
-  id: string;
-  type: 'success' | 'error' | 'warning' | 'info';
-  message: string;
-}
-
 export default function SettingsPage() {
   const { user, updateUser } = useAuth();
+  const { showSuccess, showError } = useToast();
   
   // Profile form state
   const [name, setName] = useState(user?.name || '');
@@ -29,17 +25,6 @@ export default function SettingsPage() {
   const [newPasswordError, setNewPasswordError] = useState('');
   const [confirmPasswordError, setConfirmPasswordError] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
-  
-  // Toast state
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
-  
-  const showToast = (type: 'success' | 'error' | 'warning' | 'info', message: string) => {
-    const id = Date.now().toString();
-    setToasts(prev => [...prev, { id, type, message }]);
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 5000);
-  };
   
   const validateProfileForm = (): boolean => {
     let isValid = true;
@@ -99,12 +84,12 @@ export default function SettingsPage() {
     try {
       const response = await apiClient.updateProfile(name.trim());
       updateUser(response.user);
-      showToast('success', 'Profile updated successfully');
+      showSuccess('Profile updated successfully');
     } catch (error) {
       if (error instanceof APIRequestError) {
-        showToast('error', error.message);
+        showError(error.message);
       } else {
-        showToast('error', 'Failed to update profile. Please try again.');
+        showError('Failed to update profile. Please try again.');
       }
     } finally {
       setIsUpdatingProfile(false);
@@ -122,7 +107,7 @@ export default function SettingsPage() {
     
     try {
       await apiClient.changePassword(currentPassword, newPassword);
-      showToast('success', 'Password changed successfully');
+      showSuccess('Password changed successfully');
       
       // Clear form
       setCurrentPassword('');
@@ -130,9 +115,9 @@ export default function SettingsPage() {
       setConfirmPassword('');
     } catch (error) {
       if (error instanceof APIRequestError) {
-        showToast('error', error.message);
+        showError(error.message);
       } else {
-        showToast('error', 'Failed to change password. Please try again.');
+        showError('Failed to change password. Please try again.');
       }
     } finally {
       setIsChangingPassword(false);
@@ -142,43 +127,6 @@ export default function SettingsPage() {
   return (
     <div className="max-w-4xl">
       <h1 className="text-3xl font-bold text-gray-900 mb-8">Account Settings</h1>
-      
-      {/* Toast notifications */}
-      {toasts.map((toast, index) => (
-        <div
-          key={toast.id}
-          style={{ top: `${1 + index * 5}rem` }}
-          className="fixed right-4 z-50"
-        >
-          <div
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg border-l-4 shadow-lg ${
-              toast.type === 'success'
-                ? 'bg-green-50 border-green-500 text-green-800'
-                : 'bg-red-50 border-red-500 text-red-800'
-            }`}
-            role="alert"
-          >
-            {toast.type === 'success' ? (
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            ) : (
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            )}
-            <p className="text-sm font-medium">{toast.message}</p>
-          </div>
-        </div>
-      ))}
       
       {/* Profile Information */}
       <Card title="Profile Information" className="mb-6">

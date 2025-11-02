@@ -5,6 +5,7 @@ import type {
   AuthResponse,
   User,
   Quiz,
+  QuizTemplate,
   QuizInfo,
   QuizSession,
   Submission,
@@ -12,6 +13,10 @@ import type {
   SubmissionResult,
   Analytics,
   APIError,
+  CreateQuizData,
+  QuizFilters,
+  QuizDistribution,
+  Question,
 } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
@@ -252,9 +257,25 @@ class APIClient {
   /**
    * Get all quizzes for the authenticated teacher
    */
-  async getMyQuizzes(): Promise<Quiz[]> {
+  async getMyQuizzes(filters?: QuizFilters): Promise<Quiz[]> {
     try {
-      const response = await fetchWithErrorHandling(`${this.baseURL}/api/quiz/my-quizzes`, {
+      let url = `${this.baseURL}/api/quiz/my-quizzes`;
+      
+      // Add query parameters if filters are provided
+      if (filters) {
+        const params = new URLSearchParams();
+        if (filters.status) params.append('status', filters.status);
+        if (filters.subject) params.append('subject', filters.subject);
+        if (filters.startDate) params.append('startDate', filters.startDate);
+        if (filters.endDate) params.append('endDate', filters.endDate);
+        
+        const queryString = params.toString();
+        if (queryString) {
+          url += `?${queryString}`;
+        }
+      }
+      
+      const response = await fetchWithErrorHandling(url, {
         method: 'GET',
         headers: getAuthHeaders(),
       });
@@ -308,6 +329,26 @@ class APIClient {
   }
   
   /**
+   * Update quiz questions
+   */
+  async updateQuizQuestions(quizId: string, questions: Question[]): Promise<Quiz> {
+    try {
+      const response = await fetchWithErrorHandling(`${this.baseURL}/api/quiz/${quizId}/questions`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ questions }),
+      });
+      
+      return handleResponse<Quiz>(response);
+    } catch (error) {
+      if (error instanceof APIRequestError) {
+        throw error;
+      }
+      throw new APIRequestError('Failed to update quiz questions. Please try again.', 500);
+    }
+  }
+  
+  /**
    * Delete a quiz
    */
   async deleteQuiz(quizId: string): Promise<void> {
@@ -330,6 +371,208 @@ class APIClient {
         throw error;
       }
       throw new APIRequestError('Failed to delete quiz. Please try again.', 500);
+    }
+  }
+  
+  // ==================== Template Endpoints ====================
+  
+  /**
+   * Create a new quiz template
+   */
+  async createTemplate(data: Omit<QuizTemplate, '_id' | 'teacher' | 'createdAt' | 'updatedAt'>): Promise<QuizTemplate> {
+    try {
+      const response = await fetchWithErrorHandling(`${this.baseURL}/api/templates`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data),
+      });
+      
+      return handleResponse<QuizTemplate>(response);
+    } catch (error) {
+      if (error instanceof APIRequestError) {
+        throw error;
+      }
+      throw new APIRequestError('Failed to create template. Please try again.', 500);
+    }
+  }
+  
+  /**
+   * Get all templates for the authenticated teacher
+   */
+  async getMyTemplates(): Promise<QuizTemplate[]> {
+    try {
+      const response = await fetchWithErrorHandling(`${this.baseURL}/api/templates`, {
+        method: 'GET',
+        headers: getAuthHeaders(),
+      });
+      
+      return handleResponse<QuizTemplate[]>(response);
+    } catch (error) {
+      if (error instanceof APIRequestError) {
+        throw error;
+      }
+      throw new APIRequestError('Failed to load templates. Please try again.', 500);
+    }
+  }
+  
+  /**
+   * Get a specific template by ID
+   */
+  async getTemplate(templateId: string): Promise<QuizTemplate> {
+    try {
+      const response = await fetchWithErrorHandling(`${this.baseURL}/api/templates/${templateId}`, {
+        method: 'GET',
+        headers: getAuthHeaders(),
+      });
+      
+      return handleResponse<QuizTemplate>(response);
+    } catch (error) {
+      if (error instanceof APIRequestError) {
+        throw error;
+      }
+      throw new APIRequestError('Failed to load template. Please try again.', 500);
+    }
+  }
+  
+  /**
+   * Update a template
+   */
+  async updateTemplate(templateId: string, data: Partial<QuizTemplate>): Promise<QuizTemplate> {
+    try {
+      const response = await fetchWithErrorHandling(`${this.baseURL}/api/templates/${templateId}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data),
+      });
+      
+      return handleResponse<QuizTemplate>(response);
+    } catch (error) {
+      if (error instanceof APIRequestError) {
+        throw error;
+      }
+      throw new APIRequestError('Failed to update template. Please try again.', 500);
+    }
+  }
+  
+  /**
+   * Delete a template
+   */
+  async deleteTemplate(templateId: string): Promise<void> {
+    try {
+      const response = await fetchWithErrorHandling(`${this.baseURL}/api/templates/${templateId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = getErrorMessage(
+          response.status,
+          errorData.message || 'Failed to delete template'
+        );
+        throw new APIRequestError(errorMessage, response.status);
+      }
+    } catch (error) {
+      if (error instanceof APIRequestError) {
+        throw error;
+      }
+      throw new APIRequestError('Failed to delete template. Please try again.', 500);
+    }
+  }
+  
+  // ==================== Content Processing Endpoints ====================
+  
+  /**
+   * Upload and process a file
+   */
+  async uploadFile(file: File): Promise<{ content: string }> {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const token = getAuthToken();
+      const headers: HeadersInit = {};
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const response = await fetchWithErrorHandling(`${this.baseURL}/api/content/upload`, {
+        method: 'POST',
+        headers,
+        body: formData,
+      });
+      
+      return handleResponse<{ content: string }>(response);
+    } catch (error) {
+      if (error instanceof APIRequestError) {
+        throw error;
+      }
+      throw new APIRequestError('Failed to upload file. Please try again.', 500);
+    }
+  }
+  
+  /**
+   * Process a web URL
+   */
+  async processURL(url: string): Promise<{ content: string }> {
+    try {
+      const response = await fetchWithErrorHandling(`${this.baseURL}/api/content/url`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ url }),
+      });
+      
+      return handleResponse<{ content: string }>(response);
+    } catch (error) {
+      if (error instanceof APIRequestError) {
+        throw error;
+      }
+      throw new APIRequestError('Failed to process URL. Please try again.', 500);
+    }
+  }
+  
+  /**
+   * Process a video URL
+   */
+  async processVideo(url: string): Promise<{ content: string }> {
+    try {
+      const response = await fetchWithErrorHandling(`${this.baseURL}/api/content/video`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ url }),
+      });
+      
+      return handleResponse<{ content: string }>(response);
+    } catch (error) {
+      if (error instanceof APIRequestError) {
+        throw error;
+      }
+      throw new APIRequestError('Failed to process video. Please try again.', 500);
+    }
+  }
+  
+  /**
+   * Generate questions from content
+   */
+  async generateQuestions(
+    content: string,
+    distribution: QuizDistribution,
+    count: number
+  ): Promise<Question[]> {
+    try {
+      const response = await fetchWithErrorHandling(`${this.baseURL}/api/content/generate`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ content, distribution, count }),
+      });
+      
+      return handleResponse<Question[]>(response);
+    } catch (error) {
+      if (error instanceof APIRequestError) {
+        throw error;
+      }
+      throw new APIRequestError('Failed to generate questions. Please try again.', 500);
     }
   }
   

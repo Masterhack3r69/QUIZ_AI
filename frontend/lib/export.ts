@@ -7,7 +7,7 @@ import type { Analytics } from '@/types';
 /**
  * Format time in seconds to MM:SS format
  */
-function formatTime(seconds: number): string {
+function formatTime(seconds?: number): string {
   if (!seconds) return 'N/A';
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
@@ -33,11 +33,42 @@ export async function exportToPDF(analytics: Analytics, quizTitle: string): Prom
   doc.text('Summary Statistics', 14, 45);
   
   const summaryData = [
-    ['Total Submissions', analytics.totalSubmissions.toString()],
-    ['Average Score', `${analytics.averageScore} / ${analytics.totalQuestions}`],
-    ['Highest Score', `${analytics.highestScore} / ${analytics.totalQuestions}`],
-    ['Lowest Score', `${analytics.lowestScore} / ${analytics.totalQuestions}`],
+    ['Total Submissions', analytics.summary.totalSubmissions.toString()],
+    ['Average Score', analytics.summary.averageScore.toFixed(1)],
+    ['Highest Score', analytics.summary.highestScore.toString()],
+    ['Lowest Score', analytics.summary.lowestScore.toString()],
   ];
+
+  // Add question type breakdown if available
+  if (analytics.summary.questionTypeBreakdown) {
+    const typeLabels: Record<string, string> = {
+      multipleChoice: 'Multiple Choice',
+      trueFalse: 'True/False',
+      fillInBlank: 'Fill in Blank',
+      matching: 'Matching'
+    };
+    Object.entries(analytics.summary.questionTypeBreakdown).forEach(([type, count]) => {
+      if (count > 0) {
+        summaryData.push([`${typeLabels[type]} Questions`, count.toString()]);
+      }
+    });
+  }
+
+  // Add average score by type if available
+  if (analytics.summary.averageScoreByType) {
+    const typeLabels: Record<string, string> = {
+      multipleChoice: 'Multiple Choice',
+      trueFalse: 'True/False',
+      fillInBlank: 'Fill in Blank',
+      matching: 'Matching'
+    };
+    Object.entries(analytics.summary.averageScoreByType).forEach(([type, score]) => {
+      const count = analytics.summary.questionTypeBreakdown?.[type as keyof typeof analytics.summary.questionTypeBreakdown] || 0;
+      if (count > 0) {
+        summaryData.push([`Avg Score (${typeLabels[type]})`, `${score.toFixed(1)}%`]);
+      }
+    });
+  }
   
   autoTable(doc, {
     startY: 50,
@@ -53,14 +84,17 @@ export async function exportToPDF(analytics: Analytics, quizTitle: string): Prom
   doc.text('Student Submissions', 14, finalY + 10);
   
   if (analytics.submissions && analytics.submissions.length > 0) {
-    const submissionsData = analytics.submissions.map((sub) => [
-      sub.studentName,
-      sub.studentId,
-      `${sub.score} / ${sub.totalQuestions || analytics.totalQuestions}`,
-      `${sub.percentage}%`,
-      formatTime(sub.timeTaken),
-      new Date(sub.submittedAt).toLocaleString(),
-    ]);
+    const submissionsData = analytics.submissions.map((sub) => {
+      const percentage = Math.round((sub.score / sub.totalQuestions) * 100);
+      return [
+        sub.studentName,
+        sub.studentId,
+        `${sub.score} / ${sub.totalQuestions}`,
+        `${percentage}%`,
+        formatTime(sub.timeTaken),
+        new Date(sub.submittedAt).toLocaleString(),
+      ];
+    });
     
     autoTable(doc, {
       startY: finalY + 15,
@@ -84,6 +118,13 @@ export async function exportToPDF(analytics: Analytics, quizTitle: string): Prom
   if (analytics.questionStats && analytics.questionStats.length > 0) {
     const questionFinalY = (doc as any).lastAutoTable.finalY || 150;
     
+    const typeLabels: Record<string, string> = {
+      multipleChoice: 'MC',
+      trueFalse: 'T/F',
+      fillInBlank: 'FIB',
+      matching: 'Match'
+    };
+    
     // Add new page if needed
     if (questionFinalY > 250) {
       doc.addPage();
@@ -92,7 +133,8 @@ export async function exportToPDF(analytics: Analytics, quizTitle: string): Prom
       
       const questionData = analytics.questionStats.map((stat, index) => [
         (index + 1).toString(),
-        stat.question.substring(0, 60) + (stat.question.length > 60 ? '...' : ''),
+        typeLabels[stat.questionType] || stat.questionType,
+        stat.question.substring(0, 55) + (stat.question.length > 55 ? '...' : ''),
         stat.correctCount.toString(),
         stat.totalAttempts.toString(),
         `${stat.accuracyRate}%`,
@@ -100,17 +142,18 @@ export async function exportToPDF(analytics: Analytics, quizTitle: string): Prom
       
       autoTable(doc, {
         startY: 25,
-        head: [['#', 'Question', 'Correct', 'Total', 'Accuracy']],
+        head: [['#', 'Type', 'Question', 'Correct', 'Total', 'Accuracy']],
         body: questionData,
         theme: 'striped',
         headStyles: { fillColor: [59, 130, 246] },
         styles: { fontSize: 8 },
         columnStyles: {
-          0: { cellWidth: 10 },
-          1: { cellWidth: 90 },
-          2: { cellWidth: 20 },
-          3: { cellWidth: 20 },
-          4: { cellWidth: 20 },
+          0: { cellWidth: 8 },
+          1: { cellWidth: 15 },
+          2: { cellWidth: 80 },
+          3: { cellWidth: 18 },
+          4: { cellWidth: 18 },
+          5: { cellWidth: 18 },
         },
       });
     } else {
@@ -119,7 +162,8 @@ export async function exportToPDF(analytics: Analytics, quizTitle: string): Prom
       
       const questionData = analytics.questionStats.map((stat, index) => [
         (index + 1).toString(),
-        stat.question.substring(0, 60) + (stat.question.length > 60 ? '...' : ''),
+        typeLabels[stat.questionType] || stat.questionType,
+        stat.question.substring(0, 55) + (stat.question.length > 55 ? '...' : ''),
         stat.correctCount.toString(),
         stat.totalAttempts.toString(),
         `${stat.accuracyRate}%`,
@@ -127,17 +171,18 @@ export async function exportToPDF(analytics: Analytics, quizTitle: string): Prom
       
       autoTable(doc, {
         startY: questionFinalY + 15,
-        head: [['#', 'Question', 'Correct', 'Total', 'Accuracy']],
+        head: [['#', 'Type', 'Question', 'Correct', 'Total', 'Accuracy']],
         body: questionData,
         theme: 'striped',
         headStyles: { fillColor: [59, 130, 246] },
         styles: { fontSize: 8 },
         columnStyles: {
-          0: { cellWidth: 10 },
-          1: { cellWidth: 90 },
-          2: { cellWidth: 20 },
-          3: { cellWidth: 20 },
-          4: { cellWidth: 20 },
+          0: { cellWidth: 8 },
+          1: { cellWidth: 15 },
+          2: { cellWidth: 80 },
+          3: { cellWidth: 18 },
+          4: { cellWidth: 18 },
+          5: { cellWidth: 18 },
         },
       });
     }
@@ -161,17 +206,52 @@ export async function exportToExcel(analytics: Analytics, quizTitle: string): Pr
     ['Quiz Title', quizTitle],
     [],
     ['Summary Statistics'],
-    ['Total Submissions', analytics.totalSubmissions],
-    ['Average Score', `${analytics.averageScore} / ${analytics.totalQuestions}`],
-    ['Highest Score', `${analytics.highestScore} / ${analytics.totalQuestions}`],
-    ['Lowest Score', `${analytics.lowestScore} / ${analytics.totalQuestions}`],
+    ['Total Submissions', analytics.summary.totalSubmissions],
+    ['Average Score', analytics.summary.averageScore.toFixed(1)],
+    ['Highest Score', analytics.summary.highestScore],
+    ['Lowest Score', analytics.summary.lowestScore],
   ];
+
+  // Add question type breakdown if available
+  if (analytics.summary.questionTypeBreakdown) {
+    summaryData.push([]);
+    summaryData.push(['Question Type Distribution']);
+    const typeLabels: Record<string, string> = {
+      multipleChoice: 'Multiple Choice',
+      trueFalse: 'True/False',
+      fillInBlank: 'Fill in Blank',
+      matching: 'Matching'
+    };
+    Object.entries(analytics.summary.questionTypeBreakdown).forEach(([type, count]) => {
+      if (count > 0) {
+        summaryData.push([typeLabels[type], count]);
+      }
+    });
+  }
+
+  // Add average score by type if available
+  if (analytics.summary.averageScoreByType) {
+    summaryData.push([]);
+    summaryData.push(['Average Score by Question Type']);
+    const typeLabels: Record<string, string> = {
+      multipleChoice: 'Multiple Choice',
+      trueFalse: 'True/False',
+      fillInBlank: 'Fill in Blank',
+      matching: 'Matching'
+    };
+    Object.entries(analytics.summary.averageScoreByType).forEach(([type, score]) => {
+      const count = analytics.summary.questionTypeBreakdown?.[type as keyof typeof analytics.summary.questionTypeBreakdown] || 0;
+      if (count > 0) {
+        summaryData.push([typeLabels[type], `${score.toFixed(1)}%`]);
+      }
+    });
+  }
   
   const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
   
   // Set column widths
   summarySheet['!cols'] = [
-    { wch: 25 },
+    { wch: 30 },
     { wch: 30 },
   ];
   
@@ -179,15 +259,18 @@ export async function exportToExcel(analytics: Analytics, quizTitle: string): Pr
   
   // Submissions Sheet
   if (analytics.submissions && analytics.submissions.length > 0) {
-    const submissionsData = analytics.submissions.map((sub) => ({
-      'Student Name': sub.studentName,
-      'Student ID': sub.studentId,
-      'Score': sub.score,
-      'Total Questions': sub.totalQuestions || analytics.totalQuestions,
-      'Percentage': sub.percentage + '%',
-      'Time Taken': formatTime(sub.timeTaken),
-      'Submitted At': new Date(sub.submittedAt).toLocaleString(),
-    }));
+    const submissionsData = analytics.submissions.map((sub) => {
+      const percentage = Math.round((sub.score / sub.totalQuestions) * 100);
+      return {
+        'Student Name': sub.studentName,
+        'Student ID': sub.studentId,
+        'Score': sub.score,
+        'Total Questions': sub.totalQuestions,
+        'Percentage': percentage + '%',
+        'Time Taken': formatTime(sub.timeTaken),
+        'Submitted At': new Date(sub.submittedAt).toLocaleString(),
+      };
+    });
     
     const submissionsSheet = XLSX.utils.json_to_sheet(submissionsData);
     
@@ -207,8 +290,16 @@ export async function exportToExcel(analytics: Analytics, quizTitle: string): Pr
   
   // Question Statistics Sheet
   if (analytics.questionStats && analytics.questionStats.length > 0) {
+    const typeLabels: Record<string, string> = {
+      multipleChoice: 'Multiple Choice',
+      trueFalse: 'True/False',
+      fillInBlank: 'Fill in Blank',
+      matching: 'Matching'
+    };
+    
     const questionData = analytics.questionStats.map((stat, index) => ({
       '#': index + 1,
+      'Type': typeLabels[stat.questionType] || stat.questionType,
       'Question': stat.question,
       'Correct Answers': stat.correctCount,
       'Total Attempts': stat.totalAttempts,
@@ -220,7 +311,8 @@ export async function exportToExcel(analytics: Analytics, quizTitle: string): Pr
     // Set column widths
     questionSheet['!cols'] = [
       { wch: 5 },  // #
-      { wch: 80 }, // Question
+      { wch: 18 }, // Type
+      { wch: 70 }, // Question
       { wch: 15 }, // Correct Answers
       { wch: 15 }, // Total Attempts
       { wch: 15 }, // Accuracy Rate

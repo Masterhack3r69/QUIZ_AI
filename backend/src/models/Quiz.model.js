@@ -1,9 +1,44 @@
 import mongoose from 'mongoose';
 
 const questionSchema = new mongoose.Schema({
-  question: { type: String, required: true },
-  options: [{ type: String, required: true }],
-  correctAnswer: { type: Number, required: true }
+  type: {
+    type: String,
+    enum: ['multipleChoice', 'trueFalse', 'fillInBlank', 'matching'],
+    required: true,
+    default: 'multipleChoice'
+  },
+  question: { 
+    type: String, 
+    required: true 
+  },
+  // For multipleChoice type
+  options: [{ 
+    type: String 
+  }],
+  // Union type for different question types
+  // - multipleChoice: Number (index)
+  // - trueFalse: Boolean
+  // - fillInBlank: String
+  // - matching: not used (uses correctPairs instead)
+  correctAnswer: { 
+    type: mongoose.Schema.Types.Mixed
+  },
+  // For fillInBlank type
+  caseSensitive: {
+    type: Boolean,
+    default: false
+  },
+  // For matching type
+  leftColumn: [{
+    type: String
+  }],
+  rightColumn: [{
+    type: String
+  }],
+  correctPairs: [{
+    left: { type: Number },
+    right: { type: Number }
+  }]
 });
 
 const quizSchema = new mongoose.Schema({
@@ -33,17 +68,37 @@ const quizSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  startDate: {
+    type: Date
+  },
   expiresAt: {
     type: Date,
     required: true
   },
+  maxStudents: {
+    type: Number
+  },
+  subjects: [{
+    type: String,
+    trim: true
+  }],
+  questionDistribution: {
+    multipleChoice: { type: Number, default: 0 },
+    trueFalse: { type: Number, default: 0 },
+    fillInBlank: { type: Number, default: 0 },
+    matching: { type: Number, default: 0 }
+  },
   status: {
     type: String,
-    enum: ['active', 'expired', 'draft'],
+    enum: ['active', 'expired', 'draft', 'scheduled', 'full'],
     default: 'active'
   },
   sourceContent: {
-    type: String
+    type: {
+      type: String,
+      enum: ['file', 'topic', 'video', 'url']
+    },
+    content: String
   }
 }, { timestamps: true });
 

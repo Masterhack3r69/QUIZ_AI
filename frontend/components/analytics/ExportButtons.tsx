@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
+import { Icon } from '@/components/ui/Icon';
 import type { Analytics, Quiz } from '@/types';
 
 interface ExportButtonsProps {
@@ -80,7 +81,10 @@ export function ExportButtons({ analytics, quiz }: ExportButtonsProps) {
               Exporting...
             </>
           ) : (
-            <>📄 Export to PDF</>
+            <>
+              <Icon name="file-pdf" className="mr-2" />
+              Export to PDF
+            </>
           )}
         </Button>
         <Button
@@ -96,7 +100,10 @@ export function ExportButtons({ analytics, quiz }: ExportButtonsProps) {
               Exporting...
             </>
           ) : (
-            <>📊 Export to Excel</>
+            <>
+              <Icon name="file-excel" className="mr-2" />
+              Export to Excel
+            </>
           )}
         </Button>
       </div>
