@@ -3,7 +3,7 @@ import path from 'path';
 import pdfParse from 'pdf-parse';
 import mammoth from 'mammoth';
 import { GoogleGenAI } from '@google/genai';
-import { YoutubeTranscript } from 'youtube-transcript';
+import { Innertube } from 'youtubei.js';
 import * as cheerio from 'cheerio';
 import axios from 'axios';
 
@@ -76,25 +76,54 @@ export const extractVideoContent = async (videoUrl) => {
       throw new Error('Invalid YouTube URL format');
     }
     
-    // Fetch transcript
-    const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+    console.log(`Attempting to fetch transcript for video ID: ${videoId}`);
     
-    if (!transcript || transcript.length === 0) {
-      throw new Error('No transcript available for this video');
+    // Initialize YouTube client
+    const youtube = await Innertube.create();
+    
+    // Get video info
+    const info = await youtube.getInfo(videoId);
+    
+    // Get transcript
+    const transcriptData = await info.getTranscript();
+    
+    if (!transcriptData || !transcriptData.transcript) {
+      throw new Error('No transcript/captions available for this video. Please ensure the video has captions enabled or try a different video.');
+    }
+    
+    // Extract text from transcript segments
+    const transcript = transcriptData.transcript;
+    const segments = transcript.content?.body?.initial_segments;
+    
+    if (!segments || segments.length === 0) {
+      throw new Error('Transcript is empty. Please try a video with more substantial content.');
     }
     
     // Combine all transcript segments into a single text
-    const content = transcript.map(segment => segment.text).join(' ');
+    const content = segments
+      .map(segment => segment.snippet?.text?.toString() || '')
+      .filter(text => text.trim().length > 0)
+      .join(' ');
     
     if (!content || content.trim().length < 100) {
-      throw new Error('Transcript content is too short');
+      throw new Error('Transcript content is too short (less than 100 characters). Please try a video with more substantial content.');
     }
     
-    console.log(`Extracted ${content.length} characters from video transcript`);
+    console.log(`Successfully extracted ${content.length} characters from video transcript`);
     return content;
   } catch (error) {
-    console.error('Error extracting video content:', error.message);
-    throw new Error(`Failed to extract video content: ${error.message}`);
+    console.error('Error extracting video content:', error);
+    
+    // Provide more helpful error messages
+    if (error.message.includes('transcript') || error.message.includes('captions')) {
+      throw error; // Re-throw our custom transcript errors
+    } else if (error.message.includes('Video unavailable') || error.message.includes('private') || error.message.includes('not found')) {
+      throw new Error('Video is unavailable, private, or not found. Please use a public video.');
+    } else if (error.message.includes('Too Many Requests') || error.message.includes('429')) {
+      throw new Error('YouTube rate limit reached. Please try again in a few minutes.');
+    } else {
+      throw new Error(`Failed to extract video content: ${error.message}`);
+    }
   }
 };
 

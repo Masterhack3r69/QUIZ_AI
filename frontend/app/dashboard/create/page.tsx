@@ -14,6 +14,7 @@ import { TemplateSelector } from '@/components/quiz/TemplateSelector';
 import { ContentSourceSelector } from '@/components/quiz/ContentSourceSelector';
 import { QuestionDistribution } from '@/components/quiz/QuestionDistribution';
 import { apiClient } from '@/lib/api';
+import { getAuthToken } from '@/lib/auth';
 import type { Question, QuizTemplate, ContentSource, QuizDistribution } from '@/types';
 
 const WIZARD_STEPS: WizardStep[] = [
@@ -62,16 +63,20 @@ function ReviewAndSave({
       // Now create the quiz with the final configuration
       const formData = new FormData();
       
-      // Add the content source
+      // Add the content source with proper type indication
       if (selectedSource) {
         if (selectedSource.type === 'file' && selectedSource.content instanceof File) {
           formData.append('file', selectedSource.content);
+          formData.append('sourceType', 'file');
         } else if (selectedSource.type === 'topic' && typeof selectedSource.content === 'string') {
           formData.append('textContent', selectedSource.content);
+          formData.append('sourceType', 'topic');
         } else if (selectedSource.type === 'video' && typeof selectedSource.content === 'string') {
           formData.append('videoUrl', selectedSource.content);
+          formData.append('sourceType', 'video');
         } else if (selectedSource.type === 'url' && typeof selectedSource.content === 'string') {
           formData.append('webUrl', selectedSource.content);
+          formData.append('sourceType', 'url');
         }
       }
       
@@ -740,20 +745,72 @@ export default function CreateQuizPage() {
     setSourceError('');
 
     try {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+      const token = getAuthToken();
+      const headers: HeadersInit = {};
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      let extractedContent = '';
+
       // Stage 1: Extracting content
       setProcessingStage('extracting');
       
-      // Prepare form data based on source type
+      // Extract content based on source type
+      if (selectedSource.type === 'video' && typeof selectedSource.content === 'string') {
+        // Extract video transcript
+        const videoResponse = await fetch(`${API_BASE_URL}/api/quiz/process-video`, {
+          method: 'POST',
+          headers: {
+            ...headers,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ videoUrl: selectedSource.content }),
+        });
+        
+        if (!videoResponse.ok) {
+          const errorData = await videoResponse.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Failed to extract video content');
+        }
+        
+        const videoData = await videoResponse.json();
+        extractedContent = videoData.content;
+        
+      } else if (selectedSource.type === 'url' && typeof selectedSource.content === 'string') {
+        // Extract web page content
+        const urlResponse = await fetch(`${API_BASE_URL}/api/quiz/process-url`, {
+          method: 'POST',
+          headers: {
+            ...headers,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ webUrl: selectedSource.content }),
+        });
+        
+        if (!urlResponse.ok) {
+          const errorData = await urlResponse.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Failed to extract web content');
+        }
+        
+        const urlData = await urlResponse.json();
+        extractedContent = urlData.content;
+      }
+      
+      // Stage 2: Generating questions
+      setProcessingStage('generating');
+      
+      // Prepare form data for question generation
       const formData = new FormData();
       
       if (selectedSource.type === 'file' && selectedSource.content instanceof File) {
         formData.append('file', selectedSource.content);
       } else if (selectedSource.type === 'topic' && typeof selectedSource.content === 'string') {
         formData.append('textContent', selectedSource.content);
-      } else if (selectedSource.type === 'video' && typeof selectedSource.content === 'string') {
-        formData.append('videoUrl', selectedSource.content);
-      } else if (selectedSource.type === 'url' && typeof selectedSource.content === 'string') {
-        formData.append('webUrl', selectedSource.content);
+      } else if (extractedContent) {
+        // Use extracted content from video or URL
+        formData.append('textContent', extractedContent);
       }
       
       // Add placeholder values for required fields (will be configured in step 3)
@@ -765,18 +822,7 @@ export default function CreateQuizPage() {
       // Add question distribution
       formData.append('questionDistribution', JSON.stringify(questionDistribution));
 
-      // Stage 2: Generating questions
-      setProcessingStage('generating');
-      
       // Use test endpoint to generate questions without saving
-      const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
-      const token = localStorage.getItem('token');
-      const headers: HeadersInit = {};
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-      
       const response = await fetch(`${API_BASE_URL}/api/quiz/test-create`, {
         method: 'POST',
         headers,
@@ -815,6 +861,10 @@ export default function CreateQuizPage() {
           errorMessage = 'Network error. Please check your connection and try again.';
         } else if (err.message.includes('timeout')) {
           errorMessage = 'Request timed out. Please try again with smaller content.';
+        } else if (err.message.includes('transcript')) {
+          errorMessage = 'Unable to extract video transcript. The video may not have captions available.';
+        } else if (err.message.includes('URL') || err.message.includes('webpage')) {
+          errorMessage = 'Unable to extract content from the URL. Please check if the URL is accessible.';
         } else if (err.message.includes('file') || err.message.includes('content')) {
           errorMessage = 'Unable to extract content. Please try a different source.';
         } else {
