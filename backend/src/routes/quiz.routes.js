@@ -405,7 +405,7 @@ router.post('/validate', async (req, res) => {
     const { accessCode } = req.body;
     
     const quiz = await Quiz.findOne({ accessCode: accessCode.toUpperCase() })
-      .select('title duration questionsPerStudent expiresAt startDate status maxStudents');
+      .select('title duration questionsPerStudent expiresAt startDate status maxStudents studentInfoRequirements');
 
     if (!quiz) {
       return res.status(404).json({ message: 'Invalid quiz code' });

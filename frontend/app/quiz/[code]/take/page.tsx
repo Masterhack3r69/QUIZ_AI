@@ -19,8 +19,15 @@ interface QuizSessionData {
 }
 
 interface StudentInfo {
-  name: string;
-  studentId: string;
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  suffix?: string;
+  studentId?: string;
+  course?: string;
+  year?: string;
+  section?: string;
+  email?: string;
 }
 
 const QUIZ_SESSION_KEY = 'quizSession';
@@ -199,11 +206,10 @@ export default function QuizTakePage() {
       // Calculate time taken
       const timeTaken = Math.floor((Date.now() - quizSession.startTime) / 1000); // in seconds
 
-      // Prepare submission data
+      // Prepare submission data with new studentInfo structure
       const submissionData = {
         quizId: quizSession.quizId,
-        studentName: studentInfo.name,
-        studentId: studentInfo.studentId,
+        studentInfo: studentInfo, // Now contains the full student info object
         answers: quizSession.questions.map(q => ({
           questionId: q._id,
           questionType: q.type,
@@ -339,7 +345,7 @@ export default function QuizTakePage() {
                   {quizSession.title}
                 </h1>
                 <p className="text-sm text-gray-600 mt-1">
-                  {studentInfo.name} ({studentInfo.studentId})
+                  {[studentInfo.firstName, studentInfo.middleName, studentInfo.lastName, studentInfo.suffix].filter(Boolean).join(' ')} {studentInfo.studentId && `(${studentInfo.studentId})`}
                 </p>
               </div>
               

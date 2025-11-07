@@ -10,12 +10,11 @@ router.post('/submit', async (req, res) => {
   try {
     console.log('📝 Submission request received:', {
       quizId: req.body.quizId,
-      studentName: req.body.studentName,
-      studentId: req.body.studentId,
+      studentInfo: req.body.studentInfo,
       answersCount: req.body.answers?.length
     });
 
-    const { quizId, studentName, studentId, answers, timeTaken } = req.body;
+    const { quizId, studentInfo, answers, timeTaken } = req.body;
 
     const quiz = await Quiz.findById(quizId);
     if (!quiz) {
@@ -77,10 +76,19 @@ router.post('/submit', async (req, res) => {
 
     console.log('📊 Grading complete. Score:', score, '/', gradedAnswers.length);
 
+    // Build full name for legacy compatibility
+    const fullName = [
+      studentInfo?.firstName,
+      studentInfo?.middleName,
+      studentInfo?.lastName,
+      studentInfo?.suffix
+    ].filter(Boolean).join(' ') || 'Unknown Student';
+
     const submission = await Submission.create({
       quiz: quizId,
-      studentName,
-      studentId,
+      studentInfo: studentInfo || {},
+      studentName: fullName, // Legacy field
+      studentId: studentInfo?.studentId || '', // Legacy field
       answers: gradedAnswers,
       score,
       totalQuestions: answers.length,
@@ -237,15 +245,28 @@ router.get('/analytics/:quizId', protect, async (req, res) => {
         averageScoreByType: scoresByType
       },
       totalQuestions,
-      submissions: submissions.map(s => ({
-        studentName: s.studentName,
-        studentId: s.studentId,
-        score: s.score,
-        totalQuestions: s.totalQuestions,
-        percentage: ((s.score / s.totalQuestions) * 100).toFixed(1),
-        timeTaken: s.timeTaken,
-        submittedAt: s.submittedAt
-      })),
+      submissions: submissions.map(s => {
+        // Build display name from studentInfo or fall back to legacy field
+        const displayName = s.studentInfo && Object.keys(s.studentInfo).length > 0
+          ? [
+              s.studentInfo.firstName,
+              s.studentInfo.middleName,
+              s.studentInfo.lastName,
+              s.studentInfo.suffix
+            ].filter(Boolean).join(' ')
+          : s.studentName || 'Unknown Student';
+
+        return {
+          studentName: displayName,
+          studentId: s.studentInfo?.studentId || s.studentId,
+          studentInfo: s.studentInfo,
+          score: s.score,
+          totalQuestions: s.totalQuestions,
+          percentage: ((s.score / s.totalQuestions) * 100).toFixed(1),
+          timeTaken: s.timeTaken,
+          submittedAt: s.submittedAt
+        };
+      }),
       questionStats
     };
 

@@ -7,32 +7,24 @@ import { Toast } from '@/components/ui/Toast';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient, APIRequestError } from '@/lib/api';
+import type { QuizInfo, StudentInfo } from '@/types';
 
 export default function JoinPage() {
   const router = useRouter();
-  const [formData, setFormData] = useState({
-    studentName: '',
-    studentId: '',
-    accessCode: '',
-  });
+  const [step, setStep] = useState<'code' | 'info'>('code');
+  const [accessCode, setAccessCode] = useState('');
+  const [quizInfo, setQuizInfo] = useState<QuizInfo | null>(null);
+  const [studentInfo, setStudentInfo] = useState<StudentInfo>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error' | 'warning' | 'info'; message: string } | null>(null);
 
-  const validateForm = () => {
+  const validateCode = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.studentName.trim()) {
-      newErrors.studentName = 'Student name is required';
-    }
-
-    if (!formData.studentId.trim()) {
-      newErrors.studentId = 'Student ID is required';
-    }
-
-    if (!formData.accessCode.trim()) {
+    if (!accessCode.trim()) {
       newErrors.accessCode = 'Quiz access code is required';
-    } else if (formData.accessCode.length !== 6) {
+    } else if (accessCode.length !== 6) {
       newErrors.accessCode = 'Access code must be 6 characters';
     }
 
@@ -40,10 +32,54 @@ export default function JoinPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const validateStudentInfo = () => {
+    const newErrors: Record<string, string> = {};
+    const requirements = quizInfo?.studentInfoRequirements;
+
+    if (!requirements) return true;
+
+    if (requirements.firstName && !studentInfo.firstName?.trim()) {
+      newErrors.firstName = 'First name is required';
+    }
+
+    if (requirements.middleName && !studentInfo.middleName?.trim()) {
+      newErrors.middleName = 'Middle name is required';
+    }
+
+    if (requirements.lastName && !studentInfo.lastName?.trim()) {
+      newErrors.lastName = 'Last name is required';
+    }
+
+    if (requirements.studentId && !studentInfo.studentId?.trim()) {
+      newErrors.studentId = 'Student ID is required';
+    }
+
+    if (requirements.course && !studentInfo.course?.trim()) {
+      newErrors.course = 'Course is required';
+    }
+
+    if (requirements.year && !studentInfo.year?.trim()) {
+      newErrors.year = 'Year is required';
+    }
+
+    if (requirements.section && !studentInfo.section?.trim()) {
+      newErrors.section = 'Section is required';
+    }
+
+    if (requirements.email && !studentInfo.email?.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (requirements.email && studentInfo.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(studentInfo.email)) {
+      newErrors.email = 'Invalid email format';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleCodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!validateForm()) {
+    if (!validateCode()) {
       return;
     }
 
@@ -51,29 +87,23 @@ export default function JoinPage() {
     setErrors({});
 
     try {
-      const code = formData.accessCode.toUpperCase();
+      const code = accessCode.toUpperCase();
       
       // Call API to validate quiz code
-      const quizInfo = await apiClient.validateQuizCode(code);
+      const info = await apiClient.validateQuizCode(code);
+      setQuizInfo(info);
       
-      // Store student info in sessionStorage
-      sessionStorage.setItem('studentInfo', JSON.stringify({
-        name: formData.studentName,
-        studentId: formData.studentId,
-      }));
-
-      // Navigate to quiz lobby
-      router.push(`/quiz/${code}/start`);
+      // Move to student info step
+      setStep('info');
+      setToast({ type: 'success', message: 'Quiz found! Please enter your information.' });
     } catch (error) {
-      console.error('Error joining quiz:', error);
+      console.error('Error validating quiz code:', error);
       
       if (error instanceof APIRequestError) {
-        // Handle specific error messages from the API
         if (error.status === 404) {
           setErrors({ accessCode: 'Invalid quiz code. Please check and try again.' });
           setToast({ type: 'error', message: 'Invalid quiz code' });
         } else if (error.status === 400) {
-          // Parse the error message to determine the specific issue
           const errorMsg = error.message.toLowerCase();
           
           if (errorMsg.includes('not started') || errorMsg.includes('has not started yet')) {
@@ -102,12 +132,36 @@ export default function JoinPage() {
     }
   };
 
+  const handleInfoSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validateStudentInfo()) {
+      return;
+    }
+
+    // Store student info in sessionStorage
+    sessionStorage.setItem('studentInfo', JSON.stringify(studentInfo));
+
+    // Navigate to quiz lobby
+    router.push(`/quiz/${accessCode.toUpperCase()}/start`);
+  };
+
   const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    if (field === 'accessCode') {
+      setAccessCode(value);
+    } else {
+      setStudentInfo(prev => ({ ...prev, [field]: value }));
+    }
+    
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
+  };
+
+  const handleBack = () => {
+    setStep('code');
+    setErrors({});
   };
 
   return (
@@ -135,56 +189,196 @@ export default function JoinPage() {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6" aria-label="Join quiz form">
-              <Input
-                type="text"
-                label="Student Name"
-                value={formData.studentName}
-                onChange={(e) => handleChange('studentName', e.target.value)}
-                error={errors.studentName}
-                required
-                placeholder="Enter your full name"
-                disabled={isLoading}
-                showValidIndicator={true}
-              />
+            {step === 'code' ? (
+              <form onSubmit={handleCodeSubmit} className="space-y-6" aria-label="Enter quiz code">
+                <Input
+                  type="text"
+                  label="Quiz Access Code"
+                  value={accessCode}
+                  onChange={(e) => handleChange('accessCode', e.target.value.toUpperCase())}
+                  error={errors.accessCode}
+                  required
+                  placeholder="Enter 6-character code"
+                  maxLength={6}
+                  disabled={isLoading}
+                  showValidIndicator={true}
+                  autoFocus
+                />
 
-              <Input
-                type="text"
-                label="Student ID"
-                value={formData.studentId}
-                onChange={(e) => handleChange('studentId', e.target.value)}
-                error={errors.studentId}
-                required
-                placeholder="Enter your student ID"
-                disabled={isLoading}
-                showValidIndicator={true}
-              />
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="lg"
+                  loading={isLoading}
+                  disabled={isLoading}
+                  className="w-full"
+                  aria-label={isLoading ? "Validating code..." : "Continue to student information"}
+                >
+                  {isLoading ? 'Validating...' : 'Continue'}
+                </Button>
+              </form>
+            ) : (
+              <form onSubmit={handleInfoSubmit} className="space-y-6" aria-label="Enter student information">
+                <div className="bg-blue-50 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-gray-700">
+                    <span className="font-semibold">Quiz:</span> {quizInfo?.title}
+                  </p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Please provide your information to continue
+                  </p>
+                </div>
 
-              <Input
-                type="text"
-                label="Quiz Access Code"
-                value={formData.accessCode}
-                onChange={(e) => handleChange('accessCode', e.target.value.toUpperCase())}
-                error={errors.accessCode}
-                required
-                placeholder="Enter 6-character code"
-                maxLength={6}
-                disabled={isLoading}
-                showValidIndicator={true}
-              />
+                {quizInfo?.studentInfoRequirements?.firstName && (
+                  <Input
+                    type="text"
+                    label="First Name"
+                    value={studentInfo.firstName || ''}
+                    onChange={(e) => handleChange('firstName', e.target.value)}
+                    error={errors.firstName}
+                    required
+                    placeholder="Enter your first name"
+                    disabled={isLoading}
+                    showValidIndicator={true}
+                  />
+                )}
 
-              <Button
-                type="submit"
-                variant="primary"
-                size="lg"
-                loading={isLoading}
-                disabled={isLoading}
-                className="w-full"
-                aria-label={isLoading ? "Joining quiz..." : "Join quiz with access code"}
-              >
-                Join Quiz
-              </Button>
-            </form>
+                {quizInfo?.studentInfoRequirements?.middleName && (
+                  <Input
+                    type="text"
+                    label="Middle Name"
+                    value={studentInfo.middleName || ''}
+                    onChange={(e) => handleChange('middleName', e.target.value)}
+                    error={errors.middleName}
+                    required
+                    placeholder="Enter your middle name"
+                    disabled={isLoading}
+                    showValidIndicator={true}
+                  />
+                )}
+
+                {quizInfo?.studentInfoRequirements?.lastName && (
+                  <Input
+                    type="text"
+                    label="Last Name"
+                    value={studentInfo.lastName || ''}
+                    onChange={(e) => handleChange('lastName', e.target.value)}
+                    error={errors.lastName}
+                    required
+                    placeholder="Enter your last name"
+                    disabled={isLoading}
+                    showValidIndicator={true}
+                  />
+                )}
+
+                {quizInfo?.studentInfoRequirements?.suffix && (
+                  <Input
+                    type="text"
+                    label="Suffix"
+                    value={studentInfo.suffix || ''}
+                    onChange={(e) => handleChange('suffix', e.target.value)}
+                    error={errors.suffix}
+                    required
+                    placeholder="Jr., Sr., III, etc."
+                    disabled={isLoading}
+                    showValidIndicator={true}
+                  />
+                )}
+
+                {quizInfo?.studentInfoRequirements?.studentId && (
+                  <Input
+                    type="text"
+                    label="Student ID"
+                    value={studentInfo.studentId || ''}
+                    onChange={(e) => handleChange('studentId', e.target.value)}
+                    error={errors.studentId}
+                    required
+                    placeholder="Enter your student ID"
+                    disabled={isLoading}
+                    showValidIndicator={true}
+                  />
+                )}
+
+                {quizInfo?.studentInfoRequirements?.course && (
+                  <Input
+                    type="text"
+                    label="Course"
+                    value={studentInfo.course || ''}
+                    onChange={(e) => handleChange('course', e.target.value)}
+                    error={errors.course}
+                    required
+                    placeholder="e.g., Computer Science"
+                    disabled={isLoading}
+                    showValidIndicator={true}
+                  />
+                )}
+
+                {quizInfo?.studentInfoRequirements?.year && (
+                  <Input
+                    type="text"
+                    label="Year Level"
+                    value={studentInfo.year || ''}
+                    onChange={(e) => handleChange('year', e.target.value)}
+                    error={errors.year}
+                    required
+                    placeholder="e.g., 1st Year, 2nd Year"
+                    disabled={isLoading}
+                    showValidIndicator={true}
+                  />
+                )}
+
+                {quizInfo?.studentInfoRequirements?.section && (
+                  <Input
+                    type="text"
+                    label="Section"
+                    value={studentInfo.section || ''}
+                    onChange={(e) => handleChange('section', e.target.value)}
+                    error={errors.section}
+                    required
+                    placeholder="Enter your section"
+                    disabled={isLoading}
+                    showValidIndicator={true}
+                  />
+                )}
+
+                {quizInfo?.studentInfoRequirements?.email && (
+                  <Input
+                    type="email"
+                    label="Email"
+                    value={studentInfo.email || ''}
+                    onChange={(e) => handleChange('email', e.target.value)}
+                    error={errors.email}
+                    required
+                    placeholder="your.email@example.com"
+                    disabled={isLoading}
+                    showValidIndicator={true}
+                  />
+                )}
+
+                <div className="flex gap-3">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="lg"
+                    onClick={handleBack}
+                    disabled={isLoading}
+                    className="flex-1"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="lg"
+                    loading={isLoading}
+                    disabled={isLoading}
+                    className="flex-1"
+                    aria-label="Proceed to quiz"
+                  >
+                    Join Quiz
+                  </Button>
+                </div>
+              </form>
+            )}
 
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">

@@ -103,6 +103,30 @@ export interface QuizTemplate {
   updatedAt: string;
 }
 
+export interface StudentInfoRequirements {
+  firstName: boolean;
+  middleName: boolean;
+  lastName: boolean;
+  suffix: boolean;
+  studentId: boolean;
+  course: boolean;
+  year: boolean;
+  section: boolean;
+  email: boolean;
+}
+
+export interface StudentInfo {
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  suffix?: string;
+  studentId?: string;
+  course?: string;
+  year?: string;
+  section?: string;
+  email?: string;
+}
+
 export interface QuizInfo {
   _id: string;
   title: string;
@@ -113,6 +137,7 @@ export interface QuizInfo {
   maxStudents?: number;
   currentSubmissions: number;
   status: 'scheduled' | 'active' | 'full' | 'expired';
+  studentInfoRequirements?: StudentInfoRequirements;
 }
 
 export interface QuizSession {
@@ -136,6 +161,7 @@ export interface Submission {
   quiz: string;
   studentName: string;
   studentId: string;
+  studentInfo?: StudentInfo;
   answers: Answer[];
   score: number;
   totalQuestions: number;
@@ -179,8 +205,7 @@ export interface Analytics {
 
 export interface SubmissionData {
   quizId: string;
-  studentName: string;
-  studentId: string;
+  studentInfo: StudentInfo;
   answers: {
     questionId: string;
     questionType: QuestionType;

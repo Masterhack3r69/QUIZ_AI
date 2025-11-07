@@ -31,14 +31,24 @@ const submissionSchema = new mongoose.Schema({
     ref: 'Quiz',
     required: true
   },
+  studentInfo: {
+    firstName: { type: String, trim: true },
+    middleName: { type: String, trim: true },
+    lastName: { type: String, trim: true },
+    suffix: { type: String, trim: true },
+    studentId: { type: String, trim: true },
+    course: { type: String, trim: true },
+    year: { type: String, trim: true },
+    section: { type: String, trim: true },
+    email: { type: String, trim: true }
+  },
+  // Legacy fields for backward compatibility
   studentName: {
     type: String,
-    required: true,
     trim: true
   },
   studentId: {
     type: String,
-    required: true,
     trim: true
   },
   answers: [answerSchema],

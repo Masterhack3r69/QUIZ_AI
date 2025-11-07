@@ -99,6 +99,17 @@ const quizSchema = new mongoose.Schema({
       enum: ['file', 'topic', 'video', 'url']
     },
     content: String
+  },
+  studentInfoRequirements: {
+    firstName: { type: Boolean, default: true },
+    middleName: { type: Boolean, default: false },
+    lastName: { type: Boolean, default: true },
+    suffix: { type: Boolean, default: false },
+    studentId: { type: Boolean, default: true },
+    course: { type: Boolean, default: false },
+    year: { type: Boolean, default: false },
+    section: { type: Boolean, default: false },
+    email: { type: Boolean, default: false }
   }
 }, { timestamps: true });
 
