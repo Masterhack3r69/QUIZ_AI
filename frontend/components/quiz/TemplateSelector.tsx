@@ -51,7 +51,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { TemplateCard } from './TemplateCard';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
 import { apiClient } from '@/lib/api';
 import type { QuizTemplate } from '@/types';
@@ -172,7 +172,7 @@ export function TemplateSelector({
         </div>
         {onCreateNew && (
           <Button
-            variant="secondary"
+            variant="outline"
             size="sm"
             onClick={onCreateNew}
             aria-label="Create new template"
@@ -278,7 +278,7 @@ export function TemplateSelector({
             </p>
             {onCreateNew && (
               <Button
-                variant="primary"
+                variant="default"
                 size="sm"
                 onClick={onCreateNew}
               >

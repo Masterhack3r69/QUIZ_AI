@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, DragEvent, ChangeEvent } from 'react';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 
 const ALLOWED_FILE_TYPES = [
@@ -171,7 +171,7 @@ export function FileUpload({
             
             <Button
               type="button"
-              variant="primary"
+              variant="default"
               onClick={handleBrowseClick}
               disabled={isUploading}
             >

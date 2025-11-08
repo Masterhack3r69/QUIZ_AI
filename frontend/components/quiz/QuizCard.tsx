@@ -2,10 +2,29 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { Icon } from '@/components/ui/Icon';
-import { getQuizStatus } from '@/lib/utils';
+import { MoreVertical, Eye, Pencil, BarChart3, Trash2 } from 'lucide-react';
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { apiClient } from '@/lib/api';
+import { useToast } from '@/contexts/ToastContext';
 import type { Quiz } from '@/types';
 
 interface QuizCardProps {
@@ -16,7 +35,9 @@ interface QuizCardProps {
 
 export function QuizCard({ quiz, submissionCount = 0, onDelete }: QuizCardProps) {
   const router = useRouter();
-  const [showActions, setShowActions] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { showSuccess, showError } = useToast();
 
   // Determine quiz status based on dates and current status
   const status = getEnhancedQuizStatus(quiz);
@@ -25,213 +46,136 @@ export function QuizCard({ quiz, submissionCount = 0, onDelete }: QuizCardProps)
     router.push(`/dashboard/quiz/${quiz._id}`);
   };
 
-  const handleManageClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleManageClick = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     router.push(`/dashboard/quiz/${quiz._id}`);
   };
 
-  const handleViewResults = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleViewResults = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     router.push(`/dashboard/quiz/${quiz._id}/results`);
   };
 
-  const handleEdit = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleEdit = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     router.push(`/dashboard/quiz/${quiz._id}/edit`);
   };
 
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (onDelete) {
-      onDelete();
+  const handleDeleteClick = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setShowDeleteDialog(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      setIsDeleting(true);
+      await apiClient.deleteQuiz(quiz._id);
+      showSuccess('Quiz deleted successfully');
+      setShowDeleteDialog(false);
+      if (onDelete) {
+        onDelete();
+      }
+    } catch (error) {
+      showError('Failed to delete quiz. Please try again.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
-  const toggleActions = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowActions(!showActions);
-  };
-
-  // Calculate progress percentage for max students
-  const progressPercentage = quiz.maxStudents 
-    ? Math.min((submissionCount / quiz.maxStudents) * 100, 100)
-    : 0;
-
   return (
-    <Card
-      className="hover:shadow-lg transition-shadow cursor-pointer relative"
-      onClick={handleCardClick}
-    >
-      <div className="p-6">
-        {/* Status Badge and Quick Actions Menu */}
-        <div className="flex items-center justify-between mb-3">
-          <StatusBadge status={status} />
-          
-          {/* Quick Actions Menu */}
-          <div className="relative">
-            <button
-              onClick={toggleActions}
-              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-              aria-label="Quick actions menu"
-              aria-expanded={showActions}
-            >
-              <Icon name="ellipsis-vertical" className="w-5 h-5 text-gray-600" />
-            </button>
+    <>
+      <Card
+        className="hover:shadow-lg transition-shadow cursor-pointer"
+        onClick={handleCardClick}
+      >
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <StatusBadge status={status} />
             
-            {showActions && (
-              <>
-                {/* Backdrop to close menu */}
-                <div 
-                  className="fixed inset-0 z-10" 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowActions(false);
-                  }}
-                />
-                
-                {/* Actions Dropdown */}
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
-                  <button
-                    onClick={handleManageClick}
-                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center"
-                  >
-                    <Icon name="eye" className="w-4 h-4 mr-2" />
-                    View Details
-                  </button>
-                  <button
-                    onClick={handleEdit}
-                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center"
-                  >
-                    <Icon name="pencil" className="w-4 h-4 mr-2" />
-                    Edit Quiz
-                  </button>
-                  <button
-                    onClick={handleViewResults}
-                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center"
-                  >
-                    <Icon name="chart-bar" className="w-4 h-4 mr-2" />
-                    View Results
-                  </button>
-                  {onDelete && (
-                    <>
-                      <div className="border-t border-gray-200 my-1" />
-                      <button
-                        onClick={handleDelete}
-                        className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center"
-                      >
-                        <Icon name="trash" className="w-4 h-4 mr-2" />
-                        Delete Quiz
-                      </button>
-                    </>
-                  )}
-                </div>
-              </>
-            )}
+            {/* Quick Actions Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Quick actions menu"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                <DropdownMenuItem onClick={handleManageClick}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  View Details
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleEdit}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit Quiz
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleViewResults}>
+                  <BarChart3 className="mr-2 h-4 w-4" />
+                  View Results
+                </DropdownMenuItem>
+                {onDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem variant="destructive" onClick={handleDeleteClick}>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete Quiz
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-        </div>
+        </CardHeader>
 
-        {/* Quiz Title */}
-        <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
-          {quiz.title}
-        </h3>
+        <CardContent className="pb-4">
+          {/* Quiz Title */}
+          <h3 className="text-lg font-semibold mb-3 line-clamp-2">
+            {quiz.title}
+          </h3>
 
-        {/* Subject Tags */}
-        {quiz.subjects && quiz.subjects.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-3">
-            {quiz.subjects.slice(0, 3).map((subject, index) => (
-              <span
-                key={index}
-                className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-md"
-              >
-                {subject}
-              </span>
-            ))}
-            {quiz.subjects.length > 3 && (
-              <span className="px-2 py-1 bg-gray-50 text-gray-600 text-xs rounded-md">
-                +{quiz.subjects.length - 3} more
-              </span>
-            )}
+          {/* Access Code */}
+          <div className="mb-4 p-3 bg-muted rounded-md">
+            <p className="text-xs text-muted-foreground mb-1">Access Code</p>
+            <p className="text-lg font-mono font-bold" aria-label={`Access code: ${quiz.accessCode}`}>
+              {quiz.accessCode}
+            </p>
           </div>
-        )}
 
-        {/* Access Code */}
-        <div className="mb-4">
-          <p className="text-sm text-gray-600 mb-1">Access Code</p>
-          <p className="text-xl font-mono font-bold text-blue-600" aria-label={`Access code: ${quiz.accessCode}`}>
-            {quiz.accessCode}
-          </p>
-        </div>
-
-        {/* Progress Bar for Max Students */}
-        {quiz.maxStudents && (
-          <div className="mb-4">
-            <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
-              <span>Submissions</span>
-              <span className="font-medium">
-                {submissionCount} / {quiz.maxStudents}
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div
-                className={`h-2 rounded-full transition-all ${
-                  progressPercentage >= 100
-                    ? 'bg-red-500'
-                    : progressPercentage >= 75
-                    ? 'bg-yellow-500'
-                    : 'bg-green-500'
-                }`}
-                style={{ width: `${progressPercentage}%` }}
-                role="progressbar"
-                aria-valuenow={submissionCount}
-                aria-valuemin={0}
-                aria-valuemax={quiz.maxStudents}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Quiz Info */}
-        <dl className="space-y-2 text-sm text-gray-600">
-          <div className="flex items-center justify-between">
-            <dt>Questions:</dt>
-            <dd className="font-medium text-gray-900">
-              {quiz.questions?.length || quiz.questionsPerStudent || 0}
-            </dd>
-          </div>
-          <div className="flex items-center justify-between">
-            <dt>Duration:</dt>
-            <dd className="font-medium text-gray-900">
-              {quiz.duration} min
-            </dd>
-          </div>
-          {!quiz.maxStudents && (
+          {/* Quiz Info */}
+          <dl className="space-y-2 text-sm">
             <div className="flex items-center justify-between">
-              <dt>Submissions:</dt>
-              <dd className="font-medium text-gray-900">
+              <dt className="text-muted-foreground">Questions:</dt>
+              <dd className="font-medium">
+                {quiz.questions?.length || quiz.questionsPerStudent || 0}
+              </dd>
+            </div>
+            <div className="flex items-center justify-between">
+              <dt className="text-muted-foreground">Duration:</dt>
+              <dd className="font-medium">
+                {quiz.duration} min
+              </dd>
+            </div>
+            <div className="flex items-center justify-between">
+              <dt className="text-muted-foreground">Submissions:</dt>
+              <dd className="font-medium">
                 {submissionCount}
               </dd>
             </div>
-          )}
-          {quiz.startDate && (
             <div className="flex items-center justify-between">
-              <dt>Starts:</dt>
-              <dd className="font-medium text-gray-900">
-                {new Date(quiz.startDate).toLocaleDateString()}
+              <dt className="text-muted-foreground">Expires:</dt>
+              <dd className="font-medium">
+                {new Date(quiz.expiresAt).toLocaleDateString()}
               </dd>
             </div>
-          )}
-          <div className="flex items-center justify-between">
-            <dt>Expires:</dt>
-            <dd className="font-medium text-gray-900">
-              {new Date(quiz.expiresAt).toLocaleDateString()}
-            </dd>
-          </div>
-        </dl>
+          </dl>
+        </CardContent>
 
-        {/* Actions */}
-        <div className="mt-4 pt-4 border-t border-gray-200">
+        <CardFooter className="pt-0">
           <Button
-            variant="primary"
+            variant="outline"
             size="sm"
             onClick={handleManageClick}
             className="w-full"
@@ -239,9 +183,31 @@ export function QuizCard({ quiz, submissionCount = 0, onDelete }: QuizCardProps)
           >
             Manage Quiz
           </Button>
-        </div>
-      </div>
-    </Card>
+        </CardFooter>
+      </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Quiz</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{quiz.title}"? This action cannot be undone and all student submissions will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
@@ -250,43 +216,36 @@ function StatusBadge({ status }: { status: Quiz['status'] }) {
   const statusConfig = {
     scheduled: {
       label: 'Scheduled',
-      icon: '📅',
-      className: 'bg-blue-100 text-blue-800',
+      variant: 'secondary' as const,
     },
     active: {
       label: 'Active',
-      icon: '✓',
-      className: 'bg-green-100 text-green-800',
+      variant: 'default' as const,
     },
     full: {
       label: 'Full',
-      icon: '🔒',
-      className: 'bg-orange-100 text-orange-800',
+      variant: 'secondary' as const,
     },
     expired: {
       label: 'Expired',
-      icon: '⏱',
-      className: 'bg-gray-100 text-gray-800',
+      variant: 'outline' as const,
     },
     draft: {
       label: 'Draft',
-      icon: '📝',
-      className: 'bg-gray-100 text-gray-600',
+      variant: 'outline' as const,
     },
   };
 
   const config = statusConfig[status] || statusConfig.active;
 
   return (
-    <span
-      className={`px-3 py-1 rounded-full text-xs font-semibold ${config.className}`}
+    <Badge
+      variant={config.variant}
       role="status"
       aria-label={`Quiz status: ${config.label}`}
     >
-      <span aria-hidden="true">
-        {config.icon} {config.label}
-      </span>
-    </span>
+      {config.label}
+    </Badge>
   );
 }
 

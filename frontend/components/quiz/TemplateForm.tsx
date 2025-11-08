@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Icon } from '@/components/ui/Icon';
 import type { QuizTemplate, QuizDistribution } from '@/types';
 
@@ -167,15 +168,20 @@ export function TemplateForm({ template, onSubmit, onCancel, isLoading = false }
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Template Name */}
-      <Input
-        label="Template Name"
-        type="text"
-        value={formData.name}
-        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-        error={errors.name}
-        required
-        placeholder="e.g., Weekly Quiz Template"
-      />
+      <div className="space-y-2">
+        <Label htmlFor="template-name">Template Name *</Label>
+        <Input
+          id="template-name"
+          type="text"
+          value={formData.name}
+          onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+          required
+          placeholder="e.g., Weekly Quiz Template"
+        />
+        {errors.name && (
+          <p className="text-sm text-red-600">{errors.name}</p>
+        )}
+      </div>
 
       {/* Template Type */}
       <div>
@@ -211,37 +217,52 @@ export function TemplateForm({ template, onSubmit, onCancel, isLoading = false }
 
       {/* Question Count and Duration */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Input
-          label="Number of Questions"
-          type="number"
-          value={formData.questionCount.toString()}
-          onChange={(e) => setFormData(prev => ({ ...prev, questionCount: parseInt(e.target.value) || 0 }))}
-          error={errors.questionCount}
-          required
-          min={1}
-        />
-        <Input
-          label="Duration (minutes)"
-          type="number"
-          value={formData.duration.toString()}
-          onChange={(e) => setFormData(prev => ({ ...prev, duration: parseInt(e.target.value) || 0 }))}
-          error={errors.duration}
-          required
-          min={1}
-        />
+        <div className="space-y-2">
+          <Label htmlFor="question-count">Number of Questions *</Label>
+          <Input
+            id="question-count"
+            type="number"
+            value={formData.questionCount.toString()}
+            onChange={(e) => setFormData(prev => ({ ...prev, questionCount: parseInt(e.target.value) || 0 }))}
+            required
+            min={1}
+          />
+          {errors.questionCount && (
+            <p className="text-sm text-red-600">{errors.questionCount}</p>
+          )}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="duration">Duration (minutes) *</Label>
+          <Input
+            id="duration"
+            type="number"
+            value={formData.duration.toString()}
+            onChange={(e) => setFormData(prev => ({ ...prev, duration: parseInt(e.target.value) || 0 }))}
+            required
+            min={1}
+          />
+          {errors.duration && (
+            <p className="text-sm text-red-600">{errors.duration}</p>
+          )}
+        </div>
       </div>
 
       {/* Expiration Period */}
-      <Input
-        label="Expiration Period (days)"
-        type="number"
-        value={formData.expirationPeriod.toString()}
-        onChange={(e) => setFormData(prev => ({ ...prev, expirationPeriod: parseInt(e.target.value) || 0 }))}
-        error={errors.expirationPeriod}
-        required
-        min={1}
-        placeholder="Number of days until quiz expires"
-      />
+      <div className="space-y-2">
+        <Label htmlFor="expiration">Expiration Period (days) *</Label>
+        <Input
+          id="expiration"
+          type="number"
+          value={formData.expirationPeriod.toString()}
+          onChange={(e) => setFormData(prev => ({ ...prev, expirationPeriod: parseInt(e.target.value) || 0 }))}
+          required
+          min={1}
+          placeholder="Number of days until quiz expires"
+        />
+        {errors.expirationPeriod && (
+          <p className="text-sm text-red-600">{errors.expirationPeriod}</p>
+        )}
+      </div>
 
       {/* Question Distribution */}
       <div>
@@ -334,19 +355,19 @@ export function TemplateForm({ template, onSubmit, onCancel, isLoading = false }
           Subjects (Optional)
         </label>
         <div className="flex gap-2 mb-2">
-          <Select
-            value={selectedSubject}
-            onChange={(e) => setSelectedSubject(e.target.value)}
-            options={SUBJECT_OPTIONS.filter(s => !formData.subjects.includes(s)).map(s => ({
-              value: s,
-              label: s,
-            }))}
-            placeholder="Select a subject"
-            className="flex-1"
-          />
+          <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+            <SelectTrigger className="flex-1">
+              <SelectValue placeholder="Select a subject" />
+            </SelectTrigger>
+            <SelectContent>
+              {SUBJECT_OPTIONS.filter(s => !formData.subjects.includes(s)).map(s => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button
             type="button"
-            variant="secondary"
+            variant="outline"
             onClick={addSubject}
             disabled={!selectedSubject}
           >
@@ -379,7 +400,7 @@ export function TemplateForm({ template, onSubmit, onCancel, isLoading = false }
       <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-4 border-t border-gray-200">
         <Button
           type="button"
-          variant="secondary"
+          variant="outline"
           onClick={onCancel}
           disabled={isLoading}
           className="w-full sm:w-auto"
@@ -388,8 +409,7 @@ export function TemplateForm({ template, onSubmit, onCancel, isLoading = false }
         </Button>
         <Button
           type="submit"
-          variant="primary"
-          loading={isLoading}
+          variant="default"
           disabled={isLoading}
           className="w-full sm:w-auto"
         >

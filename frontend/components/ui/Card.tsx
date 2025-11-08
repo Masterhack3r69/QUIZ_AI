@@ -1,75 +1,92 @@
-'use client';
+import * as React from "react"
 
-import React from 'react';
+import { cn } from "@/lib/utils"
 
-export interface CardProps {
-  title?: string;
-  subtitle?: string;
-  children: React.ReactNode;
-  actions?: React.ReactNode;
-  onClick?: () => void;
-  className?: string;
-  hover?: boolean;
-  onMouseEnter?: () => void;
-  onMouseLeave?: () => void;
-}
-
-export function Card({
-  title,
-  subtitle,
-  children,
-  actions,
-  onClick,
-  className = '',
-  hover = false,
-  onMouseEnter,
-  onMouseLeave,
-}: CardProps) {
-  const baseStyles = 'bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden';
-  const interactiveStyles = onClick ? 'cursor-pointer transition-shadow hover:shadow-lg' : '';
-  const hoverStyles = hover ? 'transition-shadow hover:shadow-lg' : '';
-  
+function Card({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
-      className={`${baseStyles} ${interactiveStyles} ${hoverStyles} ${className}`}
-      onClick={onClick}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-      role={onClick ? 'button' : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      onKeyDown={onClick ? (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onClick();
-        }
-      } : undefined}
-    >
-      {(title || subtitle || actions) && (
-        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              {title && (
-                <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">
-                  {title}
-                </h3>
-              )}
-              {subtitle && (
-                <p className="mt-1 text-sm text-gray-500">
-                  {subtitle}
-                </p>
-              )}
-            </div>
-            {actions && (
-              <div className="flex-shrink-0">
-                {actions}
-              </div>
-            )}
-          </div>
-        </div>
+      data-slot="card"
+      className={cn(
+        "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm",
+        className
       )}
-      <div className="px-4 sm:px-6 py-3 sm:py-4">
-        {children}
-      </div>
-    </div>
-  );
+      {...props}
+    />
+  )
+}
+
+function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-header"
+      className={cn(
+        "@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-2 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-title"
+      className={cn("leading-none font-semibold", className)}
+      {...props}
+    />
+  )
+}
+
+function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-description"
+      className={cn("text-muted-foreground text-sm", className)}
+      {...props}
+    />
+  )
+}
+
+function CardAction({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-action"
+      className={cn(
+        "col-start-2 row-span-2 row-start-1 self-start justify-self-end",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function CardContent({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-content"
+      className={cn("px-6", className)}
+      {...props}
+    />
+  )
+}
+
+function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-footer"
+      className={cn("flex items-center px-6 [.border-t]:pt-6", className)}
+      {...props}
+    />
+  )
+}
+
+export {
+  Card,
+  CardHeader,
+  CardFooter,
+  CardTitle,
+  CardAction,
+  CardDescription,
+  CardContent,
 }

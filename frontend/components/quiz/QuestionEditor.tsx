@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Icon } from '@/components/ui/Icon';
-import { ControlledTabs } from '@/components/ui/Tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Question, MultipleChoiceQuestion, TrueFalseQuestion, FillInBlankQuestion, MatchingQuestion } from '@/types';
 
 export interface QuestionEditorProps {
@@ -82,16 +83,21 @@ export function QuestionEditor({
 
     return (
       <div className="space-y-4">
-        <Input
-          type="text"
-          label="Question"
-          value={mcQuestion.question}
-          onChange={(e) =>
-            setEditedQuestion({ ...mcQuestion, question: e.target.value })
-          }
-          error={errors.question}
-          required
-        />
+        <div className="space-y-2">
+          <Label htmlFor="question-text">Question *</Label>
+          <Input
+            id="question-text"
+            type="text"
+            value={mcQuestion.question}
+            onChange={(e) =>
+              setEditedQuestion({ ...mcQuestion, question: e.target.value })
+            }
+            required
+          />
+          {errors.question && (
+            <p className="text-sm text-red-600">{errors.question}</p>
+          )}
+        </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -111,10 +117,11 @@ export function QuestionEditor({
                     className="w-4 h-4 text-blue-600"
                   />
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 space-y-2">
+                  <Label htmlFor={`option-${index}`}>Option {String.fromCharCode(65 + index)} *</Label>
                   <Input
+                    id={`option-${index}`}
                     type="text"
-                    label={`Option ${String.fromCharCode(65 + index)}`}
                     value={option}
                     onChange={(e) => {
                       const newOptions = [...mcQuestion.options];
@@ -143,16 +150,21 @@ export function QuestionEditor({
 
     return (
       <div className="space-y-4">
-        <Input
-          type="text"
-          label="Question Statement"
-          value={tfQuestion.question}
-          onChange={(e) =>
-            setEditedQuestion({ ...tfQuestion, question: e.target.value })
-          }
-          error={errors.question}
-          required
-        />
+        <div className="space-y-2">
+          <Label htmlFor="tf-question">Question Statement *</Label>
+          <Input
+            id="tf-question"
+            type="text"
+            value={tfQuestion.question}
+            onChange={(e) =>
+              setEditedQuestion({ ...tfQuestion, question: e.target.value })
+            }
+            required
+          />
+          {errors.question && (
+            <p className="text-sm text-red-600">{errors.question}</p>
+          )}
+        </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -196,28 +208,38 @@ export function QuestionEditor({
 
     return (
       <div className="space-y-4">
-        <Input
-          type="text"
-          label="Question (use _____ to indicate the blank)"
-          value={fibQuestion.question}
-          onChange={(e) =>
-            setEditedQuestion({ ...fibQuestion, question: e.target.value })
-          }
-          error={errors.question}
-          required
-          helperText="Example: The capital of France is _____"
-        />
+        <div className="space-y-2">
+          <Label htmlFor="fib-question">Question (use _____ to indicate the blank) *</Label>
+          <Input
+            id="fib-question"
+            type="text"
+            value={fibQuestion.question}
+            onChange={(e) =>
+              setEditedQuestion({ ...fibQuestion, question: e.target.value })
+            }
+            required
+          />
+          <p className="text-sm text-gray-500">Example: The capital of France is _____</p>
+          {errors.question && (
+            <p className="text-sm text-red-600">{errors.question}</p>
+          )}
+        </div>
 
-        <Input
-          type="text"
-          label="Correct Answer"
-          value={fibQuestion.correctAnswer}
-          onChange={(e) =>
-            setEditedQuestion({ ...fibQuestion, correctAnswer: e.target.value })
-          }
-          error={errors.correctAnswer}
-          required
-        />
+        <div className="space-y-2">
+          <Label htmlFor="fib-answer">Correct Answer *</Label>
+          <Input
+            id="fib-answer"
+            type="text"
+            value={fibQuestion.correctAnswer}
+            onChange={(e) =>
+              setEditedQuestion({ ...fibQuestion, correctAnswer: e.target.value })
+            }
+            required
+          />
+          {errors.correctAnswer && (
+            <p className="text-sm text-red-600">{errors.correctAnswer}</p>
+          )}
+        </div>
 
         <div className="flex items-center gap-2">
           <input
@@ -275,16 +297,21 @@ export function QuestionEditor({
 
     return (
       <div className="space-y-4">
-        <Input
-          type="text"
-          label="Question"
-          value={matchQuestion.question}
-          onChange={(e) =>
-            setEditedQuestion({ ...matchQuestion, question: e.target.value })
-          }
-          error={errors.question}
-          required
-        />
+        <div className="space-y-2">
+          <Label htmlFor="match-question">Question *</Label>
+          <Input
+            id="match-question"
+            type="text"
+            value={matchQuestion.question}
+            onChange={(e) =>
+              setEditedQuestion({ ...matchQuestion, question: e.target.value })
+            }
+            required
+          />
+          {errors.question && (
+            <p className="text-sm text-red-600">{errors.question}</p>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left Column */}
@@ -294,14 +321,16 @@ export function QuestionEditor({
             </label>
             <div className="space-y-3">
               {matchQuestion.leftColumn.map((item, index) => (
-                <Input
-                  key={index}
-                  type="text"
-                  label={`Item ${index + 1}`}
-                  value={item}
-                  onChange={(e) => handleLeftColumnChange(index, e.target.value)}
-                  required
-                />
+                <div key={index} className="space-y-2">
+                  <Label htmlFor={`left-${index}`}>Item {index + 1} *</Label>
+                  <Input
+                    id={`left-${index}`}
+                    type="text"
+                    value={item}
+                    onChange={(e) => handleLeftColumnChange(index, e.target.value)}
+                    required
+                  />
+                </div>
               ))}
             </div>
             {errors.leftColumn && (
@@ -316,14 +345,16 @@ export function QuestionEditor({
             </label>
             <div className="space-y-3">
               {matchQuestion.rightColumn.map((item, index) => (
-                <Input
-                  key={index}
-                  type="text"
-                  label={`Item ${index + 1}`}
-                  value={item}
-                  onChange={(e) => handleRightColumnChange(index, e.target.value)}
-                  required
-                />
+                <div key={index} className="space-y-2">
+                  <Label htmlFor={`right-${index}`}>Item {index + 1} *</Label>
+                  <Input
+                    id={`right-${index}`}
+                    type="text"
+                    value={item}
+                    onChange={(e) => handleRightColumnChange(index, e.target.value)}
+                    required
+                  />
+                </div>
               ))}
             </div>
             {errors.rightColumn && (
@@ -530,7 +561,7 @@ export function QuestionEditor({
           </div>
         </div>
         <Button
-          variant="danger"
+          variant="destructive"
           size="sm"
           onClick={() => setShowDeleteConfirm(true)}
         >
@@ -540,26 +571,25 @@ export function QuestionEditor({
       </div>
 
       {/* Tabs for Edit and Preview */}
-      <ControlledTabs
-        tabs={[
-          { id: 'edit', label: 'Edit' },
-          { id: 'preview', label: 'Preview' },
-        ]}
-        activeTab={activeTab}
-        onChange={(tabId) => setActiveTab(tabId as 'edit' | 'preview')}
-      />
-
-      {/* Content */}
-      <div className="mt-6">
-        {activeTab === 'edit' ? renderEditor() : renderPreview()}
-      </div>
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'edit' | 'preview')}>
+        <TabsList>
+          <TabsTrigger value="edit">Edit</TabsTrigger>
+          <TabsTrigger value="preview">Preview</TabsTrigger>
+        </TabsList>
+        <TabsContent value="edit" className="mt-6">
+          {renderEditor()}
+        </TabsContent>
+        <TabsContent value="preview" className="mt-6">
+          {renderPreview()}
+        </TabsContent>
+      </Tabs>
 
       {/* Actions */}
       <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-gray-200">
         <Button variant="ghost" onClick={onCancel}>
           Cancel
         </Button>
-        <Button variant="primary" onClick={handleSave}>
+        <Button variant="default" onClick={handleSave}>
           <Icon name="check" className="w-4 h-4 mr-1" />
           Save Changes
         </Button>
@@ -589,7 +619,7 @@ export function QuestionEditor({
               >
                 Cancel
               </Button>
-              <Button variant="danger" onClick={handleDelete}>
+              <Button variant="destructive" onClick={handleDelete}>
                 Delete Question
               </Button>
             </div>

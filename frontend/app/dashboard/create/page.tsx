@@ -2,28 +2,60 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Icon } from '@/components/ui/Icon';
-import { WizardProgress, WizardStep } from '@/components/quiz/WizardProgress';
-import { FileUpload } from '@/components/quiz/FileUpload';
-import { Toast } from '@/components/ui/Toast';
-import { Modal } from '@/components/ui/Modal';
-import { TemplateSelector } from '@/components/quiz/TemplateSelector';
-import { ContentSourceSelector } from '@/components/quiz/ContentSourceSelector';
-import { QuestionDistribution } from '@/components/quiz/QuestionDistribution';
+import dynamic from 'next/dynamic';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
+import { AlertCircle, ArrowLeft, ArrowRight, Check, Copy, Home, Upload, Info, Edit, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { apiClient } from '@/lib/api';
 import { getAuthToken } from '@/lib/auth';
-import type { Question, QuizTemplate, ContentSource, QuizDistribution } from '@/types';
+import type { Question, ContentSource, QuizDistribution } from '@/types';
 
-const WIZARD_STEPS: WizardStep[] = [
-  { id: 0, title: 'Template', description: 'Select template' },
-  { id: 1, title: 'Content', description: 'Source selection' },
-  { id: 2, title: 'Processing', description: 'AI generation' },
-  { id: 3, title: 'Configure', description: 'Quiz settings' },
-  { id: 4, title: 'Review', description: 'Review & save' },
-];
+// Dynamically import heavy components with loading states
+const ContentSourceSelector = dynamic(
+  () => import('@/components/quiz/ContentSourceSelector').then(mod => ({ default: mod.ContentSourceSelector })),
+  {
+    loading: () => (
+      <div className="space-y-4">
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    ),
+    ssr: false,
+  }
+);
+
+const QuestionDistribution = dynamic(
+  () => import('@/components/quiz/QuestionDistribution').then(mod => ({ default: mod.QuestionDistribution })),
+  {
+    loading: () => (
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-32 w-full" />
+      </div>
+    ),
+    ssr: false,
+  }
+);
+
+const WIZARD_STEPS = [
+  { id: 'upload', title: 'Upload', description: 'Source selection' },
+  { id: 'processing', title: 'Processing', description: 'AI generation' },
+  { id: 'configure', title: 'Configure', description: 'Quiz settings' },
+  { id: 'review', title: 'Review', description: 'Review & save' },
+] as const;
+
+type WizardStep = typeof WIZARD_STEPS[number]['id'];
 
 // ReviewAndSave Component
 interface ReviewAndSaveProps {
@@ -50,9 +82,6 @@ function ReviewAndSave({
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [createdQuiz, setCreatedQuiz] = useState<{ accessCode: string; _id: string } | null>(null);
   const [error, setError] = useState('');
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [toastType, setToastType] = useState<'success' | 'error' | 'warning' | 'info'>('error');
   const [copiedCode, setCopiedCode] = useState(false);
 
   const handleCreateQuiz = async () => {
@@ -120,9 +149,9 @@ function ReviewAndSave({
       }
       
       setError(errorMessage);
-      setToastType('error');
-      setToastMessage(errorMessage);
-      setShowToast(true);
+      toast.error('Error', {
+        description: errorMessage,
+      });
     } finally {
       setIsCreating(false);
     }
@@ -134,17 +163,17 @@ function ReviewAndSave({
     try {
       await navigator.clipboard.writeText(createdQuiz.accessCode);
       setCopiedCode(true);
-      setToastType('success');
-      setToastMessage('Access code copied to clipboard!');
-      setShowToast(true);
+      toast.success('Success', {
+        description: 'Access code copied to clipboard!',
+      });
       
       // Reset copied state after 2 seconds
       setTimeout(() => setCopiedCode(false), 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
-      setToastType('error');
-      setToastMessage('Failed to copy access code');
-      setShowToast(true);
+      toast.error('Error', {
+        description: 'Failed to copy access code',
+      });
     }
   };
 
@@ -160,91 +189,77 @@ function ReviewAndSave({
 
   return (
     <>
-      {/* Toast Notification */}
-      {showToast && (
-        <Toast
-          type={toastType}
-          message={toastMessage}
-          onClose={() => setShowToast(false)}
-        />
-      )}
-
       {/* Success Modal */}
-      <Modal
-        isOpen={showSuccessModal}
-        onClose={() => {}}
-        title="Quiz Created Successfully!"
-        size="md"
-      >
-        <div className="space-y-6">
-          {/* Success Icon */}
-          <div className="flex justify-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-              <Icon name="check" className="w-10 h-10 text-green-600" />
-            </div>
-          </div>
-
-          {/* Success Message */}
-          <div className="text-center">
-            <p className="text-lg text-gray-700 mb-4">
+      <Dialog open={showSuccessModal} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center">Quiz Created Successfully!</DialogTitle>
+            <DialogDescription className="text-center">
               Your quiz has been created and is ready to share with students!
-            </p>
-          </div>
-
-          {/* Access Code Display */}
-          <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6">
-            <p className="text-sm font-medium text-gray-700 mb-2 text-center">
-              Quiz Access Code
-            </p>
-            <div className="flex items-center justify-center space-x-3">
-              <div className="text-4xl font-bold text-blue-600 tracking-wider">
-                {createdQuiz?.accessCode}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* Success Icon */}
+            <div className="flex justify-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                <Check className="w-10 h-10 text-green-600" />
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleCopyAccessCode}
-                aria-label="Copy access code"
-              >
-                <Icon 
-                  name={copiedCode ? "check" : "copy"} 
-                  size="lg" 
-                  className={copiedCode ? "text-green-600" : "text-gray-600"} 
-                />
-              </Button>
             </div>
-            <p className="text-sm text-gray-600 mt-3 text-center">
-              Share this code with your students to give them access to the quiz
-            </p>
+
+            {/* Access Code Display */}
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6">
+              <p className="text-sm font-medium text-gray-700 mb-2 text-center">
+                Quiz Access Code
+              </p>
+              <div className="flex items-center justify-center space-x-3">
+                <div className="text-4xl font-bold text-blue-600 tracking-wider">
+                  {createdQuiz?.accessCode}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCopyAccessCode}
+                  aria-label="Copy access code"
+                >
+                  {copiedCode ? (
+                    <Check className="h-5 w-5 text-green-600" />
+                  ) : (
+                    <Copy className="h-5 w-5 text-gray-600" />
+                  )}
+                </Button>
+              </div>
+              <p className="text-sm text-gray-600 mt-3 text-center">
+                Share this code with your students to give them access to the quiz
+              </p>
+            </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-3">
+          <DialogFooter className="flex-col sm:flex-row gap-3">
             <Button
               variant="secondary"
               onClick={handleGoToDashboard}
               className="flex-1"
             >
-              <Icon name="home" className="mr-2" />
+              <Home className="mr-2 h-4 w-4" />
               Back to Dashboard
             </Button>
             <Button
-              variant="primary"
               onClick={handleGoToQuizManagement}
               className="flex-1"
             >
               View Quiz Details
-              <Icon name="arrow-right" className="ml-2" />
+              <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
-          </div>
-        </div>
-      </Modal>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Review Content */}
       <div className="space-y-6">
         <div>
           <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            Step 4: Review & Save
+            Review & Save
           </h2>
           <p className="text-gray-600">
             Review your quiz configuration and generated questions before creating
@@ -252,286 +267,287 @@ function ReviewAndSave({
         </div>
 
         {/* Quiz Configuration Summary */}
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Quiz Configuration</h3>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onEditConfig}
-              aria-label="Edit configuration"
-            >
-              <Icon name="edit" size="sm" className="mr-1" />
-              Edit
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-white rounded-lg p-4 shadow-sm">
-              <p className="text-sm text-gray-600 mb-1">Quiz Title</p>
-              <p className="text-base font-semibold text-gray-900">{quizConfig.title}</p>
+        <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Quiz Configuration</CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onEditConfig}
+                aria-label="Edit configuration"
+              >
+                <Edit className="mr-1 h-4 w-4" />
+                Edit
+              </Button>
             </div>
+          </CardHeader>
+          <CardContent>
 
-            <div className="bg-white rounded-lg p-4 shadow-sm">
-              <p className="text-sm text-gray-600 mb-1">Duration</p>
-              <p className="text-base font-semibold text-gray-900">{quizConfig.duration} minutes</p>
-            </div>
-
-            <div className="bg-white rounded-lg p-4 shadow-sm">
-              <p className="text-sm text-gray-600 mb-1">Questions Per Student</p>
-              <p className="text-base font-semibold text-gray-900">
-                {quizConfig.questionsPerStudent} of {generatedQuestions.length} questions
-              </p>
-            </div>
-
-            {quizConfig.startDate && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-white rounded-lg p-4 shadow-sm">
-                <p className="text-sm text-gray-600 mb-1">Starts At</p>
-                <p className="text-base font-semibold text-gray-900">
-                  {new Date(quizConfig.startDate).toLocaleString()}
+                <p className="text-sm text-muted-foreground mb-1">Quiz Title</p>
+                <p className="text-base font-semibold">{quizConfig.title}</p>
+              </div>
+
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <p className="text-sm text-muted-foreground mb-1">Duration</p>
+                <p className="text-base font-semibold">{quizConfig.duration} minutes</p>
+              </div>
+
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <p className="text-sm text-muted-foreground mb-1">Questions Per Student</p>
+                <p className="text-base font-semibold">
+                  {quizConfig.questionsPerStudent} of {generatedQuestions.length} questions
                 </p>
               </div>
-            )}
 
-            <div className="bg-white rounded-lg p-4 shadow-sm">
-              <p className="text-sm text-gray-600 mb-1">Expires At</p>
-              <p className="text-base font-semibold text-gray-900">
-                {new Date(quizConfig.expiresAt).toLocaleString()}
-              </p>
-            </div>
+              {quizConfig.startDate && (
+                <div className="bg-white rounded-lg p-4 shadow-sm">
+                  <p className="text-sm text-muted-foreground mb-1">Starts At</p>
+                  <p className="text-base font-semibold">
+                    {new Date(quizConfig.startDate).toLocaleString()}
+                  </p>
+                </div>
+              )}
 
-            {quizConfig.maxStudents && (
               <div className="bg-white rounded-lg p-4 shadow-sm">
-                <p className="text-sm text-gray-600 mb-1">Maximum Students</p>
-                <p className="text-base font-semibold text-gray-900">{quizConfig.maxStudents}</p>
+                <p className="text-sm text-muted-foreground mb-1">Expires At</p>
+                <p className="text-base font-semibold">
+                  {new Date(quizConfig.expiresAt).toLocaleString()}
+                </p>
               </div>
-            )}
 
-            {quizConfig.subjects.length > 0 && (
+              {quizConfig.maxStudents && (
+                <div className="bg-white rounded-lg p-4 shadow-sm">
+                  <p className="text-sm text-muted-foreground mb-1">Maximum Students</p>
+                  <p className="text-base font-semibold">{quizConfig.maxStudents}</p>
+                </div>
+              )}
+
+              {quizConfig.subjects.length > 0 && (
+                <div className="bg-white rounded-lg p-4 shadow-sm col-span-full">
+                  <p className="text-sm text-muted-foreground mb-2">Subjects</p>
+                  <div className="flex flex-wrap gap-2">
+                    {quizConfig.subjects.map((subject) => (
+                      <Badge key={subject} variant="secondary">
+                        {subject}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="bg-white rounded-lg p-4 shadow-sm col-span-full">
-                <p className="text-sm text-gray-600 mb-2">Subjects</p>
-                <div className="flex flex-wrap gap-2">
-                  {quizConfig.subjects.map((subject) => (
-                    <span
-                      key={subject}
-                      className="px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded-full"
-                    >
-                      {subject}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="bg-white rounded-lg p-4 shadow-sm col-span-full">
-              <p className="text-sm text-gray-600 mb-2">Question Distribution</p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {questionDistribution.multipleChoice > 0 && (
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-blue-600">{questionDistribution.multipleChoice}%</p>
-                    <p className="text-xs text-gray-600">Multiple Choice</p>
-                  </div>
-                )}
-                {questionDistribution.trueFalse > 0 && (
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-green-600">{questionDistribution.trueFalse}%</p>
-                    <p className="text-xs text-gray-600">True/False</p>
-                  </div>
-                )}
-                {questionDistribution.fillInBlank > 0 && (
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-yellow-600">{questionDistribution.fillInBlank}%</p>
-                    <p className="text-xs text-gray-600">Fill-in-the-Blank</p>
-                  </div>
-                )}
-                {questionDistribution.matching > 0 && (
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-purple-600">{questionDistribution.matching}%</p>
-                    <p className="text-xs text-gray-600">Matching</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Generated Questions Preview - Note: Full editing will be in task 16 */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Generated Questions ({generatedQuestions.length})
-            </h3>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onEditContent}
-              aria-label="Change content source"
-            >
-              <Icon name="upload" size="sm" className="mr-1" />
-              Change Content
-            </Button>
-          </div>
-
-          {/* Question Type Summary */}
-          <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-            <p className="text-sm font-medium text-gray-700 mb-2">Questions by Type:</p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {['multipleChoice', 'trueFalse', 'fillInBlank', 'matching'].map((type) => {
-                const count = generatedQuestions.filter((q) => q.type === type).length;
-                if (count === 0) return null;
-                
-                const labels = {
-                  multipleChoice: 'Multiple Choice',
-                  trueFalse: 'True/False',
-                  fillInBlank: 'Fill-in-the-Blank',
-                  matching: 'Matching',
-                };
-                
-                return (
-                  <div key={type} className="text-center">
-                    <p className="text-2xl font-bold text-blue-600">{count}</p>
-                    <p className="text-xs text-gray-600">{labels[type as keyof typeof labels]}</p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-            {generatedQuestions.map((question, index) => (
-              <div
-                key={question._id || index}
-                className="bg-white border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors"
-              >
-                <div className="flex items-start space-x-3">
-                  <div className="flex-shrink-0 w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-semibold text-sm">
-                    {index + 1}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    {/* Question Type Badge */}
-                    <div className="mb-2">
-                      <span className="inline-block px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded">
-                        {question.type === 'multipleChoice' && 'Multiple Choice'}
-                        {question.type === 'trueFalse' && 'True/False'}
-                        {question.type === 'fillInBlank' && 'Fill-in-the-Blank'}
-                        {question.type === 'matching' && 'Matching'}
-                      </span>
+                <p className="text-sm text-muted-foreground mb-2">Question Distribution</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {questionDistribution.multipleChoice > 0 && (
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-blue-600">{questionDistribution.multipleChoice}%</p>
+                      <p className="text-xs text-muted-foreground">Multiple Choice</p>
                     </div>
-                    
-                    <p className="text-base font-medium text-gray-900 mb-3">
-                      {question.question}
-                    </p>
-                    
-                    {/* Display based on question type */}
-                    {question.type === 'multipleChoice' && (
-                      <div className="space-y-2">
-                        {(question as any).options.map((option: string, optionIndex: number) => (
-                          <div
-                            key={optionIndex}
-                            className={`
-                              flex items-start space-x-2 p-2 rounded-md text-sm
-                              ${
-                                optionIndex === (question as any).correctAnswer
-                                  ? 'bg-green-50 border border-green-200'
-                                  : 'bg-gray-50'
-                              }
-                            `}
-                          >
-                            <span className="flex-shrink-0 w-6 h-6 rounded-full border-2 border-gray-300 flex items-center justify-center text-xs font-medium">
-                              {String.fromCharCode(65 + optionIndex)}
-                            </span>
-                            <span className="text-gray-700 flex-1">{option}</span>
-                            {optionIndex === (question as any).correctAnswer && (
-                              <Icon name="check" className="text-green-600 flex-shrink-0" />
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    
-                    {question.type === 'trueFalse' && (
-                      <div className="flex gap-2">
-                        <span className={`px-3 py-1 rounded text-sm font-medium ${
-                          (question as any).correctAnswer === true
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-600'
-                        }`}>
-                          True {(question as any).correctAnswer === true && '✓'}
-                        </span>
-                        <span className={`px-3 py-1 rounded text-sm font-medium ${
-                          (question as any).correctAnswer === false
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-600'
-                        }`}>
-                          False {(question as any).correctAnswer === false && '✓'}
-                        </span>
-                      </div>
-                    )}
-                    
-                    {question.type === 'fillInBlank' && (
-                      <div className="bg-green-50 border border-green-200 rounded p-2">
-                        <p className="text-sm text-gray-700">
-                          <span className="font-medium">Answer:</span> {(question as any).correctAnswer}
-                        </p>
-                      </div>
-                    )}
-                    
-                    {question.type === 'matching' && (
-                      <div className="space-y-2">
-                        {(question as any).correctPairs?.map((pair: any, pairIndex: number) => (
-                          <div key={pairIndex} className="flex items-center gap-2 text-sm bg-gray-50 p-2 rounded">
-                            <span className="text-gray-700">{(question as any).leftColumn[pair.left]}</span>
-                            <Icon name="arrow-right" className="text-gray-400" />
-                            <span className="text-gray-700">{(question as any).rightColumn[pair.right]}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  )}
+                  {questionDistribution.trueFalse > 0 && (
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-green-600">{questionDistribution.trueFalse}%</p>
+                      <p className="text-xs text-muted-foreground">True/False</p>
+                    </div>
+                  )}
+                  {questionDistribution.fillInBlank > 0 && (
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-yellow-600">{questionDistribution.fillInBlank}%</p>
+                      <p className="text-xs text-muted-foreground">Fill-in-the-Blank</p>
+                    </div>
+                  )}
+                  {questionDistribution.matching > 0 && (
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-purple-600">{questionDistribution.matching}%</p>
+                      <p className="text-xs text-muted-foreground">Matching</p>
+                    </div>
+                  )}
                 </div>
               </div>
-            ))}
-          </div>
-          
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-start gap-2">
-              <Icon name="info" className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-blue-800">
-                Question editing will be available in the next update. For now, you can regenerate questions by changing the content source.
-              </p>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
+
+        {/* Generated Questions Preview */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Generated Questions ({generatedQuestions.length})</CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onEditContent}
+                aria-label="Change content source"
+              >
+                <Upload className="mr-1 h-4 w-4" />
+                Change Content
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+
+            {/* Question Type Summary */}
+            <div className="mb-4 p-4 bg-muted rounded-lg">
+              <p className="text-sm font-medium mb-2">Questions by Type:</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {['multipleChoice', 'trueFalse', 'fillInBlank', 'matching'].map((type) => {
+                  const count = generatedQuestions.filter((q) => q.type === type).length;
+                  if (count === 0) return null;
+                  
+                  const labels = {
+                    multipleChoice: 'Multiple Choice',
+                    trueFalse: 'True/False',
+                    fillInBlank: 'Fill-in-the-Blank',
+                    matching: 'Matching',
+                  };
+                  
+                  return (
+                    <div key={type} className="text-center">
+                      <p className="text-2xl font-bold text-blue-600">{count}</p>
+                      <p className="text-xs text-muted-foreground">{labels[type as keyof typeof labels]}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+              {generatedQuestions.map((question, index) => (
+                <Card key={question._id || index} className="hover:border-blue-300 transition-colors">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0 w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-semibold text-sm">
+                        {index + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        {/* Question Type Badge */}
+                        <div className="mb-2">
+                          <Badge variant="secondary">
+                            {question.type === 'multipleChoice' && 'Multiple Choice'}
+                            {question.type === 'trueFalse' && 'True/False'}
+                            {question.type === 'fillInBlank' && 'Fill-in-the-Blank'}
+                            {question.type === 'matching' && 'Matching'}
+                          </Badge>
+                        </div>
+                        
+                        <p className="text-base font-medium mb-3">
+                          {question.question}
+                        </p>
+                        
+                        {/* Display based on question type */}
+                        {question.type === 'multipleChoice' && (
+                          <div className="space-y-2">
+                            {(question as any).options.map((option: string, optionIndex: number) => (
+                              <div
+                                key={optionIndex}
+                                className={`
+                                  flex items-start space-x-2 p-2 rounded-md text-sm
+                                  ${
+                                    optionIndex === (question as any).correctAnswer
+                                      ? 'bg-green-50 border border-green-200'
+                                      : 'bg-muted'
+                                  }
+                                `}
+                              >
+                                <span className="flex-shrink-0 w-6 h-6 rounded-full border-2 border-gray-300 flex items-center justify-center text-xs font-medium">
+                                  {String.fromCharCode(65 + optionIndex)}
+                                </span>
+                                <span className="flex-1">{option}</span>
+                                {optionIndex === (question as any).correctAnswer && (
+                                  <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {question.type === 'trueFalse' && (
+                          <div className="flex gap-2">
+                            <Badge variant={(question as any).correctAnswer === true ? 'default' : 'secondary'}>
+                              True {(question as any).correctAnswer === true && '✓'}
+                            </Badge>
+                            <Badge variant={(question as any).correctAnswer === false ? 'default' : 'secondary'}>
+                              False {(question as any).correctAnswer === false && '✓'}
+                            </Badge>
+                          </div>
+                        )}
+                        
+                        {question.type === 'fillInBlank' && (
+                          <div className="bg-green-50 border border-green-200 rounded p-2">
+                            <p className="text-sm">
+                              <span className="font-medium">Answer:</span> {(question as any).correctAnswer}
+                            </p>
+                          </div>
+                        )}
+                        
+                        {question.type === 'matching' && (
+                          <div className="space-y-2">
+                            {(question as any).correctPairs?.map((pair: any, pairIndex: number) => (
+                              <div key={pairIndex} className="flex items-center gap-2 text-sm bg-muted p-2 rounded">
+                                <span>{(question as any).leftColumn[pair.left]}</span>
+                                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                                <span>{(question as any).rightColumn[pair.right]}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            
+            <Alert className="mt-4">
+              <Info className="h-4 w-4" />
+              <AlertTitle>Note</AlertTitle>
+              <AlertDescription>
+                Question editing will be available in the next update. For now, you can regenerate questions by changing the content source.
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        </Card>
 
         {/* Error Display */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start space-x-3">
-            <Icon name="error" className="text-red-600 mt-0.5 flex-shrink-0" />
-            <p className="text-sm text-red-800">{error}</p>
-          </div>
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
 
         {/* Navigation Buttons */}
-        <div className="flex justify-between pt-6 border-t border-gray-200">
+        <div className="flex justify-between pt-6 border-t">
           <Button
             type="button"
             variant="ghost"
             onClick={onBack}
             disabled={isCreating}
           >
-            <Icon name="arrow-left" className="mr-2" />
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
 
           <Button
             type="button"
-            variant="primary"
             onClick={handleCreateQuiz}
-            loading={isCreating}
             disabled={isCreating}
           >
-            {isCreating ? 'Creating Quiz...' : 'Create Quiz'}
-            {!isCreating && <Icon name="check" className="ml-2" />}
+            {isCreating ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating Quiz...
+              </>
+            ) : (
+              <>
+                Create Quiz
+                <Check className="ml-2 h-4 w-4" />
+              </>
+            )}
           </Button>
         </div>
       </div>
@@ -562,9 +578,8 @@ interface ConfigErrors {
 }
 
 export default function CreateQuizPage() {
-  // Step 0: Template Selection
-  const [currentStep, setCurrentStep] = useState(0);
-  const [selectedTemplate, setSelectedTemplate] = useState<QuizTemplate | null>(null);
+  // Wizard state
+  const [currentStep, setCurrentStep] = useState<WizardStep>('upload');
   
   // Step 1: Content Source Selection
   const [selectedSource, setSelectedSource] = useState<ContentSource | null>(null);
@@ -592,45 +607,6 @@ export default function CreateQuizPage() {
     matching: 0,
   });
   const [configErrors, setConfigErrors] = useState<ConfigErrors>({});
-  
-  // Toast notification state
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [toastType, setToastType] = useState<'success' | 'error' | 'warning' | 'info'>('error');
-
-  // Step 0: Template Selection Handlers
-  const handleTemplateSelect = (template: QuizTemplate | null) => {
-    setSelectedTemplate(template);
-    
-    if (template) {
-      // Pre-fill configuration with template values
-      setQuizConfig((prev) => ({
-        ...prev,
-        duration: template.duration.toString(),
-        questionsPerStudent: template.questionCount.toString(),
-      }));
-      setQuestionDistribution(template.questionDistribution);
-      
-      // Calculate expiration date based on template's expiration period
-      const expirationDate = new Date();
-      expirationDate.setDate(expirationDate.getDate() + template.expirationPeriod);
-      setQuizConfig((prev) => ({
-        ...prev,
-        expiresAt: expirationDate.toISOString().slice(0, 16),
-      }));
-      
-      if (template.subjects && template.subjects.length > 0) {
-        setQuizConfig((prev) => ({
-          ...prev,
-          subjects: template.subjects || [],
-        }));
-      }
-    }
-  };
-
-  const handleTemplateNext = () => {
-    setCurrentStep(1);
-  };
 
   // Step 1: Content Source Selection Handlers
   const handleSourceSelect = (source: ContentSource | null) => {
@@ -722,13 +698,13 @@ export default function CreateQuizPage() {
   };
 
   const handleBackToContent = () => {
-    setCurrentStep(1);
+    setCurrentStep('upload');
     setConfigErrors({});
   };
 
   const handleConfigNext = () => {
     if (validateConfiguration()) {
-      setCurrentStep(4);
+      setCurrentStep('review');
     }
   };
 
@@ -740,7 +716,7 @@ export default function CreateQuizPage() {
     }
 
     // Proceed to AI processing step
-    setCurrentStep(2);
+    setCurrentStep('processing');
     setIsProcessing(true);
     setSourceError('');
 
@@ -845,12 +821,12 @@ export default function CreateQuizPage() {
       // Wait a moment to show completion message
       setTimeout(() => {
         setIsProcessing(false);
-        setCurrentStep(3);
+        setCurrentStep('configure');
       }, 1000);
       
     } catch (err: any) {
       setIsProcessing(false);
-      setCurrentStep(1); // Go back to content selection step
+      setCurrentStep('upload'); // Go back to content selection step
       
       // Display user-friendly error message
       let errorMessage = 'Failed to process content. Please try again.';
@@ -875,463 +851,381 @@ export default function CreateQuizPage() {
       setSourceError(errorMessage);
       
       // Show toast notification
-      setToastType('error');
-      setToastMessage(errorMessage);
-      setShowToast(true);
+      toast.error('Error', {
+        description: errorMessage,
+      });
       
       console.error('AI processing error:', err);
     }
   };
 
   const canProceedFromContent = !!selectedSource;
+  
+  // Determine which step index we're on for the tabs
+  const getStepIndex = () => {
+    return WIZARD_STEPS.findIndex(step => step.id === currentStep);
+  };
 
   return (
-    <>
-      {/* Toast Notification */}
-      {showToast && (
-        <Toast
-          type={toastType}
-          message={toastMessage}
-          onClose={() => setShowToast(false)}
-        />
-      )}
+    <div className="max-w-4xl mx-auto p-6">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-2">Create New Quiz</h1>
+        <p className="text-muted-foreground">
+          Follow the steps to create a new quiz from your content
+        </p>
+      </div>
 
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Create New Quiz</h1>
+      <Tabs value={currentStep} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4">
+          {WIZARD_STEPS.map((step, index) => (
+            <TabsTrigger
+              key={step.id}
+              value={step.id}
+              disabled={index > getStepIndex()}
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <div className="flex flex-col items-center gap-1">
+                <span className="font-semibold">{step.title}</span>
+                <span className="text-xs hidden sm:inline">{step.description}</span>
+              </div>
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
-        <WizardProgress steps={WIZARD_STEPS} currentStep={currentStep} />
-
-        <Card>
-        {/* Step 0: Template Selection */}
-        {currentStep === 0 && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                Step 0: Select a Template (Optional)
-              </h2>
-              <p className="text-gray-600">
-                Choose a template to pre-fill quiz settings, or skip to start from scratch
-              </p>
-            </div>
-
-            <TemplateSelector
-              onSelect={handleTemplateSelect}
-              selectedTemplateId={selectedTemplate?._id}
-            />
-
-            {/* Navigation Buttons */}
-            <div className="flex justify-between pt-6 border-t border-gray-200">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => window.history.back()}
-              >
-                Cancel
-              </Button>
-
-              <Button
-                type="button"
-                variant="primary"
-                onClick={handleTemplateNext}
-              >
-                {selectedTemplate ? 'Next: Content Source' : 'Skip Template'}
-                <Icon name="arrow-right" className="ml-2" />
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 1: Content Source Selection */}
-        {currentStep === 1 && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                Step 1: Select Content Source
-              </h2>
-              <p className="text-gray-600">
+        {/* Step 1: Upload/Content Source Selection */}
+        <TabsContent value="upload" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Select Content Source</CardTitle>
+              <CardDescription>
                 Choose how you want to provide content for AI to generate quiz questions
-              </p>
-            </div>
-
-            <ContentSourceSelector
-              onSourceSelect={handleSourceSelect}
-              selectedSource={selectedSource}
-              error={sourceError}
-            />
-
-            {/* Navigation Buttons */}
-            <div className="flex justify-between pt-6 border-t border-gray-200">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setCurrentStep(0)}
-              >
-                <Icon name="arrow-left" className="mr-2" />
-                Back
-              </Button>
-
-              <Button
-                type="button"
-                variant="primary"
-                onClick={handleContentNext}
-                disabled={!canProceedFromContent}
-              >
-                Next: AI Processing
-                <Icon name="arrow-right" className="ml-2" />
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 2: AI Processing */}
-        {currentStep === 2 && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                Step 2: AI Processing
-              </h2>
-              <p className="text-gray-600">
-                Our AI is analyzing your content and generating quiz questions
-              </p>
-            </div>
-
-            {/* Processing Animation and Status */}
-            <div className="py-12 flex flex-col items-center justify-center">
-              {/* Animated Spinner */}
-              <div className="relative mb-8">
-                <div className="w-24 h-24 border-8 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <svg
-                    className="w-12 h-12 text-blue-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-                    />
-                  </svg>
-                </div>
-              </div>
-
-              {/* Progress Messages */}
-              <div className="text-center space-y-3">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {processingStage === 'extracting' && 'Extracting content...'}
-                  {processingStage === 'generating' && 'Generating questions...'}
-                  {processingStage === 'complete' && 'Complete!'}
-                </h3>
-                
-                <p className="text-gray-600 max-w-md">
-                  {processingStage === 'extracting' && 
-                    'Reading and analyzing your learning material'}
-                  {processingStage === 'generating' && 
-                    'Creating intelligent quiz questions based on the content'}
-                  {processingStage === 'complete' && 
-                    'Questions generated successfully. Proceeding to configuration...'}
-                </p>
-
-                {/* Progress Indicators */}
-                <div className="flex items-center justify-center space-x-2 pt-4">
-                  <div className={`w-3 h-3 rounded-full ${
-                    processingStage === 'extracting' ? 'bg-blue-600 animate-pulse' : 'bg-green-500'
-                  }`}></div>
-                  <div className={`w-3 h-3 rounded-full ${
-                    processingStage === 'generating' ? 'bg-blue-600 animate-pulse' : 
-                    processingStage === 'complete' ? 'bg-green-500' : 'bg-gray-300'
-                  }`}></div>
-                  <div className={`w-3 h-3 rounded-full ${
-                    processingStage === 'complete' ? 'bg-green-500' : 'bg-gray-300'
-                  }`}></div>
-                </div>
-              </div>
-
-              {/* Processing Info */}
-              <div className="mt-8 text-sm text-gray-500 text-center max-w-md">
-                <p>This may take 30-60 seconds depending on the content length.</p>
-                <p className="mt-1">Please do not close this window.</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Step 3: Configuration */}
-        {currentStep === 3 && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                Step 3: Configure Quiz Settings
-              </h2>
-              <p className="text-gray-600">
-                Set up your quiz parameters and preferences
-              </p>
-            </div>
-
-            {/* Success Message */}
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start space-x-3">
-              <svg
-                className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <div>
-                <p className="text-sm font-medium text-green-800">
-                  AI Processing Complete
-                </p>
-                <p className="text-sm text-green-700 mt-1">
-                  Successfully generated {generatedQuestions.length} questions from your content
-                </p>
-              </div>
-            </div>
-
-            {/* Configuration Form */}
-            <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
-              {/* Quiz Title */}
-              <Input
-                type="text"
-                label="Quiz Title"
-                value={quizConfig.title}
-                onChange={(e) => handleConfigChange('title', e.target.value)}
-                error={configErrors.title}
-                placeholder="e.g., Chapter 5: Photosynthesis Quiz"
-                required
-                helperText="Give your quiz a descriptive title"
-                showValidIndicator={true}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <ContentSourceSelector
+                onSourceSelect={handleSourceSelect}
+                selectedSource={selectedSource}
+                error={sourceError}
               />
 
-              {/* Question Distribution */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">Question Type Distribution</h3>
-                <QuestionDistribution
-                  totalQuestions={parseInt(quizConfig.questionsPerStudent) || 10}
-                  distribution={questionDistribution}
-                  onChange={setQuestionDistribution}
-                  mode="percentage"
-                />
-              </div>
-
-              {/* Duration and Questions Per Student - Side by Side */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Duration */}
-                <Input
-                  type="number"
-                  label="Duration (minutes)"
-                  value={quizConfig.duration}
-                  onChange={(e) => handleConfigChange('duration', e.target.value)}
-                  error={configErrors.duration}
-                  placeholder="30"
-                  min="1"
-                  max="300"
-                  required
-                  helperText="Time limit for students to complete the quiz"
-                  showValidIndicator={true}
-                />
-
-                {/* Questions Per Student */}
-                <Input
-                  type="number"
-                  label="Questions Per Student"
-                  value={quizConfig.questionsPerStudent}
-                  onChange={(e) => handleConfigChange('questionsPerStudent', e.target.value)}
-                  error={configErrors.questionsPerStudent}
-                  placeholder="10"
-                  min="1"
-                  max={generatedQuestions.length}
-                  required
-                  helperText={`Max: ${generatedQuestions.length} questions available`}
-                  showValidIndicator={true}
-                />
-              </div>
-
-              {/* Start Date and Max Students - Side by Side */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Start Date (Optional) */}
-                <div>
-                  <label
-                    htmlFor="startDate"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Start Date & Time (Optional)
-                  </label>
-                  <input
-                    type="datetime-local"
-                    id="startDate"
-                    value={quizConfig.startDate}
-                    onChange={(e) => handleConfigChange('startDate', e.target.value)}
-                    className={`
-                      block w-full px-3 py-2 border rounded-lg shadow-sm 
-                      focus:outline-none focus:ring-2 focus:ring-offset-0 transition-colors
-                      ${
-                        configErrors.startDate
-                          ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                          : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-                      }
-                    `}
-                    aria-invalid={!!configErrors.startDate}
-                    aria-describedby={configErrors.startDate ? 'startDate-error' : 'startDate-helper'}
-                  />
-                  {configErrors.startDate && (
-                    <p id="startDate-error" className="mt-1 text-sm text-red-600" role="alert">
-                      {configErrors.startDate}
-                    </p>
-                  )}
-                  {!configErrors.startDate && (
-                    <p id="startDate-helper" className="mt-1 text-sm text-gray-500">
-                      Quiz will be available starting from this date
-                    </p>
-                  )}
-                </div>
-
-                {/* Max Students (Optional) */}
-                <Input
-                  type="number"
-                  label="Maximum Students (Optional)"
-                  value={quizConfig.maxStudents}
-                  onChange={(e) => handleConfigChange('maxStudents', e.target.value)}
-                  error={configErrors.maxStudents}
-                  placeholder="Leave empty for unlimited"
-                  min="1"
-                  helperText="Limit the number of students who can take this quiz"
-                  showValidIndicator={false}
-                />
-              </div>
-
-              {/* Expiration Date/Time */}
-              <div>
-                <label
-                  htmlFor="expiresAt"
-                  className="block text-sm font-medium text-gray-700 mb-1"
+              {/* Navigation Buttons */}
+              <div className="flex justify-between pt-6 border-t">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => window.history.back()}
                 >
-                  Expiration Date & Time
-                  <span className="text-red-500 ml-1">*</span>
-                </label>
-                <input
-                  type="datetime-local"
-                  id="expiresAt"
-                  value={quizConfig.expiresAt}
-                  onChange={(e) => handleConfigChange('expiresAt', e.target.value)}
-                  className={`
-                    block w-full px-3 py-2 border rounded-lg shadow-sm 
-                    focus:outline-none focus:ring-2 focus:ring-offset-0 transition-colors
-                    ${
-                      configErrors.expiresAt
-                        ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                        : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-                    }
-                  `}
-                  required
-                  aria-invalid={!!configErrors.expiresAt}
-                  aria-describedby={configErrors.expiresAt ? 'expiresAt-error' : 'expiresAt-helper'}
-                />
-                {configErrors.expiresAt && (
-                  <p id="expiresAt-error" className="mt-1 text-sm text-red-600" role="alert">
-                    {configErrors.expiresAt}
-                  </p>
-                )}
-                {!configErrors.expiresAt && (
-                  <p id="expiresAt-helper" className="mt-1 text-sm text-gray-500">
-                    Students will not be able to access the quiz after this date and time
-                  </p>
-                )}
-              </div>
+                  Cancel
+                </Button>
 
-              {/* Subjects (Multi-select) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Subjects (Optional)
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {['Math', 'Science', 'History', 'English', 'Geography', 'Physics', 'Chemistry', 'Biology'].map((subject) => (
-                    <button
-                      key={subject}
-                      type="button"
-                      onClick={() => {
-                        const subjects = quizConfig.subjects.includes(subject)
-                          ? quizConfig.subjects.filter((s) => s !== subject)
-                          : [...quizConfig.subjects, subject];
-                        handleConfigChange('subjects', subjects);
-                      }}
-                      className={`px-3 py-1.5 text-sm rounded-full border-2 transition-colors ${
-                        quizConfig.subjects.includes(subject)
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-white text-gray-700 border-gray-300 hover:border-blue-500'
-                      }`}
-                    >
-                      {subject}
-                    </button>
-                  ))}
+                <Button
+                  type="button"
+                  onClick={handleContentNext}
+                  disabled={!canProceedFromContent}
+                >
+                  Next: AI Processing
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Step 2: AI Processing */}
+        <TabsContent value="processing" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>AI Processing</CardTitle>
+              <CardDescription>
+                Our AI is analyzing your content and generating quiz questions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {/* Processing Animation and Status */}
+              <div className="py-12 flex flex-col items-center justify-center">
+                {/* Animated Spinner */}
+                <div className="relative mb-8">
+                  <Loader2 className="h-24 w-24 animate-spin text-primary" />
                 </div>
-                <p className="mt-2 text-sm text-gray-500">
-                  Select one or more subjects to categorize this quiz
-                </p>
-              </div>
 
-              {/* Info Box */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start space-x-3">
-                  <Icon name="info" className="text-blue-600 mt-0.5 flex-shrink-0" />
-                  <div className="text-sm text-blue-800">
-                    <p className="font-medium mb-1">About Question Randomization</p>
-                    <p>
-                      Each student will receive a random selection of{' '}
-                      <span className="font-semibold">{quizConfig.questionsPerStudent || '?'}</span>{' '}
-                      questions from the pool of{' '}
-                      <span className="font-semibold">{generatedQuestions.length}</span>{' '}
-                      generated questions. This ensures academic integrity while maintaining fairness.
+                {/* Progress Messages */}
+                <div className="text-center space-y-3">
+                  <h3 className="text-lg font-semibold">
+                    {processingStage === 'extracting' && 'Extracting content...'}
+                    {processingStage === 'generating' && 'Generating questions...'}
+                    {processingStage === 'complete' && 'Complete!'}
+                  </h3>
+                  
+                  <p className="text-muted-foreground max-w-md">
+                    {processingStage === 'extracting' && 
+                      'Reading and analyzing your learning material'}
+                    {processingStage === 'generating' && 
+                      'Creating intelligent quiz questions based on the content'}
+                    {processingStage === 'complete' && 
+                      'Questions generated successfully. Proceeding to configuration...'}
+                  </p>
+
+                  {/* Progress Indicators */}
+                  <div className="flex items-center justify-center space-x-2 pt-4">
+                    <div className={`w-3 h-3 rounded-full ${
+                      processingStage === 'extracting' ? 'bg-primary animate-pulse' : 'bg-green-500'
+                    }`}></div>
+                    <div className={`w-3 h-3 rounded-full ${
+                      processingStage === 'generating' ? 'bg-primary animate-pulse' : 
+                      processingStage === 'complete' ? 'bg-green-500' : 'bg-muted'
+                    }`}></div>
+                    <div className={`w-3 h-3 rounded-full ${
+                      processingStage === 'complete' ? 'bg-green-500' : 'bg-muted'
+                    }`}></div>
+                  </div>
+                </div>
+
+                {/* Processing Info */}
+                <div className="mt-8 text-sm text-muted-foreground text-center max-w-md">
+                  <p>This may take 30-60 seconds depending on the content length.</p>
+                  <p className="mt-1">Please do not close this window.</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Step 3: Configuration */}
+        <TabsContent value="configure" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Configure Quiz Settings</CardTitle>
+              <CardDescription>
+                Set up your quiz parameters and preferences
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Success Message */}
+              <Alert>
+                <Check className="h-4 w-4" />
+                <AlertTitle>AI Processing Complete</AlertTitle>
+                <AlertDescription>
+                  Successfully generated {generatedQuestions.length} questions from your content
+                </AlertDescription>
+              </Alert>
+
+              {/* Configuration Form */}
+              <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+                {/* Quiz Title */}
+                <div className="space-y-2">
+                  <Label htmlFor="title">
+                    Quiz Title <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="title"
+                    type="text"
+                    value={quizConfig.title}
+                    onChange={(e) => handleConfigChange('title', e.target.value)}
+                    placeholder="e.g., Chapter 5: Photosynthesis Quiz"
+                    required
+                  />
+                  {configErrors.title && (
+                    <p className="text-sm text-destructive">{configErrors.title}</p>
+                  )}
+                  <p className="text-sm text-muted-foreground">
+                    Give your quiz a descriptive title
+                  </p>
+                </div>
+
+                {/* Question Distribution */}
+                <div className="space-y-3">
+                  <Label>Question Type Distribution</Label>
+                  <QuestionDistribution
+                    totalQuestions={parseInt(quizConfig.questionsPerStudent) || 10}
+                    distribution={questionDistribution}
+                    onChange={setQuestionDistribution}
+                    mode="percentage"
+                  />
+                </div>
+
+                {/* Duration and Questions Per Student - Side by Side */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Duration */}
+                  <div className="space-y-2">
+                    <Label htmlFor="duration">
+                      Duration (minutes) <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="duration"
+                      type="number"
+                      value={quizConfig.duration}
+                      onChange={(e) => handleConfigChange('duration', e.target.value)}
+                      placeholder="30"
+                      min="1"
+                      max="300"
+                      required
+                    />
+                    {configErrors.duration && (
+                      <p className="text-sm text-destructive">{configErrors.duration}</p>
+                    )}
+                    <p className="text-sm text-muted-foreground">
+                      Time limit for students to complete the quiz
+                    </p>
+                  </div>
+
+                  {/* Questions Per Student */}
+                  <div className="space-y-2">
+                    <Label htmlFor="questionsPerStudent">
+                      Questions Per Student <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="questionsPerStudent"
+                      type="number"
+                      value={quizConfig.questionsPerStudent}
+                      onChange={(e) => handleConfigChange('questionsPerStudent', e.target.value)}
+                      placeholder="10"
+                      min="1"
+                      max={generatedQuestions.length}
+                      required
+                    />
+                    {configErrors.questionsPerStudent && (
+                      <p className="text-sm text-destructive">{configErrors.questionsPerStudent}</p>
+                    )}
+                    <p className="text-sm text-muted-foreground">
+                      Max: {generatedQuestions.length} questions available
                     </p>
                   </div>
                 </div>
+
+                {/* Start Date and Max Students - Side by Side */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Start Date (Optional) */}
+                  <div className="space-y-2">
+                    <Label htmlFor="startDate">Start Date & Time (Optional)</Label>
+                    <Input
+                      id="startDate"
+                      type="datetime-local"
+                      value={quizConfig.startDate}
+                      onChange={(e) => handleConfigChange('startDate', e.target.value)}
+                    />
+                    {configErrors.startDate && (
+                      <p className="text-sm text-destructive">{configErrors.startDate}</p>
+                    )}
+                    <p className="text-sm text-muted-foreground">
+                      Quiz will be available starting from this date
+                    </p>
+                  </div>
+
+                  {/* Max Students (Optional) */}
+                  <div className="space-y-2">
+                    <Label htmlFor="maxStudents">Maximum Students (Optional)</Label>
+                    <Input
+                      id="maxStudents"
+                      type="number"
+                      value={quizConfig.maxStudents}
+                      onChange={(e) => handleConfigChange('maxStudents', e.target.value)}
+                      placeholder="Leave empty for unlimited"
+                      min="1"
+                    />
+                    {configErrors.maxStudents && (
+                      <p className="text-sm text-destructive">{configErrors.maxStudents}</p>
+                    )}
+                    <p className="text-sm text-muted-foreground">
+                      Limit the number of students who can take this quiz
+                    </p>
+                  </div>
+                </div>
+
+                {/* Expiration Date/Time */}
+                <div className="space-y-2">
+                  <Label htmlFor="expiresAt">
+                    Expiration Date & Time <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="expiresAt"
+                    type="datetime-local"
+                    value={quizConfig.expiresAt}
+                    onChange={(e) => handleConfigChange('expiresAt', e.target.value)}
+                    required
+                  />
+                  {configErrors.expiresAt && (
+                    <p className="text-sm text-destructive">{configErrors.expiresAt}</p>
+                  )}
+                  <p className="text-sm text-muted-foreground">
+                    Students will not be able to access the quiz after this date and time
+                  </p>
+                </div>
+
+                {/* Subjects (Multi-select) */}
+                <div className="space-y-2">
+                  <Label>Subjects (Optional)</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {['Math', 'Science', 'History', 'English', 'Geography', 'Physics', 'Chemistry', 'Biology'].map((subject) => (
+                      <Badge
+                        key={subject}
+                        variant={quizConfig.subjects.includes(subject) ? 'default' : 'outline'}
+                        className="cursor-pointer"
+                        onClick={() => {
+                          const subjects = quizConfig.subjects.includes(subject)
+                            ? quizConfig.subjects.filter((s) => s !== subject)
+                            : [...quizConfig.subjects, subject];
+                          handleConfigChange('subjects', subjects);
+                        }}
+                      >
+                        {subject}
+                      </Badge>
+                    ))}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Select one or more subjects to categorize this quiz
+                  </p>
+                </div>
+
+                {/* Info Box */}
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertTitle>About Question Randomization</AlertTitle>
+                  <AlertDescription>
+                    Each student will receive a random selection of{' '}
+                    <span className="font-semibold">{quizConfig.questionsPerStudent || '?'}</span>{' '}
+                    questions from the pool of{' '}
+                    <span className="font-semibold">{generatedQuestions.length}</span>{' '}
+                    generated questions. This ensures academic integrity while maintaining fairness.
+                  </AlertDescription>
+                </Alert>
+              </form>
+
+              {/* Navigation Buttons */}
+              <div className="flex justify-between pt-6 border-t">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={handleBackToContent}
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back
+                </Button>
+
+                <Button
+                  type="button"
+                  onClick={handleConfigNext}
+                >
+                  Next: Review
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
               </div>
-            </form>
-
-            {/* Navigation Buttons */}
-            <div className="flex justify-between pt-6 border-t border-gray-200">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={handleBackToContent}
-              >
-                <Icon name="arrow-left" className="mr-2" />
-                Back
-              </Button>
-
-              <Button
-                type="button"
-                variant="primary"
-                onClick={handleConfigNext}
-              >
-                Next: Review
-                <Icon name="arrow-right" className="ml-2" />
-              </Button>
-            </div>
-          </div>
-        )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         {/* Step 4: Review & Save */}
-        {currentStep === 4 && (
+        <TabsContent value="review" className="space-y-6">
           <ReviewAndSave
             quizConfig={quizConfig}
             questionDistribution={questionDistribution}
             generatedQuestions={generatedQuestions}
             selectedSource={selectedSource}
-            onBack={() => setCurrentStep(3)}
-            onEditConfig={() => setCurrentStep(3)}
-            onEditContent={() => setCurrentStep(1)}
+            onBack={() => setCurrentStep('configure')}
+            onEditConfig={() => setCurrentStep('configure')}
+            onEditContent={() => setCurrentStep('upload')}
           />
-        )}
-      </Card>
-      </div>
-    </>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }

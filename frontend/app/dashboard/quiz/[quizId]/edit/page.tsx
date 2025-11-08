@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { apiClient, APIRequestError } from '@/lib/api';
 import { useToast } from '@/contexts/ToastContext';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
-import { Card } from '@/components/ui/Card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SkeletonLoader } from '@/components/ui/SkeletonLoader';
 import { QuestionEditor } from '@/components/quiz/QuestionEditor';
 import type { Quiz, Question } from '@/types';
@@ -152,7 +152,7 @@ export default function EditQuestionsPage() {
             Error Loading Quiz
           </h3>
           <p className="text-gray-600 mb-6">{error}</p>
-          <Button variant="primary" onClick={() => router.push('/dashboard')}>
+          <Button variant="default" onClick={() => router.push('/dashboard')}>
             Back to Dashboard
           </Button>
         </Card>
@@ -201,9 +201,9 @@ export default function EditQuestionsPage() {
                 Unsaved changes
               </span>
               <Button
-                variant="primary"
+                variant="default"
                 onClick={handleSaveAllChanges}
-                loading={isSaving}
+                disabled={isSaving}
               >
                 <Icon name="check" className="mr-2" />
                 Save All Changes
@@ -301,7 +301,7 @@ export default function EditQuestionsPage() {
                         )}
                       </div>
                       <Button
-                        variant="secondary"
+                        variant="outline"
                         size="sm"
                         onClick={() => setEditingQuestionId(question._id)}
                       >
@@ -324,11 +324,10 @@ export default function EditQuestionsPage() {
             Cancel
           </Button>
           <Button
-            variant="primary"
+            variant="default"
             size="lg"
             onClick={handleSaveAllChanges}
-            loading={isSaving}
-            disabled={!hasUnsavedChanges}
+            disabled={!hasUnsavedChanges || isSaving}
           >
             <Icon name="check" className="mr-2" />
             Save All Changes

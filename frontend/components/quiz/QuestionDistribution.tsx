@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { QuizDistribution } from '@/types';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 
 export interface QuestionDistributionProps {
   totalQuestions: number;

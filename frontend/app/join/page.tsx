@@ -1,419 +1,237 @@
 'use client';
 
-import PublicLayout from '@/components/layout/PublicLayout';
-import { Button, Icon } from '@/components/ui';
-import { Input } from '@/components/ui';
-import { Toast } from '@/components/ui/Toast';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { joinQuizSchema, type JoinQuizFormData } from '@/lib/validations';
 import { apiClient, APIRequestError } from '@/lib/api';
-import type { QuizInfo, StudentInfo } from '@/types';
+import PublicLayout from '@/components/layout/PublicLayout';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertCircle, GraduationCap } from 'lucide-react';
 
 export default function JoinPage() {
   const router = useRouter();
-  const [step, setStep] = useState<'code' | 'info'>('code');
-  const [accessCode, setAccessCode] = useState('');
-  const [quizInfo, setQuizInfo] = useState<QuizInfo | null>(null);
-  const [studentInfo, setStudentInfo] = useState<StudentInfo>({});
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [toast, setToast] = useState<{ type: 'success' | 'error' | 'warning' | 'info'; message: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const validateCode = () => {
-    const newErrors: Record<string, string> = {};
+  const form = useForm<JoinQuizFormData>({
+    resolver: zodResolver(joinQuizSchema),
+    defaultValues: {
+      quizCode: '',
+      studentName: '',
+      studentId: '',
+      school: '',
+    },
+  });
 
-    if (!accessCode.trim()) {
-      newErrors.accessCode = 'Quiz access code is required';
-    } else if (accessCode.length !== 6) {
-      newErrors.accessCode = 'Access code must be 6 characters';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const validateStudentInfo = () => {
-    const newErrors: Record<string, string> = {};
-    const requirements = quizInfo?.studentInfoRequirements;
-
-    if (!requirements) return true;
-
-    if (requirements.firstName && !studentInfo.firstName?.trim()) {
-      newErrors.firstName = 'First name is required';
-    }
-
-    if (requirements.middleName && !studentInfo.middleName?.trim()) {
-      newErrors.middleName = 'Middle name is required';
-    }
-
-    if (requirements.lastName && !studentInfo.lastName?.trim()) {
-      newErrors.lastName = 'Last name is required';
-    }
-
-    if (requirements.studentId && !studentInfo.studentId?.trim()) {
-      newErrors.studentId = 'Student ID is required';
-    }
-
-    if (requirements.course && !studentInfo.course?.trim()) {
-      newErrors.course = 'Course is required';
-    }
-
-    if (requirements.year && !studentInfo.year?.trim()) {
-      newErrors.year = 'Year is required';
-    }
-
-    if (requirements.section && !studentInfo.section?.trim()) {
-      newErrors.section = 'Section is required';
-    }
-
-    if (requirements.email && !studentInfo.email?.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (requirements.email && studentInfo.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(studentInfo.email)) {
-      newErrors.email = 'Invalid email format';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleCodeSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!validateCode()) {
-      return;
-    }
-
+  const onSubmit = async (data: JoinQuizFormData) => {
     setIsLoading(true);
-    setErrors({});
+    setError(null);
 
     try {
-      const code = accessCode.toUpperCase();
+      const code = data.quizCode.toUpperCase();
       
-      // Call API to validate quiz code
-      const info = await apiClient.validateQuizCode(code);
-      setQuizInfo(info);
+      // Validate quiz code with API
+      await apiClient.validateQuizCode(code);
       
-      // Move to student info step
-      setStep('info');
-      setToast({ type: 'success', message: 'Quiz found! Please enter your information.' });
-    } catch (error) {
-      console.error('Error validating quiz code:', error);
+      // Store student info in sessionStorage
+      sessionStorage.setItem('studentInfo', JSON.stringify({
+        firstName: data.studentName.split(' ')[0],
+        lastName: data.studentName.split(' ').slice(1).join(' ') || data.studentName,
+        studentId: data.studentId,
+        school: data.school,
+      }));
+
+      // Navigate to quiz lobby
+      router.push(`/quiz/${code}/start`);
+    } catch (err) {
+      console.error('Error validating quiz code:', err);
       
-      if (error instanceof APIRequestError) {
-        if (error.status === 404) {
-          setErrors({ accessCode: 'Invalid quiz code. Please check and try again.' });
-          setToast({ type: 'error', message: 'Invalid quiz code' });
-        } else if (error.status === 400) {
-          const errorMsg = error.message.toLowerCase();
+      if (err instanceof APIRequestError) {
+        if (err.status === 404) {
+          setError('Invalid quiz code. Please check and try again.');
+        } else if (err.status === 400) {
+          const errorMsg = err.message.toLowerCase();
           
           if (errorMsg.includes('not started') || errorMsg.includes('has not started yet')) {
-            setErrors({ accessCode: error.message });
-            setToast({ type: 'warning', message: 'Quiz has not started yet' });
+            setError('This quiz has not started yet. Please try again later.');
           } else if (errorMsg.includes('expired') || errorMsg.includes('no longer available')) {
-            setErrors({ accessCode: error.message });
-            setToast({ type: 'error', message: 'Quiz has expired' });
+            setError('This quiz has expired and is no longer available.');
           } else if (errorMsg.includes('maximum') || errorMsg.includes('full') || errorMsg.includes('reached')) {
-            setErrors({ accessCode: error.message });
-            setToast({ type: 'warning', message: 'Quiz is full' });
+            setError('This quiz has reached its maximum number of participants.');
           } else {
-            setErrors({ accessCode: error.message });
-            setToast({ type: 'error', message: error.message });
+            setError(err.message);
           }
         } else {
-          setErrors({ accessCode: 'Unable to validate quiz code. Please try again.' });
-          setToast({ type: 'error', message: 'Server error. Please try again later.' });
+          setError('Unable to validate quiz code. Please try again.');
         }
       } else {
-        setErrors({ accessCode: 'Network error. Please check your connection.' });
-        setToast({ type: 'error', message: 'Network error. Please check your connection.' });
+        setError('Network error. Please check your connection and try again.');
       }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleInfoSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!validateStudentInfo()) {
-      return;
-    }
-
-    // Store student info in sessionStorage
-    sessionStorage.setItem('studentInfo', JSON.stringify(studentInfo));
-
-    // Navigate to quiz lobby
-    router.push(`/quiz/${accessCode.toUpperCase()}/start`);
-  };
-
-  const handleChange = (field: string, value: string) => {
-    if (field === 'accessCode') {
-      setAccessCode(value);
-    } else {
-      setStudentInfo(prev => ({ ...prev, [field]: value }));
-    }
-    
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
-    }
-  };
-
-  const handleBack = () => {
-    setStep('code');
-    setErrors({});
-  };
-
   return (
     <PublicLayout>
-      {toast && (
-        <Toast
-          type={toast.type}
-          message={toast.message}
-          onClose={() => setToast(null)}
-        />
-      )}
-      
-      <main id="main-content" className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
+      <main className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
         <div className="max-w-md mx-auto">
-          <div className="bg-white rounded-xl shadow-lg p-8">
-            <div className="text-center mb-8">
-              <div className="flex justify-center mb-4">
-                <Icon name="graduation-cap" className="w-16 h-16 text-blue-600" />
+          <Card className="shadow-lg">
+            <CardHeader className="text-center space-y-4">
+              <div className="flex justify-center">
+                <div className="rounded-full bg-blue-100 p-4">
+                  <GraduationCap className="w-12 h-12 text-blue-600" />
+                </div>
               </div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Join Quiz
-              </h1>
-              <p className="text-gray-600">
-                Enter your information and quiz code to get started
-              </p>
-            </div>
+              <div>
+                <CardTitle className="text-3xl font-bold">Join Quiz</CardTitle>
+                <CardDescription className="text-base mt-2">
+                  Enter your quiz code and information to get started
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {error && (
+                <Alert variant="destructive" className="mb-6">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
 
-            {step === 'code' ? (
-              <form onSubmit={handleCodeSubmit} className="space-y-6" aria-label="Enter quiz code">
-                <Input
-                  type="text"
-                  label="Quiz Access Code"
-                  value={accessCode}
-                  onChange={(e) => handleChange('accessCode', e.target.value.toUpperCase())}
-                  error={errors.accessCode}
-                  required
-                  placeholder="Enter 6-character code"
-                  maxLength={6}
-                  disabled={isLoading}
-                  showValidIndicator={true}
-                  autoFocus
-                />
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="quizCode" className="text-base font-semibold">
+                    Quiz Code
+                  </Label>
+                  <Input
+                    id="quizCode"
+                    type="text"
+                    placeholder="ABC123"
+                    maxLength={6}
+                    className="text-2xl font-bold text-center uppercase tracking-widest h-14"
+                    {...form.register('quizCode')}
+                    onChange={(e) => {
+                      const value = e.target.value.toUpperCase();
+                      form.setValue('quizCode', value);
+                    }}
+                    disabled={isLoading}
+                    autoFocus
+                  />
+                  {form.formState.errors.quizCode && (
+                    <p className="text-sm text-destructive">
+                      {form.formState.errors.quizCode.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="studentName" className="text-base">
+                    Your Name
+                  </Label>
+                  <Input
+                    id="studentName"
+                    type="text"
+                    placeholder="Enter your full name"
+                    {...form.register('studentName')}
+                    disabled={isLoading}
+                  />
+                  {form.formState.errors.studentName && (
+                    <p className="text-sm text-destructive">
+                      {form.formState.errors.studentName.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="studentId" className="text-base">
+                    Student ID <span className="text-muted-foreground">(Optional)</span>
+                  </Label>
+                  <Input
+                    id="studentId"
+                    type="text"
+                    placeholder="Enter your student ID"
+                    {...form.register('studentId')}
+                    disabled={isLoading}
+                  />
+                  {form.formState.errors.studentId && (
+                    <p className="text-sm text-destructive">
+                      {form.formState.errors.studentId.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="school" className="text-base">
+                    School
+                  </Label>
+                  <Input
+                    id="school"
+                    type="text"
+                    placeholder="Enter your school name"
+                    {...form.register('school')}
+                    disabled={isLoading}
+                  />
+                  {form.formState.errors.school && (
+                    <p className="text-sm text-destructive">
+                      {form.formState.errors.school.message}
+                    </p>
+                  )}
+                </div>
 
                 <Button
                   type="submit"
-                  variant="primary"
                   size="lg"
-                  loading={isLoading}
-                  disabled={isLoading}
                   className="w-full"
-                  aria-label={isLoading ? "Validating code..." : "Continue to student information"}
+                  disabled={isLoading}
                 >
-                  {isLoading ? 'Validating...' : 'Continue'}
+                  {isLoading ? 'Validating...' : 'Join Quiz'}
                 </Button>
               </form>
-            ) : (
-              <form onSubmit={handleInfoSubmit} className="space-y-6" aria-label="Enter student information">
-                <div className="bg-blue-50 rounded-lg p-4 mb-4">
-                  <p className="text-sm text-gray-700">
-                    <span className="font-semibold">Quiz:</span> {quizInfo?.title}
-                  </p>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Please provide your information to continue
-                  </p>
-                </div>
 
-                {quizInfo?.studentInfoRequirements?.firstName && (
-                  <Input
-                    type="text"
-                    label="First Name"
-                    value={studentInfo.firstName || ''}
-                    onChange={(e) => handleChange('firstName', e.target.value)}
-                    error={errors.firstName}
-                    required
-                    placeholder="Enter your first name"
-                    disabled={isLoading}
-                    showValidIndicator={true}
-                  />
-                )}
-
-                {quizInfo?.studentInfoRequirements?.middleName && (
-                  <Input
-                    type="text"
-                    label="Middle Name"
-                    value={studentInfo.middleName || ''}
-                    onChange={(e) => handleChange('middleName', e.target.value)}
-                    error={errors.middleName}
-                    required
-                    placeholder="Enter your middle name"
-                    disabled={isLoading}
-                    showValidIndicator={true}
-                  />
-                )}
-
-                {quizInfo?.studentInfoRequirements?.lastName && (
-                  <Input
-                    type="text"
-                    label="Last Name"
-                    value={studentInfo.lastName || ''}
-                    onChange={(e) => handleChange('lastName', e.target.value)}
-                    error={errors.lastName}
-                    required
-                    placeholder="Enter your last name"
-                    disabled={isLoading}
-                    showValidIndicator={true}
-                  />
-                )}
-
-                {quizInfo?.studentInfoRequirements?.suffix && (
-                  <Input
-                    type="text"
-                    label="Suffix"
-                    value={studentInfo.suffix || ''}
-                    onChange={(e) => handleChange('suffix', e.target.value)}
-                    error={errors.suffix}
-                    required
-                    placeholder="Jr., Sr., III, etc."
-                    disabled={isLoading}
-                    showValidIndicator={true}
-                  />
-                )}
-
-                {quizInfo?.studentInfoRequirements?.studentId && (
-                  <Input
-                    type="text"
-                    label="Student ID"
-                    value={studentInfo.studentId || ''}
-                    onChange={(e) => handleChange('studentId', e.target.value)}
-                    error={errors.studentId}
-                    required
-                    placeholder="Enter your student ID"
-                    disabled={isLoading}
-                    showValidIndicator={true}
-                  />
-                )}
-
-                {quizInfo?.studentInfoRequirements?.course && (
-                  <Input
-                    type="text"
-                    label="Course"
-                    value={studentInfo.course || ''}
-                    onChange={(e) => handleChange('course', e.target.value)}
-                    error={errors.course}
-                    required
-                    placeholder="e.g., Computer Science"
-                    disabled={isLoading}
-                    showValidIndicator={true}
-                  />
-                )}
-
-                {quizInfo?.studentInfoRequirements?.year && (
-                  <Input
-                    type="text"
-                    label="Year Level"
-                    value={studentInfo.year || ''}
-                    onChange={(e) => handleChange('year', e.target.value)}
-                    error={errors.year}
-                    required
-                    placeholder="e.g., 1st Year, 2nd Year"
-                    disabled={isLoading}
-                    showValidIndicator={true}
-                  />
-                )}
-
-                {quizInfo?.studentInfoRequirements?.section && (
-                  <Input
-                    type="text"
-                    label="Section"
-                    value={studentInfo.section || ''}
-                    onChange={(e) => handleChange('section', e.target.value)}
-                    error={errors.section}
-                    required
-                    placeholder="Enter your section"
-                    disabled={isLoading}
-                    showValidIndicator={true}
-                  />
-                )}
-
-                {quizInfo?.studentInfoRequirements?.email && (
-                  <Input
-                    type="email"
-                    label="Email"
-                    value={studentInfo.email || ''}
-                    onChange={(e) => handleChange('email', e.target.value)}
-                    error={errors.email}
-                    required
-                    placeholder="your.email@example.com"
-                    disabled={isLoading}
-                    showValidIndicator={true}
-                  />
-                )}
-
-                <div className="flex gap-3">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="lg"
-                    onClick={handleBack}
-                    disabled={isLoading}
-                    className="flex-1"
-                  >
-                    Back
-                  </Button>
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    size="lg"
-                    loading={isLoading}
-                    disabled={isLoading}
-                    className="flex-1"
-                    aria-label="Proceed to quiz"
-                  >
-                    Join Quiz
-                  </Button>
-                </div>
-              </form>
-            )}
-
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
-                Don't have a quiz code?{' '}
-                <span className="text-blue-600">
-                  Ask your teacher for the access code
-                </span>
-              </p>
-            </div>
-          </div>
+              <div className="mt-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Don't have a quiz code?{' '}
+                  <span className="text-blue-600 font-medium">
+                    Ask your teacher for the access code
+                  </span>
+                </p>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Info Section */}
-          <section className="mt-8 bg-blue-50 rounded-lg p-6" aria-labelledby="quiz-instructions">
-            <h2 id="quiz-instructions" className="font-semibold text-gray-900 mb-3">
-              Before you start:
-            </h2>
-            <ul className="space-y-2 text-sm text-gray-700">
-              <li className="flex items-start">
-                <span className="text-blue-600 mr-2" aria-hidden="true">•</span>
-                Make sure you have a stable internet connection
-              </li>
-              <li className="flex items-start">
-                <span className="text-blue-600 mr-2" aria-hidden="true">•</span>
-                The quiz will have a countdown timer
-              </li>
-              <li className="flex items-start">
-                <span className="text-blue-600 mr-2" aria-hidden="true">•</span>
-                Your quiz will auto-submit when time expires
-              </li>
-              <li className="flex items-start">
-                <span className="text-blue-600 mr-2" aria-hidden="true">•</span>
-                You cannot pause or restart once you begin
-              </li>
-            </ul>
-          </section>
+          <Card className="mt-6 bg-blue-50 border-blue-200">
+            <CardHeader>
+              <CardTitle className="text-lg">Before you start:</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm text-gray-700">
+                <li className="flex items-start">
+                  <span className="text-blue-600 mr-2">•</span>
+                  Make sure you have a stable internet connection
+                </li>
+                <li className="flex items-start">
+                  <span className="text-blue-600 mr-2">•</span>
+                  The quiz will have a countdown timer
+                </li>
+                <li className="flex items-start">
+                  <span className="text-blue-600 mr-2">•</span>
+                  Your quiz will auto-submit when time expires
+                </li>
+                <li className="flex items-start">
+                  <span className="text-blue-600 mr-2">•</span>
+                  You cannot pause or restart once you begin
+                </li>
+              </ul>
+            </CardContent>
+          </Card>
         </div>
       </main>
     </PublicLayout>

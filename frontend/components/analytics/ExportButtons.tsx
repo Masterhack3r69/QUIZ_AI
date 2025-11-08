@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
 import type { Analytics, Quiz } from '@/types';
 
@@ -69,8 +69,8 @@ export function ExportButtons({ analytics, quiz }: ExportButtonsProps) {
     <>
       <div className="flex flex-wrap gap-2">
         <Button
-          variant="secondary"
-          size="md"
+          variant="outline"
+          size="default"
           onClick={handleExportPDF}
           disabled={isExporting}
           aria-label="Export analytics to PDF"
@@ -88,8 +88,8 @@ export function ExportButtons({ analytics, quiz }: ExportButtonsProps) {
           )}
         </Button>
         <Button
-          variant="secondary"
-          size="md"
+          variant="outline"
+          size="default"
           onClick={handleExportExcel}
           disabled={isExporting}
           aria-label="Export analytics to Excel"

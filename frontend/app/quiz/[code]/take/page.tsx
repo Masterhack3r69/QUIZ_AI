@@ -2,11 +2,16 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import PublicLayout from '@/components/layout/PublicLayout';
-import { Button, Icon } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Progress } from '@/components/ui/progress';
+import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/contexts/ToastContext';
 import Timer from '@/components/quiz/Timer';
 import { QuestionCard } from '@/components/quiz/QuestionCard';
-import { Toast } from '@/components/ui/Toast';
+import { Clock, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 import type { Question, QuestionType } from '@/types';
 
 interface QuizSessionData {
@@ -86,14 +91,14 @@ export default function QuizTakePage() {
   const params = useParams();
   const router = useRouter();
   const accessCode = params.code as string;
+  const { showError, showWarning, showSuccess } = useToast();
 
   const [quizSession, setQuizSession] = useState<QuizSessionData | null>(null);
   const [studentInfo, setStudentInfo] = useState<StudentInfo | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Map<string, number | boolean | string | { left: number; right: number }[]>>(new Map());
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [toast, setToast] = useState<{ type: 'success' | 'error' | 'warning' | 'info'; message: string } | null>(null);
-  const [showNavigationWarning, setShowNavigationWarning] = useState(false);
+  const [showAutoSubmitDialog, setShowAutoSubmitDialog] = useState(false);
   
   const hasSubmittedRef = useRef(false);
 
@@ -105,7 +110,7 @@ export default function QuizTakePage() {
     const currentQuestionStr = sessionStorage.getItem(CURRENT_QUESTION_KEY);
 
     if (!sessionStr || !studentInfoStr) {
-      setToast({ type: 'error', message: 'Quiz session not found. Please start the quiz again.' });
+      showError('Quiz session not found. Please start the quiz again.');
       setTimeout(() => {
         router.push('/join');
       }, 2000);
@@ -134,7 +139,7 @@ export default function QuizTakePage() {
       }
     } catch (error) {
       console.error('Error parsing session data:', error);
-      setToast({ type: 'error', message: 'Invalid session data. Please start the quiz again.' });
+      showError('Invalid session data. Please start the quiz again.');
       setTimeout(() => {
         router.push('/join');
       }, 2000);
@@ -255,19 +260,16 @@ export default function QuizTakePage() {
       console.error('Error submitting quiz:', error);
       hasSubmittedRef.current = false;
       setIsSubmitting(false);
-      setToast({ 
-        type: 'error', 
-        message: 'Failed to submit quiz. Please try again.' 
-      });
+      showError('Failed to submit quiz. Please try again.');
     }
-  }, [quizSession, studentInfo, answers, accessCode, router]);
+  }, [quizSession, studentInfo, answers, accessCode, router, showError]);
 
   const handleTimerExpire = useCallback(() => {
-    setToast({ 
-      type: 'warning', 
-      message: 'Time is up! Submitting your quiz...' 
-    });
-    submitQuiz(true);
+    setShowAutoSubmitDialog(true);
+    // Auto-submit after showing dialog
+    setTimeout(() => {
+      submitQuiz(true);
+    }, 2000);
   }, [submitQuiz]);
 
   const isQuestionAnswered = (question: Question): boolean => {
@@ -295,10 +297,7 @@ export default function QuizTakePage() {
     const allAnswered = quizSession.questions.every(q => isQuestionAnswered(q));
     
     if (!allAnswered) {
-      setToast({ 
-        type: 'warning', 
-        message: 'Please answer all questions before submitting.' 
-      });
+      showWarning('Please answer all questions before submitting.');
       return;
     }
 
@@ -307,16 +306,16 @@ export default function QuizTakePage() {
 
   if (!quizSession || !studentInfo) {
     return (
-      <PublicLayout>
-        <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-          <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full mx-4">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="pt-6">
             <div className="flex flex-col items-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-              <p className="text-gray-600">Loading quiz...</p>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+              <p className="text-muted-foreground">Loading quiz...</p>
             </div>
-          </div>
-        </div>
-      </PublicLayout>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
@@ -324,178 +323,204 @@ export default function QuizTakePage() {
   const selectedAnswer = answers.get(currentQuestion._id);
   const allAnswered = quizSession.questions.every(q => isQuestionAnswered(q));
   const durationInSeconds = quizSession.duration * 60;
+  const progressPercentage = ((currentQuestionIndex + 1) / quizSession.questions.length) * 100;
+  const answeredCount = quizSession.questions.filter(q => isQuestionAnswered(q)).length;
 
   return (
-    <PublicLayout>
-      {toast && (
-        <Toast
-          type={toast.type}
-          message={toast.message}
-          onClose={() => setToast(null)}
-        />
-      )}
-
-      <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
-        <div className="max-w-4xl mx-auto">
-          {/* Header with Timer */}
-          <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-4">
-              <div className="text-center md:text-left">
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {quizSession.title}
-                </h1>
-                <p className="text-sm text-gray-600 mt-1">
-                  {[studentInfo.firstName, studentInfo.middleName, studentInfo.lastName, studentInfo.suffix].filter(Boolean).join(' ')} {studentInfo.studentId && `(${studentInfo.studentId})`}
-                </p>
-              </div>
-              
-              <Timer
-                duration={durationInSeconds}
-                onExpire={handleTimerExpire}
-                isActive={!isSubmitting}
-              />
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
+      {/* Fixed Header */}
+      <header className="sticky top-0 z-50 bg-white border-b shadow-sm">
+        <div className="max-w-5xl mx-auto px-4 py-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            {/* Quiz Title and Student Info */}
+            <div className="text-center md:text-left">
+              <h1 className="text-xl md:text-2xl font-bold text-gray-900">
+                {quizSession.title}
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                {[studentInfo.firstName, studentInfo.middleName, studentInfo.lastName, studentInfo.suffix].filter(Boolean).join(' ')}
+                {studentInfo.studentId && ` (${studentInfo.studentId})`}
+              </p>
             </div>
-
-            {/* Progress Indicator */}
-            <div className="mt-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm text-gray-600 mb-2">
-                <div className="flex items-center gap-2">
-                  <span>
-                    Question {currentQuestionIndex + 1} of {quizSession.questions.length}
-                  </span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 font-medium">
-                    {getQuestionTypeIcon(currentQuestion.type)} {getQuestionTypeLabel(currentQuestion.type)}
-                  </span>
-                </div>
-                <span>
-                  {quizSession.questions.filter(q => isQuestionAnswered(q)).length} / {quizSession.questions.length} answered
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                  style={{
-                    width: `${((currentQuestionIndex + 1) / quizSession.questions.length) * 100}%`,
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Question Card */}
-          <div className="bg-white rounded-xl shadow-lg p-6 md:p-8 mb-6">
-            <QuestionCard
-              question={currentQuestion}
-              selectedAnswer={selectedAnswer}
-              onSelectAnswer={handleSelectAnswer}
-              questionNumber={currentQuestionIndex + 1}
-              totalQuestions={quizSession.questions.length}
+            
+            {/* Timer */}
+            <Timer
+              duration={durationInSeconds}
+              onExpire={handleTimerExpire}
+              isActive={!isSubmitting}
             />
           </div>
 
-          {/* Navigation and Submit */}
-          <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-              {/* Previous Button */}
-              <Button
-                variant="secondary"
-                size="lg"
-                onClick={handlePrevious}
-                disabled={currentQuestionIndex === 0 || isSubmitting}
-                className="flex-1 touch-manipulation min-h-[48px]"
-              >
-                ← Previous
-              </Button>
-
-              {/* Next or Submit Button */}
-              {currentQuestionIndex < quizSession.questions.length - 1 ? (
-                <Button
-                  variant="primary"
-                  size="lg"
-                  onClick={handleNext}
-                  disabled={isSubmitting}
-                  className="flex-1 touch-manipulation min-h-[48px]"
-                >
-                  Next →
-                </Button>
-              ) : (
-                <Button
-                  variant="primary"
-                  size="lg"
-                  onClick={handleManualSubmit}
-                  disabled={!allAnswered || isSubmitting}
-                  loading={isSubmitting}
-                  className="flex-1 touch-manipulation min-h-[48px]"
-                >
-                  {isSubmitting ? 'Submitting...' : 'Submit Quiz'}
-                </Button>
-              )}
+          {/* Progress Indicator */}
+          <div className="mt-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm text-muted-foreground mb-2">
+              <div className="flex items-center gap-2 justify-center sm:justify-start">
+                <span className="font-medium">
+                  Question {currentQuestionIndex + 1} of {quizSession.questions.length}
+                </span>
+                <Badge variant="secondary" className="text-xs">
+                  {getQuestionTypeIcon(currentQuestion.type)} {getQuestionTypeLabel(currentQuestion.type)}
+                </Badge>
+              </div>
+              <span className="text-center sm:text-right">
+                {answeredCount} / {quizSession.questions.length} answered
+              </span>
             </div>
+            <Progress value={progressPercentage} className="h-2" />
+          </div>
+        </div>
+      </header>
 
-            {/* Submit button hint */}
-            {!allAnswered && currentQuestionIndex === quizSession.questions.length - 1 && (
-              <p className="text-sm text-amber-600 mt-4 text-center flex items-center justify-center gap-2">
-                <Icon name="warning" size="sm" />
-                Please answer all questions to enable submission
-              </p>
+      {/* Main Content */}
+      <main className="flex-1 py-6 px-4">
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* Question Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg md:text-xl">
+                Question {currentQuestionIndex + 1}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <QuestionCard
+                question={currentQuestion}
+                selectedAnswer={selectedAnswer}
+                onSelectAnswer={handleSelectAnswer}
+                questionNumber={currentQuestionIndex + 1}
+                totalQuestions={quizSession.questions.length}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Question Navigation Grid */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Question Navigator</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-4 xs:grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-2">
+                {quizSession.questions.map((q, index) => {
+                  const isAnswered = isQuestionAnswered(q);
+                  const isCurrent = index === currentQuestionIndex;
+                  
+                  return (
+                    <button
+                      key={q._id}
+                      onClick={() => setCurrentQuestionIndex(index)}
+                      disabled={isSubmitting}
+                      title={`Question ${index + 1}: ${getQuestionTypeLabel(q.type)}${isAnswered ? ' (answered)' : ''}`}
+                      className={`
+                        aspect-square rounded-lg font-semibold text-sm relative
+                        transition-all duration-200 min-h-[44px] min-w-[44px]
+                        focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
+                        ${isCurrent
+                          ? 'bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2'
+                          : isAnswered
+                          ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                        }
+                        ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                      `}
+                      aria-label={`Go to question ${index + 1}: ${getQuestionTypeLabel(q.type)}${isAnswered ? ' (answered)' : ''}`}
+                      aria-current={isCurrent ? 'step' : undefined}
+                    >
+                      <span className="block">{index + 1}</span>
+                      <span className="absolute -top-1 -right-1 text-xs opacity-60">
+                        {getQuestionTypeIcon(q.type)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              
+              {/* Legend */}
+              <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground pt-2 border-t">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-primary rounded"></div>
+                  <span>Current</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-green-100 border border-green-300 rounded dark:bg-green-900/30"></div>
+                  <span>Answered</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-muted border border-border rounded"></div>
+                  <span>Unanswered</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+
+      {/* Fixed Footer with Navigation */}
+      <footer className="sticky bottom-0 z-50 bg-white border-t shadow-lg dark:bg-gray-950 dark:border-gray-800">
+        <div className="max-w-4xl mx-auto px-4 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+            {/* Previous Button */}
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={handlePrevious}
+              disabled={currentQuestionIndex === 0 || isSubmitting}
+              className="flex-1 min-h-[48px] touch-manipulation"
+            >
+              <ChevronLeft className="mr-2 h-5 w-5" />
+              Previous
+            </Button>
+
+            {/* Next or Submit Button */}
+            {currentQuestionIndex < quizSession.questions.length - 1 ? (
+              <Button
+                size="lg"
+                onClick={handleNext}
+                disabled={isSubmitting}
+                className="flex-1 min-h-[48px] touch-manipulation"
+              >
+                Next
+                <ChevronRight className="ml-2 h-5 w-5" />
+              </Button>
+            ) : (
+              <Button
+                size="lg"
+                onClick={handleManualSubmit}
+                disabled={!allAnswered || isSubmitting}
+                className="flex-1 min-h-[48px] touch-manipulation"
+              >
+                {isSubmitting ? 'Submitting...' : 'Submit Quiz'}
+              </Button>
             )}
           </div>
 
-          {/* Question Navigation Grid */}
-          <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mt-6">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">
-              Question Navigator
-            </h3>
-            <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-2">
-              {quizSession.questions.map((q, index) => {
-                const isAnswered = isQuestionAnswered(q);
-                const isCurrent = index === currentQuestionIndex;
-                
-                return (
-                  <button
-                    key={q._id}
-                    onClick={() => setCurrentQuestionIndex(index)}
-                    disabled={isSubmitting}
-                    title={`Question ${index + 1}: ${getQuestionTypeLabel(q.type)}${isAnswered ? ' (answered)' : ''}`}
-                    className={`
-                      aspect-square rounded-lg font-semibold text-sm relative group
-                      transition-all duration-200 touch-manipulation min-h-[44px]
-                      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                      ${isCurrent
-                        ? 'bg-blue-600 text-white ring-2 ring-blue-600 ring-offset-2'
-                        : isAnswered
-                        ? 'bg-green-100 text-green-700 hover:bg-green-200 active:bg-green-300'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 active:bg-gray-300'
-                      }
-                      ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-                    `}
-                    aria-label={`Go to question ${index + 1}: ${getQuestionTypeLabel(q.type)}${isAnswered ? ' (answered)' : ''}`}
-                  >
-                    <span className="block">{index + 1}</span>
-                    <span className="absolute -top-1 -right-1 text-xs opacity-60">
-                      {getQuestionTypeIcon(q.type)}
-                    </span>
-                  </button>
-                );
-              })}
+          {/* Submit button hint */}
+          {!allAnswered && currentQuestionIndex === quizSession.questions.length - 1 && (
+            <div className="flex items-center justify-center gap-2 mt-2 sm:mt-3 text-xs sm:text-sm text-amber-600 dark:text-amber-500">
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+              <span className="text-center">Please answer all questions to enable submission</span>
             </div>
-            <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-4 text-xs text-gray-600">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-blue-600 rounded"></div>
-                <span>Current</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-green-100 border border-green-300 rounded"></div>
-                <span>Answered</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-gray-100 border border-gray-300 rounded"></div>
-                <span>Unanswered</span>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
-      </div>
-    </PublicLayout>
+      </footer>
+
+      {/* Auto-Submit Alert Dialog */}
+      <AlertDialog open={showAutoSubmitDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-amber-600" />
+              Time's Up!
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              The quiz time has expired. Your answers are being submitted automatically.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction disabled>
+              Submitting...
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 }

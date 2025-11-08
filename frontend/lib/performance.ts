@@ -1,143 +1,187 @@
 /**
  * Performance monitoring utilities
- * These utilities help track and optimize application performance
+ * Helps track and optimize Core Web Vitals
  */
 
-/**
- * Measure the execution time of a function
- * @param name - Name of the operation being measured
- * @param fn - Function to measure
- * @returns Result of the function
- */
-export async function measurePerformance<T>(
-  name: string,
-  fn: () => Promise<T> | T
-): Promise<T> {
-  const start = performance.now();
-  try {
-    const result = await fn();
-    const end = performance.now();
-    const duration = end - start;
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`⚡ Performance: ${name} took ${duration.toFixed(2)}ms`);
-    }
-    
-    return result;
-  } catch (error) {
-    const end = performance.now();
-    const duration = end - start;
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.error(`❌ Performance: ${name} failed after ${duration.toFixed(2)}ms`);
-    }
-    
-    throw error;
-  }
+export interface PerformanceMetrics {
+  lcp?: number; // Largest Contentful Paint
+  fid?: number; // First Input Delay
+  cls?: number; // Cumulative Layout Shift
+  fcp?: number; // First Contentful Paint
+  ttfb?: number; // Time to First Byte
+}
+
+export interface WebVitalMetric {
+  name: 'CLS' | 'FID' | 'FCP' | 'LCP' | 'TTFB';
+  value: number;
+  id: string;
+  delta: number;
 }
 
 /**
- * Report Web Vitals to console in development
- * Can be extended to send to analytics service in production
+ * Report Web Vitals to analytics
+ * Can be integrated with Google Analytics, Vercel Analytics, etc.
  */
-export function reportWebVitals(metric: any) {
+export function reportWebVitals(metric: WebVitalMetric) {
   if (process.env.NODE_ENV === 'development') {
-    console.log('📊 Web Vital:', {
-      name: metric.name,
-      value: metric.value,
-      rating: metric.rating,
+    console.log('📊 Web Vitals:', metric);
+  }
+
+  // Send to analytics service
+  // Example: Google Analytics
+  if (typeof window !== 'undefined' && (window as any).gtag) {
+    (window as any).gtag('event', metric.name, {
+      value: Math.round(metric.name === 'CLS' ? metric.value * 1000 : metric.value),
+      event_category: 'Web Vitals',
+      event_label: metric.id,
+      non_interaction: true,
     });
   }
-  
-  // In production, you could send to analytics:
-  // if (process.env.NODE_ENV === 'production') {
-  //   sendToAnalytics(metric);
-  // }
 }
 
 /**
- * Preload a resource for better performance
- * @param href - URL of the resource to preload
- * @param as - Type of resource (script, style, font, etc.)
+ * Measure component render time
  */
-export function preloadResource(href: string, as: string) {
+export function measureRenderTime(componentName: string, callback: () => void) {
+  if (typeof window === 'undefined') return callback();
+
+  const startTime = performance.now();
+  callback();
+  const endTime = performance.now();
+  const renderTime = endTime - startTime;
+
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`⏱️ ${componentName} render time: ${renderTime.toFixed(2)}ms`);
+  }
+
+  return renderTime;
+}
+
+/**
+ * Prefetch critical resources
+ */
+export function prefetchResources(urls: string[]) {
   if (typeof window === 'undefined') return;
-  
-  const link = document.createElement('link');
-  link.rel = 'preload';
-  link.href = href;
-  link.as = as;
-  
-  if (as === 'font') {
-    link.crossOrigin = 'anonymous';
-  }
-  
-  document.head.appendChild(link);
+
+  urls.forEach((url) => {
+    const link = document.createElement('link');
+    link.rel = 'prefetch';
+    link.href = url;
+    document.head.appendChild(link);
+  });
 }
 
 /**
- * Prefetch a page for faster navigation
- * @param href - URL to prefetch
+ * Lazy load images with Intersection Observer
  */
-export function prefetchPage(href: string) {
+export function lazyLoadImages() {
   if (typeof window === 'undefined') return;
+
+  const images = document.querySelectorAll('img[data-src]');
   
-  const link = document.createElement('link');
-  link.rel = 'prefetch';
-  link.href = href;
-  
-  document.head.appendChild(link);
+  const imageObserver = new IntersectionObserver((entries, observer) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        const img = entry.target as HTMLImageElement;
+        img.src = img.dataset.src || '';
+        img.removeAttribute('data-src');
+        observer.unobserve(img);
+      }
+    });
+  });
+
+  images.forEach((img) => imageObserver.observe(img));
 }
 
 /**
- * Check if the user prefers reduced motion
- * Useful for disabling animations for accessibility
+ * Check if performance API is available
  */
-export function prefersReducedMotion(): boolean {
-  if (typeof window === 'undefined') return false;
-  
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+export function isPerformanceSupported(): boolean {
+  return typeof window !== 'undefined' && 'performance' in window;
 }
 
 /**
- * Get connection speed information
- * Useful for adaptive loading strategies
+ * Get navigation timing metrics
  */
-export function getConnectionSpeed(): 'slow' | 'fast' | 'unknown' {
-  if (typeof navigator === 'undefined' || !('connection' in navigator)) {
-    return 'unknown';
-  }
-  
-  const connection = (navigator as any).connection;
-  
-  if (!connection) return 'unknown';
-  
-  // Check effective connection type
-  const effectiveType = connection.effectiveType;
-  
-  if (effectiveType === 'slow-2g' || effectiveType === '2g') {
-    return 'slow';
-  }
-  
-  if (effectiveType === '3g') {
-    return 'slow';
-  }
-  
-  return 'fast';
+export function getNavigationTiming() {
+  if (!isPerformanceSupported()) return null;
+
+  const perfData = window.performance.timing;
+  const pageLoadTime = perfData.loadEventEnd - perfData.navigationStart;
+  const connectTime = perfData.responseEnd - perfData.requestStart;
+  const renderTime = perfData.domComplete - perfData.domLoading;
+
+  return {
+    pageLoadTime,
+    connectTime,
+    renderTime,
+    domReady: perfData.domContentLoadedEventEnd - perfData.navigationStart,
+    ttfb: perfData.responseStart - perfData.navigationStart,
+  };
 }
 
 /**
- * Lazy load a component with a minimum delay
- * Prevents flash of loading state for fast connections
- * @param importFn - Dynamic import function
- * @param minDelay - Minimum delay in milliseconds
+ * Monitor long tasks (tasks taking > 50ms)
  */
-export function lazyLoadWithDelay<T extends React.ComponentType<any>>(
-  importFn: () => Promise<{ default: T }>,
-  minDelay: number = 0
-): Promise<{ default: T }> {
-  return Promise.all([
-    importFn(),
-    new Promise(resolve => setTimeout(resolve, minDelay))
-  ]).then(([module]) => module);
+export function monitorLongTasks() {
+  if (typeof window === 'undefined') return;
+
+  if ('PerformanceObserver' in window) {
+    try {
+      const observer = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          if (entry.duration > 50) {
+            console.warn('⚠️ Long task detected:', {
+              duration: entry.duration,
+              startTime: entry.startTime,
+            });
+          }
+        }
+      });
+
+      observer.observe({ entryTypes: ['longtask'] });
+    } catch (e) {
+      // PerformanceLongTaskTiming not supported
+    }
+  }
+}
+
+/**
+ * Get Core Web Vitals thresholds
+ */
+export const WEB_VITALS_THRESHOLDS = {
+  LCP: {
+    good: 2500,
+    needsImprovement: 4000,
+  },
+  FID: {
+    good: 100,
+    needsImprovement: 300,
+  },
+  CLS: {
+    good: 0.1,
+    needsImprovement: 0.25,
+  },
+  FCP: {
+    good: 1800,
+    needsImprovement: 3000,
+  },
+  TTFB: {
+    good: 800,
+    needsImprovement: 1800,
+  },
+};
+
+/**
+ * Evaluate metric against thresholds
+ */
+export function evaluateMetric(
+  metricName: keyof typeof WEB_VITALS_THRESHOLDS,
+  value: number
+): 'good' | 'needs-improvement' | 'poor' {
+  const thresholds = WEB_VITALS_THRESHOLDS[metricName];
+  
+  if (value <= thresholds.good) return 'good';
+  if (value <= thresholds.needsImprovement) return 'needs-improvement';
+  return 'poor';
 }

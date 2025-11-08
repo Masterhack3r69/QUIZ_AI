@@ -1,97 +1,61 @@
 'use client';
 
-import { useState, FormEvent, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/contexts/ToastContext';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Card } from '@/components/ui/Card';
+import { loginSchema, type LoginFormData } from '@/lib/validations';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 import { APIRequestError } from '@/lib/api';
 import { ERROR_MESSAGES } from '@/lib/config';
 import PublicLayout from '@/components/layout/PublicLayout';
+import { toast } from 'sonner';
 
 function LoginForm() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { login } = useAuth();
-  const { showError, showWarning } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  const form = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+  });
 
   // Check if redirected due to session expiration
   useEffect(() => {
     if (searchParams.get('expired') === 'true') {
-      showWarning(ERROR_MESSAGES.SESSION_EXPIRED);
+      toast.warning(ERROR_MESSAGES.SESSION_EXPIRED);
     }
-  }, [searchParams, showWarning]);
+  }, [searchParams]);
 
-  const validateForm = (): boolean => {
-    const newErrors: { email?: string; password?: string } = {};
-
-    // Validate email
-    if (!email) {
-      newErrors.email = ERROR_MESSAGES.REQUIRED_FIELD;
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = ERROR_MESSAGES.INVALID_EMAIL;
-    }
-
-    // Validate password
-    if (!password) {
-      newErrors.password = ERROR_MESSAGES.REQUIRED_FIELD;
-    } else if (password.length < 6) {
-      newErrors.password = ERROR_MESSAGES.INVALID_PASSWORD;
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newEmail = e.target.value;
-    setEmail(newEmail);
-    
-    // Clear error when user starts typing
-    if (errors.email) {
-      setErrors(prev => ({ ...prev, email: undefined }));
-    }
-  };
-
-  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newPassword = e.target.value;
-    setPassword(newPassword);
-    
-    // Clear error when user starts typing
-    if (errors.password) {
-      setErrors(prev => ({ ...prev, password: undefined }));
-    }
-  };
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setErrors({});
-
-    if (!validateForm()) {
-      return;
-    }
-
+  const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
+    setErrorMessage(null);
 
     try {
-      await login(email, password);
+      await login(data.email, data.password);
       // Navigation is handled by the login function
     } catch (error) {
       if (error instanceof APIRequestError) {
         if (error.status === 401) {
-          showError(ERROR_MESSAGES.INVALID_CREDENTIALS);
+          setErrorMessage(ERROR_MESSAGES.INVALID_CREDENTIALS);
         } else {
-          showError(error.message);
+          setErrorMessage(error.message);
         }
       } else {
-        showError(ERROR_MESSAGES.UNKNOWN_ERROR);
+        setErrorMessage(ERROR_MESSAGES.UNKNOWN_ERROR);
       }
     } finally {
       setIsLoading(false);
@@ -100,87 +64,113 @@ function LoginForm() {
 
   return (
     <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Teacher Login</h1>
-          <p className="mt-2 text-gray-600">Sign in to your teacher account</p>
-        </div>
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold tracking-tight">Teacher Login</h1>
+        <p className="mt-2 text-muted-foreground">Sign in to your teacher account</p>
+      </div>
 
-        <Card>
-          <form onSubmit={handleSubmit} className="space-y-6" aria-label="Login form">
-            <Input
-              type="email"
-              label="Email"
-              value={email}
-              onChange={handleEmailChange}
-              error={errors.email}
-              placeholder="teacher@example.com"
-              required
-              autoComplete="email"
-              disabled={isLoading}
-              showValidIndicator={true}
-            />
+      <Card>
+        <CardHeader>
+          <CardTitle>Welcome back</CardTitle>
+          <CardDescription>Enter your credentials to access your account</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {errorMessage && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{errorMessage}</AlertDescription>
+            </Alert>
+          )}
 
-            <Input
-              type="password"
-              label="Password"
-              value={password}
-              onChange={handlePasswordChange}
-              error={errors.password}
-              placeholder="Enter your password"
-              required
-              autoComplete="current-password"
-              disabled={isLoading}
-              showValidIndicator={true}
-            />
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="email"
+                        placeholder="teacher@example.com"
+                        autoComplete="email"
+                        disabled={isLoading}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <Button
-              type="submit"
-              variant="primary"
-              className="w-full"
-              loading={isLoading}
-              disabled={isLoading}
-              aria-label={isLoading ? "Signing in..." : "Sign in to your account"}
-            >
-              Sign In
-            </Button>
-          </form>
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        placeholder="Enter your password"
+                        autoComplete="current-password"
+                        disabled={isLoading}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              Don't have an account?{' '}
-              <Link
-                href="/register"
-                className="font-medium text-blue-600 hover:text-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isLoading}
               >
-                Sign up
-              </Link>
-            </p>
+                {isLoading ? 'Signing in...' : 'Sign In'}
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+        <CardFooter className="flex flex-col space-y-4">
+          <div className="text-sm text-center text-muted-foreground">
+            Don't have an account?{' '}
+            <Link
+              href="/register"
+              className="font-medium text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded"
+            >
+              Sign up
+            </Link>
           </div>
-
-          <div className="mt-4 text-center">
+          <div className="text-sm text-center">
             <Link
               href="/"
-              className="text-sm text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
-              aria-label="Back to home page"
+              className="text-muted-foreground hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded"
             >
               ← Back to home
             </Link>
           </div>
-        </Card>
-      </div>
+        </CardFooter>
+      </Card>
+    </div>
   );
 }
 
 export default function LoginPage() {
   return (
     <PublicLayout>
-      <main id="main-content" className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-gray-50 px-4 py-12">
+      <main className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-12 bg-gradient-to-br from-background to-muted">
         <Suspense fallback={
           <div className="w-full max-w-md">
-            <div className="text-center" role="status" aria-live="polite">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" aria-label="Loading"></div>
-              <span className="sr-only">Loading login form...</span>
-            </div>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                </div>
+              </CardContent>
+            </Card>
           </div>
         }>
           <LoginForm />

@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useRef, DragEvent, ChangeEvent } from 'react';
-import { ControlledTabs } from '@/components/ui/Tabs';
-import { Input } from '@/components/ui/Input';
-import { Button } from '@/components/ui/Button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { ContentSource } from '@/types';
 
 const ALLOWED_FILE_TYPES = [
@@ -311,7 +312,7 @@ export function ContentSourceSelector({
             
             <Button
               type="button"
-              variant="primary"
+              variant="default"
               onClick={handleBrowseClick}
             >
               Browse Files
@@ -406,15 +407,20 @@ export function ContentSourceSelector({
 
   const renderVideoTab = () => (
     <div className="w-full space-y-4">
-      <Input
-        type="url"
-        label="Video URL"
-        placeholder="https://www.youtube.com/watch?v=..."
-        value={videoUrl}
-        onChange={(e) => handleVideoUrlChange(e.target.value)}
-        error={validationError}
-        helperText="Enter a YouTube or video platform URL. The system will extract the transcript for question generation."
-      />
+      <div className="space-y-2">
+        <Label htmlFor="video-url">Video URL</Label>
+        <Input
+          id="video-url"
+          type="url"
+          placeholder="https://www.youtube.com/watch?v=..."
+          value={videoUrl}
+          onChange={(e) => handleVideoUrlChange(e.target.value)}
+        />
+        <p className="text-sm text-gray-500">Enter a YouTube or video platform URL. The system will extract the transcript for question generation.</p>
+        {validationError && (
+          <p className="text-sm text-red-600">{validationError}</p>
+        )}
+      </div>
       
       {videoUrl && !validationError && (
         <div className="border-2 border-blue-300 bg-blue-50 rounded-lg p-4">
@@ -452,15 +458,20 @@ export function ContentSourceSelector({
 
   const renderWebUrlTab = () => (
     <div className="w-full space-y-4">
-      <Input
-        type="url"
-        label="Web Page URL"
-        placeholder="https://example.com/article"
-        value={webUrl}
-        onChange={(e) => handleWebUrlChange(e.target.value)}
-        error={validationError}
-        helperText="Enter a web page URL. The system will extract the main content for question generation."
-      />
+      <div className="space-y-2">
+        <Label htmlFor="web-url">Web Page URL</Label>
+        <Input
+          id="web-url"
+          type="url"
+          placeholder="https://example.com/article"
+          value={webUrl}
+          onChange={(e) => handleWebUrlChange(e.target.value)}
+        />
+        <p className="text-sm text-gray-500">Enter a web page URL. The system will extract the main content for question generation.</p>
+        {validationError && (
+          <p className="text-sm text-red-600">{validationError}</p>
+        )}
+      </div>
       
       {webUrl && !validationError && (
         <div className="border-2 border-purple-300 bg-purple-50 rounded-lg p-4">
@@ -538,12 +549,47 @@ export function ContentSourceSelector({
 
   return (
     <div className="w-full">
-      <ControlledTabs
-        tabs={tabs}
-        activeTab={activeTab}
-        onChange={handleTabChange}
-        variant="pills"
-      />
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="file" className="flex items-center gap-2">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            File Upload
+          </TabsTrigger>
+          <TabsTrigger value="topic" className="flex items-center gap-2">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            Topic
+          </TabsTrigger>
+          <TabsTrigger value="video" className="flex items-center gap-2">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Video URL
+          </TabsTrigger>
+          <TabsTrigger value="url" className="flex items-center gap-2">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+            </svg>
+            Web URL
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="file" className="mt-6">
+          {renderFileUploadTab()}
+        </TabsContent>
+        <TabsContent value="topic" className="mt-6">
+          {renderTopicTab()}
+        </TabsContent>
+        <TabsContent value="video" className="mt-6">
+          {renderVideoTab()}
+        </TabsContent>
+        <TabsContent value="url" className="mt-6">
+          {renderWebUrlTab()}
+        </TabsContent>
+      </Tabs>
       
       {error && (
         <p className="mt-4 text-sm text-red-600" role="alert">

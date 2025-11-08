@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
 import type { QuizTemplate } from '@/types';
 
@@ -84,13 +84,12 @@ export function TemplateCard({
 
   return (
     <Card
-      className="relative"
-      hover={!!onSelect}
+      className={`relative ${onSelect ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
       onClick={onSelect ? handleCardClick : undefined}
       onMouseEnter={() => setShowPreview(true)}
       onMouseLeave={() => setShowPreview(false)}
     >
-      <div className="p-4 sm:p-6">
+      <CardContent className="p-4 sm:p-6">
         {/* Header with Type Badge */}
         <div className="flex items-start justify-between mb-3">
           <span
@@ -247,7 +246,7 @@ export function TemplateCard({
             </p>
           </div>
         )}
-      </div>
+      </CardContent>
     </Card>
   );
 }

@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/Icon';
-import { Modal } from '@/components/ui/Modal';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { TemplateCard } from '@/components/quiz/TemplateCard';
 import { TemplateForm } from '@/components/quiz/TemplateForm';
@@ -184,7 +184,7 @@ export default function TemplatesPage() {
             </p>
           </div>
           <Button
-            variant="primary"
+            variant="default"
             size="lg"
             onClick={() => setShowCreateModal(true)}
             aria-label="Create new template"
@@ -244,7 +244,7 @@ export default function TemplatesPage() {
                   Create your first custom template to get started
                 </p>
                 <Button
-                  variant="primary"
+                  variant="default"
                   onClick={() => setShowCreateModal(true)}
                 >
                   <Icon name="plus" className="mr-2" />
@@ -268,82 +268,77 @@ export default function TemplatesPage() {
         </>
       )}
 
-      {/* Create Template Modal */}
-      <Modal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        title="Create New Template"
-        size="lg"
-      >
-        <TemplateForm
-          onSubmit={handleCreateTemplate}
-          onCancel={() => setShowCreateModal(false)}
-          isLoading={isSubmitting}
-        />
-      </Modal>
-
-      {/* Edit Template Modal */}
-      <Modal
-        isOpen={showEditModal}
-        onClose={() => {
-          setShowEditModal(false);
-          setSelectedTemplate(null);
-        }}
-        title="Edit Template"
-        size="lg"
-      >
-        {selectedTemplate && (
+      {/* Create Template Dialog */}
+      <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create New Template</DialogTitle>
+          </DialogHeader>
           <TemplateForm
-            template={selectedTemplate}
-            onSubmit={handleEditTemplate}
-            onCancel={() => {
-              setShowEditModal(false);
-              setSelectedTemplate(null);
-            }}
+            onSubmit={handleCreateTemplate}
+            onCancel={() => setShowCreateModal(false)}
             isLoading={isSubmitting}
           />
-        )}
-      </Modal>
+        </DialogContent>
+      </Dialog>
 
-      {/* Delete Confirmation Modal */}
-      <Modal
-        isOpen={showDeleteModal}
-        onClose={() => {
-          setShowDeleteModal(false);
-          setSelectedTemplate(null);
-        }}
-        title="Delete Template"
-        size="sm"
-        footer={
-          <>
+      {/* Edit Template Dialog */}
+      <Dialog open={showEditModal} onOpenChange={(open) => {
+        setShowEditModal(open);
+        if (!open) setSelectedTemplate(null);
+      }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Template</DialogTitle>
+          </DialogHeader>
+          {selectedTemplate && (
+            <TemplateForm
+              template={selectedTemplate}
+              onSubmit={handleEditTemplate}
+              onCancel={() => {
+                setShowEditModal(false);
+                setSelectedTemplate(null);
+              }}
+              isLoading={isSubmitting}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteModal} onOpenChange={(open) => {
+        setShowDeleteModal(open);
+        if (!open) setSelectedTemplate(null);
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Template</DialogTitle>
+          </DialogHeader>
+          <p className="text-gray-700">
+            Are you sure you want to delete the template{' '}
+            <strong>{selectedTemplate?.name}</strong>? This action cannot be undone.
+          </p>
+          <DialogFooter>
             <Button
-              variant="secondary"
+              variant="outline"
               onClick={() => {
                 setShowDeleteModal(false);
                 setSelectedTemplate(null);
               }}
               disabled={isSubmitting}
-              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
             <Button
-              variant="danger"
+              variant="destructive"
               onClick={handleDeleteTemplate}
-              loading={isSubmitting}
               disabled={isSubmitting}
-              className="w-full sm:w-auto"
             >
               Delete Template
             </Button>
-          </>
-        }
-      >
-        <p className="text-gray-700">
-          Are you sure you want to delete the template{' '}
-          <strong>{selectedTemplate?.name}</strong>? This action cannot be undone.
-        </p>
-      </Modal>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

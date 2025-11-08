@@ -1,7 +1,7 @@
 'use client';
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 
 interface Props {
   children: ReactNode;
@@ -113,14 +113,14 @@ export class ErrorBoundary extends Component<Props, State> {
 
             <div className="flex gap-3">
               <Button
-                variant="secondary"
+                variant="outline"
                 onClick={this.handleReset}
                 className="flex-1"
               >
                 Try Again
               </Button>
               <Button
-                variant="primary"
+                variant="default"
                 onClick={this.handleReload}
                 className="flex-1"
               >
