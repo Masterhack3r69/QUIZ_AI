@@ -3,19 +3,23 @@ import Link from 'next/link';
 import { Icon } from '@/components/ui';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { RetroGrid } from '@/components/ui/retro-grid';
 
 export default function Home() {
   return (
     <PublicLayout>
       <main id="main-content">
         {/* Hero Section */}
-        <section className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white" aria-labelledby="hero-heading">
+        <section className="relative overflow-hidden" aria-labelledby="hero-heading">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28">
             <div className="text-center">
+              <div className="inline-block mb-4 px-4 py-2 bg-muted rounded-full border">
+                <span className="text-sm font-medium">🤖 Powered by AI Technology</span>
+              </div>
               <h1 id="hero-heading" className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6">
                 AI-Powered Quiz Generator
               </h1>
-              <p className="text-xl sm:text-2xl mb-8 text-blue-100 max-w-3xl mx-auto">
+              <p className="text-xl sm:text-2xl mb-8 text-muted-foreground max-w-3xl mx-auto leading-relaxed">
                 Upload learning materials and let AI create quiz questions automatically. 
                 Save time, promote academic integrity, and get instant results.
               </p>
@@ -25,7 +29,7 @@ export default function Home() {
                 <Button
                   asChild
                   size="lg"
-                  className="w-full sm:w-auto bg-white text-blue-600 hover:bg-blue-50 px-8 py-6 text-lg shadow-lg hover:shadow-xl"
+                  className="w-full sm:w-auto px-8 py-6 text-lg"
                 >
                   <Link
                     href="/login"
@@ -39,7 +43,7 @@ export default function Home() {
                   asChild
                   size="lg"
                   variant="outline"
-                  className="w-full sm:w-auto bg-blue-500 text-white hover:bg-blue-400 hover:text-white px-8 py-6 text-lg shadow-lg hover:shadow-xl border-2 border-white"
+                  className="w-full sm:w-auto px-8 py-6 text-lg"
                 >
                   <Link
                     href="/join"

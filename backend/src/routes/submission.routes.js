@@ -157,10 +157,26 @@ router.get('/analytics/:quizId', protect, async (req, res) => {
 
     if (submissions.length === 0) {
       return res.json({
-        totalSubmissions: 0,
-        averageScore: 0,
-        highestScore: 0,
-        lowestScore: 0
+        summary: {
+          totalSubmissions: 0,
+          averageScore: 0,
+          highestScore: 0,
+          lowestScore: 0,
+          questionTypeBreakdown: {
+            multipleChoice: 0,
+            trueFalse: 0,
+            fillInBlank: 0,
+            matching: 0
+          },
+          averageScoreByType: {
+            multipleChoice: 0,
+            trueFalse: 0,
+            fillInBlank: 0,
+            matching: 0
+          }
+        },
+        submissions: [],
+        questionStats: []
       });
     }
 

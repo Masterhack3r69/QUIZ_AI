@@ -1,7 +1,13 @@
 {
   "mcpServers": {
     "shadcn": {
-      "url": "https://www.shadcn.io/api/mcp"
+      "url": "https://www.shadcn.io/api/mcp",
+      "disabled": false,
+      "autoApprove": [
+        "getComponents",
+        "getComponent",
+        "getComponent"
+      ]
     }
   }
 }

@@ -55,25 +55,23 @@ export default function DashboardPage() {
   }, [quizzes]);
 
   return (
-    <>
+    <div className="flex flex-1 flex-col gap-4">
       {/* Page Header with Create Button */}
-      <div className="mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">My Quizzes</h1>
-            <p className="mt-2 text-muted-foreground">
-              Manage your quizzes and view student results
-            </p>
-          </div>
-          <Button
-            size="lg"
-            onClick={() => router.push('/dashboard/create')}
-            aria-label="Create new quiz"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Create Quiz
-          </Button>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">My Quizzes</h1>
+          <p className="text-sm text-muted-foreground">
+            Manage your quizzes and view student results
+          </p>
         </div>
+        <Button
+          size="lg"
+          onClick={() => router.push('/dashboard/create')}
+          aria-label="Create new quiz"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Create Quiz
+        </Button>
       </div>
 
       {/* Error State */}
@@ -121,6 +119,6 @@ export default function DashboardPage() {
           </div>
         </section>
       )}
-    </>
+    </div>
   );
 }
