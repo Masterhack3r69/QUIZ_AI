@@ -19,6 +19,16 @@ import { APIRequestError } from '@/lib/api';
 import { ERROR_MESSAGES } from '@/lib/config';
 import PublicLayout from '@/components/layout/PublicLayout';
 import { toast } from 'sonner';
+import { OTPVerification } from '@/components/auth/OTPVerification';
+import { setAuthToken, setUser as setStoredUser } from '@/lib/auth';
+
+// Registration state interface
+interface RegistrationState {
+  step: 'form' | 'otp-verification';
+  email: string;
+  name: string;
+  otpSentAt: Date | null;
+}
 
 // Password strength calculator
 function calculatePasswordStrength(password: string): {
@@ -56,6 +66,14 @@ export default function RegisterPage() {
   const { register: registerUser } = useAuth();
   const router = useRouter();
 
+  // Multi-step registration state
+  const [registrationState, setRegistrationState] = useState<RegistrationState>({
+    step: 'form',
+    email: '',
+    name: '',
+    otpSentAt: null,
+  });
+
   const form = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -79,12 +97,36 @@ export default function RegisterPage() {
     setErrorMessage(null);
 
     try {
-      await registerUser(data.name, data.email, data.password);
-      toast.success('Account created successfully! Welcome aboard.');
-      // Navigation is handled by the register function
+      // Call backend to create unverified user and send OTP
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: data.name,
+          email: data.email,
+          password: data.password,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Registration failed');
+      }
+
+      const result = await response.json();
+
+      // Transition to OTP verification step
+      setRegistrationState({
+        step: 'otp-verification',
+        email: data.email,
+        name: data.name,
+        otpSentAt: new Date(),
+      });
     } catch (error) {
-      if (error instanceof APIRequestError) {
-        if (error.status === 409 || error.message.includes('exists')) {
+      if (error instanceof Error) {
+        if (error.message.includes('exists')) {
           setErrorMessage(ERROR_MESSAGES.USER_EXISTS);
         } else {
           setErrorMessage(error.message);
@@ -97,6 +139,59 @@ export default function RegisterPage() {
     }
   };
 
+  // Handle successful OTP verification
+  const handleVerified = () => {
+    // Display success message
+    toast.success('Account verified successfully! Please log in to continue.');
+    
+    // Redirect to login page for security
+    router.push('/login');
+  };
+
+  // Handle back navigation from OTP screen
+  const handleBack = () => {
+    // Return to registration form with pre-filled data
+    setRegistrationState({
+      step: 'form',
+      email: registrationState.email,
+      name: registrationState.name,
+      otpSentAt: null,
+    });
+
+    // Pre-fill form fields with stored values
+    form.setValue('name', registrationState.name);
+    form.setValue('email', registrationState.email);
+
+    // Clear error message and OTP-related state
+    setErrorMessage(null);
+
+    // Note: If the user modifies the email and resubmits, a new OTP will be generated
+    // The backend will automatically invalidate any previous OTPs for the old email
+    // when the new registration request is made
+  };
+
+  // Render OTP verification step
+  if (registrationState.step === 'otp-verification') {
+    return (
+      <PublicLayout>
+        <main className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-12 bg-gradient-to-br from-background to-muted">
+          <div className="w-full max-w-md">
+            <Card>
+              <CardContent className="pt-6">
+                <OTPVerification
+                  email={registrationState.email}
+                  onVerified={handleVerified}
+                  onBack={handleBack}
+                />
+              </CardContent>
+            </Card>
+          </div>
+        </main>
+      </PublicLayout>
+    );
+  }
+
+  // Render registration form
   return (
     <PublicLayout>
       <main className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-12 bg-gradient-to-br from-background to-muted">

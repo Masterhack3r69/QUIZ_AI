@@ -21,6 +21,8 @@ interface AuthContextType {
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   updateUser: (user: User) => void;
+  verifyOTP: (email: string, code: string) => Promise<void>;
+  resendOTP: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -133,6 +135,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setStoredUser(updatedUser);
   }, []);
 
+  const verifyOTP = useCallback(async (email: string, code: string) => {
+    try {
+      const response = await apiClient.verifyOTP(email, code);
+      
+      // Store token and user
+      setAuthToken(response.token);
+      setStoredUser(response.user);
+      
+      // Update state
+      setToken(response.token);
+      setUser(response.user);
+    } catch (error) {
+      if (error instanceof APIRequestError) {
+        throw error;
+      }
+      throw new Error('OTP verification failed. Please try again.');
+    }
+  }, []);
+
+  const resendOTP = useCallback(async (email: string) => {
+    try {
+      await apiClient.resendOTP(email);
+    } catch (error) {
+      if (error instanceof APIRequestError) {
+        throw error;
+      }
+      throw new Error('Failed to resend OTP. Please try again.');
+    }
+  }, []);
+
   const value: AuthContextType = {
     user,
     token,
@@ -142,6 +174,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     register,
     logout,
     updateUser,
+    verifyOTP,
+    resendOTP,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

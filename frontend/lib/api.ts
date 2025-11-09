@@ -225,6 +225,46 @@ class APIClient {
     }
   }
   
+  /**
+   * Verify OTP code
+   */
+  async verifyOTP(email: string, code: string): Promise<AuthResponse> {
+    try {
+      const response = await fetchWithErrorHandling(`${this.baseURL}/api/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code }),
+      });
+      
+      return handleResponse<AuthResponse>(response);
+    } catch (error) {
+      if (error instanceof APIRequestError) {
+        throw error;
+      }
+      throw new APIRequestError('OTP verification failed. Please try again.', 500);
+    }
+  }
+  
+  /**
+   * Resend OTP code
+   */
+  async resendOTP(email: string): Promise<{ message: string }> {
+    try {
+      const response = await fetchWithErrorHandling(`${this.baseURL}/api/auth/resend-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      
+      return handleResponse<{ message: string }>(response);
+    } catch (error) {
+      if (error instanceof APIRequestError) {
+        throw error;
+      }
+      throw new APIRequestError('Failed to resend OTP. Please try again.', 500);
+    }
+  }
+  
   // ==================== Quiz Endpoints (Teacher) ====================
   
   /**
