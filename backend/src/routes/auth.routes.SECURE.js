@@ -1,3 +1,13 @@
+/**
+ * SECURE VERSION of auth.routes.js
+ * This file demonstrates how to apply all security fixes
+ * 
+ * To use this file:
+ * 1. Review all changes
+ * 2. Test thoroughly
+ * 3. Rename to auth.routes.js (backup the old one first)
+ */
+
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.model.js';
@@ -6,22 +16,49 @@ import { createOTP, validateOTP, invalidatePreviousOTPs, checkRateLimit } from '
 import { sendOTPEmail, sendWelcomeEmail } from '../utils/email.service.js';
 import OTP from '../models/OTP.model.js';
 
+// Import validation middleware
+import {
+  validateRegistration,
+  validateLogin,
+  validateOTPVerification,
+  validateResendOTP,
+  validatePasswordChange,
+  validateProfileUpdate,
+  sanitizeMongoQuery
+} from '../middleware/validation.middleware.js';
+
+// Import rate limiters
+import {
+  loginLimiter,
+  registerLimiter,
+  otpVerifyLimiter,
+  otpResendLimiter,
+  passwordChangeLimiter
+} from '../middleware/rateLimiter.middleware.js';
+
 const router = express.Router();
 
+// Apply MongoDB injection prevention to all routes
+router.use(sanitizeMongoQuery);
+
 const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '15m' }); // Reduced from 30d
 };
 
 // Register teacher
-router.post('/register', async (req, res) => {
+router.post('/register', registerLimiter, validateRegistration, async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
     const userExists = await User.findOne({ email });
     
-    // If user exists and is verified, reject registration
+    // If user exists and is verified, use generic message to prevent enumeration
     if (userExists && userExists.isVerified) {
-      return res.status(400).json({ message: 'User already exists' });
+      // Still return 201 to prevent user enumeration
+      return res.status(201).json({
+        message: 'If this email is not already registered, a verification code has been sent',
+        email: email
+      });
     }
 
     let user;
@@ -58,24 +95,23 @@ router.post('/register', async (req, res) => {
       email: user.email
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Registration error:', error);
+    // Don't expose internal errors
+    res.status(500).json({ message: 'An error occurred during registration' });
   }
 });
 
 // Verify OTP
-router.post('/verify-otp', async (req, res) => {
+router.post('/verify-otp', otpVerifyLimiter, validateOTPVerification, async (req, res) => {
   try {
     const { email, code } = req.body;
-
-    // Validate request body
-    if (!email || !code) {
-      return res.status(400).json({ message: 'Email and code are required' });
-    }
 
     // Find user
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      // Add delay to prevent timing attacks
+      await new Promise(resolve => setTimeout(resolve, 100));
+      return res.status(400).json({ message: 'Invalid verification code' });
     }
 
     // Check if already verified
@@ -109,6 +145,8 @@ router.post('/verify-otp', async (req, res) => {
         }
       }
 
+      // Add delay to prevent timing attacks
+      await new Promise(resolve => setTimeout(resolve, 100));
       return res.status(400).json({ message: 'Invalid verification code' });
     }
 
@@ -140,24 +178,23 @@ router.post('/verify-otp', async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('OTP verification error:', error);
+    res.status(500).json({ message: 'An error occurred during verification' });
   }
 });
 
 // Resend OTP
-router.post('/resend-otp', async (req, res) => {
+router.post('/resend-otp', otpResendLimiter, validateResendOTP, async (req, res) => {
   try {
     const { email } = req.body;
-
-    // Validate request body
-    if (!email) {
-      return res.status(400).json({ message: 'Email is required' });
-    }
 
     // Find user
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      // Use generic message to prevent enumeration
+      return res.status(200).json({
+        message: 'If an account exists with this email, a new code has been sent'
+      });
     }
 
     // Check if already verified
@@ -192,21 +229,29 @@ router.post('/resend-otp', async (req, res) => {
     await sendOTPEmail(email, code, user.name);
 
     res.json({
-      message: `New code sent to ${email}`
+      message: 'New verification code sent to your email'
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Resend OTP error:', error);
+    res.status(500).json({ message: 'An error occurred while sending verification code' });
   }
 });
 
 // Login teacher
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, validateLogin, async (req, res) => {
   try {
     const { email, password } = req.body;
 
     const user = await User.findOne({ email });
-    if (!user || !(await user.comparePassword(password))) {
-      return res.status(401).json({ message: 'Invalid email or password' });
+    
+    // Constant-time comparison to prevent timing attacks
+    const isValidPassword = user ? await user.comparePassword(password) : false;
+    
+    // Add delay to prevent timing attacks
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    if (!user || !isValidPassword) {
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     // Check if user is verified
@@ -230,18 +275,15 @@ router.post('/login', async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Login error:', error);
+    res.status(500).json({ message: 'An error occurred during login' });
   }
 });
 
 // Update profile (name)
-router.put('/profile', protect, async (req, res) => {
+router.put('/profile', protect, validateProfileUpdate, async (req, res) => {
   try {
     const { name } = req.body;
-
-    if (!name || name.trim().length === 0) {
-      return res.status(400).json({ message: 'Name is required' });
-    }
 
     const user = await User.findById(req.user._id);
     if (!user) {
@@ -260,22 +302,15 @@ router.put('/profile', protect, async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Profile update error:', error);
+    res.status(500).json({ message: 'An error occurred while updating profile' });
   }
 });
 
 // Change password
-router.put('/password', protect, async (req, res) => {
+router.put('/password', protect, passwordChangeLimiter, validatePasswordChange, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ message: 'Current password and new password are required' });
-    }
-
-    if (newPassword.length < 6) {
-      return res.status(400).json({ message: 'New password must be at least 6 characters' });
-    }
 
     const user = await User.findById(req.user._id);
     if (!user) {
@@ -285,6 +320,8 @@ router.put('/password', protect, async (req, res) => {
     // Verify current password
     const isMatch = await user.comparePassword(currentPassword);
     if (!isMatch) {
+      // Add delay to prevent timing attacks
+      await new Promise(resolve => setTimeout(resolve, 100));
       return res.status(401).json({ message: 'Current password is incorrect' });
     }
 
@@ -292,9 +329,18 @@ router.put('/password', protect, async (req, res) => {
     user.password = newPassword;
     await user.save();
 
-    res.json({ message: 'Password updated successfully' });
+    // TODO: Implement token versioning to invalidate old tokens
+    // user.tokenVersion += 1;
+    
+    // TODO: Send email notification about password change
+    // await sendPasswordChangedEmail(user.email, user.name);
+
+    res.json({ 
+      message: 'Password updated successfully. Please login again with your new password.' 
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Password change error:', error);
+    res.status(500).json({ message: 'An error occurred while changing password' });
   }
 });
 

@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
   const { login } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -43,6 +44,7 @@ function LoginForm() {
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     setErrorMessage(null);
+    setUnverifiedEmail(null);
 
     try {
       await login(data.email, data.password);
@@ -51,6 +53,10 @@ function LoginForm() {
       if (error instanceof APIRequestError) {
         if (error.status === 401) {
           setErrorMessage(ERROR_MESSAGES.INVALID_CREDENTIALS);
+        } else if (error.status === 403) {
+          // User needs email verification
+          setUnverifiedEmail(data.email);
+          setErrorMessage('Your email is not verified. Please check your inbox or click below to resend the verification code.');
         } else {
           setErrorMessage(error.message);
         }
@@ -59,6 +65,13 @@ function LoginForm() {
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleResendVerification = () => {
+    if (unverifiedEmail) {
+      // Redirect to register page with email pre-filled
+      router.push(`/register?email=${encodeURIComponent(unverifiedEmail)}&resend=true`);
     }
   };
 
@@ -78,7 +91,18 @@ function LoginForm() {
           {errorMessage && (
             <Alert variant="destructive" className="mb-6">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{errorMessage}</AlertDescription>
+              <AlertDescription>
+                {errorMessage}
+                {unverifiedEmail && (
+                  <Button
+                    variant="link"
+                    className="p-0 h-auto font-semibold ml-1"
+                    onClick={handleResendVerification}
+                  >
+                    Resend verification code
+                  </Button>
+                )}
+              </AlertDescription>
             </Alert>
           )}
 

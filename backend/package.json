@@ -9,6 +9,7 @@
     "start": "node src/server.js",
     "migrate:verify-users": "node scripts/migrate-existing-users.js",
     "cleanup:users": "node scripts/cleanup-test-users.js",
+    "cleanup:unverified": "node scripts/cleanup-unverified-users.js",
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --runInBand",
     "test:watch": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --watch --runInBand",
     "test:coverage": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --coverage --runInBand"
