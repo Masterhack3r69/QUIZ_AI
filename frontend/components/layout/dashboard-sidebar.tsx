@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, PlusCircle, FileText, Settings, LogOut, GalleryVerticalEnd } from "lucide-react"
+import { Home, PlusCircle, FileText, Settings, LogOut, GalleryVerticalEnd, LayoutGrid } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import {
   Sidebar,
@@ -31,6 +31,11 @@ const navItems = [
     href: "/dashboard",
     label: "Dashboard",
     icon: Home,
+  },
+  {
+    href: "/dashboard/quizzes",
+    label: "All Quizzes",
+    icon: LayoutGrid,
   },
   {
     href: "/dashboard/create",

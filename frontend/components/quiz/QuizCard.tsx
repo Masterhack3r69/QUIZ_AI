@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { MoreVertical, Eye, Pencil, BarChart3, Trash2 } from 'lucide-react';
+import { MoreVertical, Eye, Pencil, BarChart3, Trash2, Clock, Users, FileQuestion, Calendar, Copy } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -82,22 +82,38 @@ export function QuizCard({ quiz, submissionCount = 0, onDelete }: QuizCardProps)
     }
   };
 
+  const handleCopyCode = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(quiz.accessCode);
+      showSuccess('Access code copied to clipboard');
+    } catch (error) {
+      showError('Failed to copy access code');
+    }
+  };
+
   return (
     <>
       <Card
-        className="hover:shadow-lg transition-shadow cursor-pointer"
+        className="group relative overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer border-2 hover:border-primary/50"
         onClick={handleCardClick}
       >
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <StatusBadge status={status} />
+        {/* Status Indicator Bar */}
+        <div className={`absolute top-0 left-0 right-0 h-1 ${getStatusColor(status)}`} />
+        
+        <CardHeader className="pb-2">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <StatusBadge status={status} />
+            </div>
             
             {/* Quick Actions Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                 <Button
                   variant="ghost"
-                  size="icon-sm"
+                  size="icon"
+                  className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
                   aria-label="Quick actions menu"
                 >
                   <MoreVertical className="h-4 w-4" />
@@ -130,58 +146,105 @@ export function QuizCard({ quiz, submissionCount = 0, onDelete }: QuizCardProps)
           </div>
         </CardHeader>
 
-        <CardContent className="pb-4">
+        <CardContent className="pb-4 space-y-4">
           {/* Quiz Title */}
-          <h3 className="text-lg font-semibold mb-3 line-clamp-2">
-            {quiz.title}
-          </h3>
-
-          {/* Access Code */}
-          <div className="mb-4 p-3 bg-muted rounded-md">
-            <p className="text-xs text-muted-foreground mb-1">Access Code</p>
-            <p className="text-lg font-mono font-bold" aria-label={`Access code: ${quiz.accessCode}`}>
-              {quiz.accessCode}
+          <div>
+            <h3 className="text-xl font-bold mb-1 line-clamp-2 group-hover:text-primary transition-colors">
+              {quiz.title}
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Created {new Date(quiz.createdAt).toLocaleDateString()}
             </p>
           </div>
 
-          {/* Quiz Info */}
-          <dl className="space-y-2 text-sm">
+          {/* Access Code - Prominent Display */}
+          <div className="relative p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg border border-primary/20">
             <div className="flex items-center justify-between">
-              <dt className="text-muted-foreground">Questions:</dt>
-              <dd className="font-medium">
-                {quiz.questions?.length || quiz.questionsPerStudent || 0}
-              </dd>
+              <div className="flex-1">
+                <p className="text-xs font-medium text-muted-foreground mb-1">Access Code</p>
+                <p className="text-2xl font-mono font-bold tracking-wider" aria-label={`Access code: ${quiz.accessCode}`}>
+                  {quiz.accessCode}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleCopyCode}
+                className="h-9 w-9 hover:bg-primary/20"
+                aria-label="Copy access code"
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
             </div>
-            <div className="flex items-center justify-between">
-              <dt className="text-muted-foreground">Duration:</dt>
-              <dd className="font-medium">
-                {quiz.duration} min
-              </dd>
+          </div>
+
+          {/* Quiz Stats Grid */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50">
+              <div className="p-1.5 rounded-md bg-background">
+                <FileQuestion className="h-4 w-4 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-muted-foreground">Questions</p>
+                <p className="text-sm font-semibold">
+                  {quiz.questions?.length || quiz.questionsPerStudent || 0}
+                </p>
+              </div>
             </div>
-            <div className="flex items-center justify-between">
-              <dt className="text-muted-foreground">Submissions:</dt>
-              <dd className="font-medium">
-                {submissionCount}
-              </dd>
+
+            <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50">
+              <div className="p-1.5 rounded-md bg-background">
+                <Clock className="h-4 w-4 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-muted-foreground">Duration</p>
+                <p className="text-sm font-semibold">{quiz.duration} min</p>
+              </div>
             </div>
-            <div className="flex items-center justify-between">
-              <dt className="text-muted-foreground">Expires:</dt>
-              <dd className="font-medium">
-                {new Date(quiz.expiresAt).toLocaleDateString()}
-              </dd>
+
+            <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50">
+              <div className="p-1.5 rounded-md bg-background">
+                <Users className="h-4 w-4 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-muted-foreground">Submissions</p>
+                <p className="text-sm font-semibold">{submissionCount}</p>
+              </div>
             </div>
-          </dl>
+
+            <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50">
+              <div className="p-1.5 rounded-md bg-background">
+                <Calendar className="h-4 w-4 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-muted-foreground">Expires</p>
+                <p className="text-sm font-semibold truncate">
+                  {new Date(quiz.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </p>
+              </div>
+            </div>
+          </div>
         </CardContent>
 
-        <CardFooter className="pt-0">
+        <CardFooter className="pt-0 gap-2">
           <Button
             variant="outline"
             size="sm"
+            onClick={handleViewResults}
+            className="flex-1"
+            aria-label="View results"
+          >
+            <BarChart3 className="mr-2 h-4 w-4" />
+            Results
+          </Button>
+          <Button
+            size="sm"
             onClick={handleManageClick}
-            className="w-full"
+            className="flex-1"
             aria-label={`Manage quiz: ${quiz.title}`}
           >
-            Manage Quiz
+            <Eye className="mr-2 h-4 w-4" />
+            Manage
           </Button>
         </CardFooter>
       </Card>
@@ -217,22 +280,27 @@ function StatusBadge({ status }: { status: Quiz['status'] }) {
     scheduled: {
       label: 'Scheduled',
       variant: 'secondary' as const,
+      className: 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20',
     },
     active: {
       label: 'Active',
       variant: 'default' as const,
+      className: 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20',
     },
     full: {
       label: 'Full',
       variant: 'secondary' as const,
+      className: 'bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20',
     },
     expired: {
       label: 'Expired',
       variant: 'outline' as const,
+      className: 'bg-gray-500/10 text-gray-700 dark:text-gray-400 border-gray-500/20',
     },
     draft: {
       label: 'Draft',
       variant: 'outline' as const,
+      className: 'bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20',
     },
   };
 
@@ -241,12 +309,25 @@ function StatusBadge({ status }: { status: Quiz['status'] }) {
   return (
     <Badge
       variant={config.variant}
+      className={config.className}
       role="status"
       aria-label={`Quiz status: ${config.label}`}
     >
       {config.label}
     </Badge>
   );
+}
+
+// Helper function to get status color for top bar
+function getStatusColor(status: Quiz['status']): string {
+  const colors = {
+    scheduled: 'bg-blue-500',
+    active: 'bg-green-500',
+    full: 'bg-orange-500',
+    expired: 'bg-gray-400',
+    draft: 'bg-purple-500',
+  };
+  return colors[status] || colors.active;
 }
 
 // Helper function to determine enhanced quiz status
