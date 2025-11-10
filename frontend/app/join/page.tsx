@@ -80,7 +80,7 @@ export default function JoinPage() {
 
   return (
     <PublicLayout>
-      <main className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
+      <main className="min-h-[calc(100vh-4rem)] py-12 px-4">
         <div className="max-w-md mx-auto">
           <Card className="shadow-lg">
             <CardHeader className="text-center space-y-4">
@@ -206,8 +206,7 @@ export default function JoinPage() {
             </CardContent>
           </Card>
 
-          {/* Info Section */}
-          <Card className="mt-6 bg-blue-50 border-blue-200">
+          {/* <Card className="mt-6 bg-blue-50 border-blue-200">
             <CardHeader>
               <CardTitle className="text-lg">Before you start:</CardTitle>
             </CardHeader>
@@ -231,7 +230,7 @@ export default function JoinPage() {
                 </li>
               </ul>
             </CardContent>
-          </Card>
+          </Card> */}
         </div>
       </main>
     </PublicLayout>
