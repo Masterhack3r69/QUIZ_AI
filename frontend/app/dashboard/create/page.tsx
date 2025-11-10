@@ -257,20 +257,17 @@ function ReviewAndSave({
 
       {/* Review Content */}
       <div className="space-y-6">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            Review & Save
-          </h2>
-          <p className="text-gray-600">
-            Review your quiz configuration and generated questions before creating
-          </p>
-        </div>
 
         {/* Quiz Configuration Summary */}
-        <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+        <Card className="bg-muted/30 border-2 shadow-lg">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Quiz Configuration</CardTitle>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                  <Check className="w-5 h-5 text-primary-foreground" />
+                </div>
+                <CardTitle className="text-lg">Quiz Configuration</CardTitle>
+              </div>
               <Button
                 variant="ghost"
                 size="sm"
@@ -372,10 +369,15 @@ function ReviewAndSave({
         </Card>
 
         {/* Generated Questions Preview */}
-        <Card>
-          <CardHeader>
+        <Card className="border-2 shadow-lg">
+          <CardHeader className="bg-muted/50 border-b">
             <div className="flex items-center justify-between">
-              <CardTitle>Generated Questions ({generatedQuestions.length})</CardTitle>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                  <span className="text-primary-foreground font-bold text-sm">{generatedQuestions.length}</span>
+                </div>
+                <CardTitle className="text-lg">Generated Questions</CardTitle>
+              </div>
               <Button
                 variant="ghost"
                 size="sm"
@@ -524,9 +526,10 @@ function ReviewAndSave({
         <div className="flex justify-between pt-6 border-t">
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             onClick={onBack}
             disabled={isCreating}
+            className="px-6"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
@@ -536,6 +539,7 @@ function ReviewAndSave({
             type="button"
             onClick={handleCreateQuiz}
             disabled={isCreating}
+            className="px-8 font-semibold shadow-lg"
           >
             {isCreating ? (
               <>
@@ -867,41 +871,105 @@ export default function CreateQuizPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Create New Quiz</h1>
-        <p className="text-muted-foreground">
-          Follow the steps to create a new quiz from your content
-        </p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-muted/50">
+      <div className="max-w-6xl mx-auto p-6 py-8">
+        {/* Header */}
+        <div className="mb-12 text-center">
+          <h1 className="text-4xl font-bold mb-3 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+            Create New Quiz
+          </h1>
+          <p className="text-muted-foreground text-lg">
+            Follow the steps to create a new quiz from your content
+          </p>
+        </div>
+
+        {/* Custom Step Indicator */}
+        <div className="mb-12">
+          <div className="relative">
+            {/* Progress Line */}
+            <div className="absolute top-8 left-0 right-0 h-1 bg-muted -z-10">
+              <div 
+                className="h-full bg-primary transition-all duration-500 ease-in-out"
+                style={{ width: `${(getStepIndex() / (WIZARD_STEPS.length - 1)) * 100}%` }}
+              />
+            </div>
+
+            {/* Step Circles */}
+            <div className="flex justify-between items-start">
+              {WIZARD_STEPS.map((step, index) => {
+                const isActive = currentStep === step.id;
+                const isCompleted = index < getStepIndex();
+                const isCurrent = index === getStepIndex();
+                
+                return (
+                  <div key={step.id} className="flex flex-col items-center flex-1">
+                    {/* Circle */}
+                    <div className={`
+                      relative w-16 h-16 rounded-full flex items-center justify-center font-bold text-lg
+                      transition-all duration-300 transform
+                      ${isCompleted 
+                        ? 'bg-primary/90 text-primary-foreground scale-100 shadow-lg' 
+                        : isCurrent
+                        ? 'bg-primary text-primary-foreground scale-110 shadow-xl ring-4 ring-primary/20 animate-pulse'
+                        : 'bg-background border-2 border-muted-foreground/30 text-muted-foreground scale-100'
+                      }
+                    `}>
+                      {isCompleted ? (
+                        <Check className="w-8 h-8" />
+                      ) : (
+                        <span>{index + 1}</span>
+                      )}
+                    </div>
+                    
+                    {/* Label */}
+                    <div className="mt-3 text-center max-w-[120px]">
+                      <p className={`
+                        font-semibold text-sm mb-1 transition-colors
+                        ${isCurrent ? 'text-primary' : isCompleted ? 'text-primary/80' : 'text-muted-foreground'}
+                      `}>
+                        {step.title}
+                      </p>
+                      <p className={`
+                        text-xs transition-colors
+                        ${isCurrent ? 'text-primary/70' : isCompleted ? 'text-primary/60' : 'text-muted-foreground/70'}
+                      `}>
+                        {step.description}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
 
       <Tabs value={currentStep} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          {WIZARD_STEPS.map((step, index) => (
-            <TabsTrigger
-              key={step.id}
-              value={step.id}
-              disabled={index > getStepIndex()}
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            >
-              <div className="flex flex-col items-center gap-1">
-                <span className="font-semibold">{step.title}</span>
-                <span className="text-xs hidden sm:inline">{step.description}</span>
-              </div>
+        {/* Hidden TabsList for accessibility */}
+        <TabsList className="sr-only">
+          {WIZARD_STEPS.map((step) => (
+            <TabsTrigger key={step.id} value={step.id}>
+              {step.title}
             </TabsTrigger>
           ))}
         </TabsList>
 
         {/* Step 1: Upload/Content Source Selection */}
-        <TabsContent value="upload" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Select Content Source</CardTitle>
-              <CardDescription>
-                Choose how you want to provide content for AI to generate quiz questions
-              </CardDescription>
+        <TabsContent value="upload" className="space-y-6 animate-in fade-in-50 duration-500">
+          <Card className="border-2 shadow-xl bg-card/80 backdrop-blur">
+            <CardHeader className="bg-muted/50 border-b">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold">
+                  1
+                </div>
+                <div>
+                  <CardTitle className="text-xl">Select Content Source</CardTitle>
+                  <CardDescription className="text-base">
+                    Choose how you want to provide content for AI to generate quiz questions
+                  </CardDescription>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 pt-6">
               <ContentSourceSelector
                 onSourceSelect={handleSourceSelect}
                 selectedSource={selectedSource}
@@ -912,8 +980,9 @@ export default function CreateQuizPage() {
               <div className="flex justify-between pt-6 border-t">
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   onClick={() => window.history.back()}
+                  className="px-6"
                 >
                   Cancel
                 </Button>
@@ -922,6 +991,7 @@ export default function CreateQuizPage() {
                   type="button"
                   onClick={handleContentNext}
                   disabled={!canProceedFromContent}
+                  className="px-6"
                 >
                   Next: AI Processing
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -932,31 +1002,39 @@ export default function CreateQuizPage() {
         </TabsContent>
 
         {/* Step 2: AI Processing */}
-        <TabsContent value="processing" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>AI Processing</CardTitle>
-              <CardDescription>
-                Our AI is analyzing your content and generating quiz questions
-              </CardDescription>
+        <TabsContent value="processing" className="space-y-6 animate-in fade-in-50 duration-500">
+          <Card className="border-2 shadow-xl bg-card/80 backdrop-blur overflow-hidden">
+            <CardHeader className="bg-muted/50 border-b">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold">
+                  2
+                </div>
+                <div>
+                  <CardTitle className="text-xl">AI Processing</CardTitle>
+                  <CardDescription className="text-base">
+                    Our AI is analyzing your content and generating quiz questions
+                  </CardDescription>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               {/* Processing Animation and Status */}
-              <div className="py-12 flex flex-col items-center justify-center">
+              <div className="py-16 flex flex-col items-center justify-center">
                 {/* Animated Spinner */}
                 <div className="relative mb-8">
-                  <Loader2 className="h-24 w-24 animate-spin text-primary" />
+                  <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse"></div>
+                  <Loader2 className="relative h-24 w-24 animate-spin text-primary" />
                 </div>
 
                 {/* Progress Messages */}
-                <div className="text-center space-y-3">
-                  <h3 className="text-lg font-semibold">
+                <div className="text-center space-y-4">
+                  <h3 className="text-2xl font-bold text-foreground">
                     {processingStage === 'extracting' && 'Extracting content...'}
                     {processingStage === 'generating' && 'Generating questions...'}
                     {processingStage === 'complete' && 'Complete!'}
                   </h3>
                   
-                  <p className="text-muted-foreground max-w-md">
+                  <p className="text-muted-foreground max-w-md text-lg">
                     {processingStage === 'extracting' && 
                       'Reading and analyzing your learning material'}
                     {processingStage === 'generating' && 
@@ -966,23 +1044,34 @@ export default function CreateQuizPage() {
                   </p>
 
                   {/* Progress Indicators */}
-                  <div className="flex items-center justify-center space-x-2 pt-4">
-                    <div className={`w-3 h-3 rounded-full ${
-                      processingStage === 'extracting' ? 'bg-primary animate-pulse' : 'bg-green-500'
-                    }`}></div>
-                    <div className={`w-3 h-3 rounded-full ${
-                      processingStage === 'generating' ? 'bg-primary animate-pulse' : 
-                      processingStage === 'complete' ? 'bg-green-500' : 'bg-muted'
-                    }`}></div>
-                    <div className={`w-3 h-3 rounded-full ${
-                      processingStage === 'complete' ? 'bg-green-500' : 'bg-muted'
-                    }`}></div>
+                  <div className="flex items-center justify-center space-x-3 pt-6">
+                    <div className="flex flex-col items-center gap-2">
+                      <div className={`w-4 h-4 rounded-full transition-all duration-300 ${
+                        processingStage === 'extracting' ? 'bg-primary animate-pulse scale-125' : 'bg-primary/80'
+                      }`}></div>
+                      <span className="text-xs font-medium">Extract</span>
+                    </div>
+                    <div className="w-12 h-0.5 bg-muted"></div>
+                    <div className="flex flex-col items-center gap-2">
+                      <div className={`w-4 h-4 rounded-full transition-all duration-300 ${
+                        processingStage === 'generating' ? 'bg-primary animate-pulse scale-125' : 
+                        processingStage === 'complete' ? 'bg-primary/80' : 'bg-muted'
+                      }`}></div>
+                      <span className="text-xs font-medium">Generate</span>
+                    </div>
+                    <div className="w-12 h-0.5 bg-muted"></div>
+                    <div className="flex flex-col items-center gap-2">
+                      <div className={`w-4 h-4 rounded-full transition-all duration-300 ${
+                        processingStage === 'complete' ? 'bg-primary scale-125' : 'bg-muted'
+                      }`}></div>
+                      <span className="text-xs font-medium">Complete</span>
+                    </div>
                   </div>
                 </div>
 
                 {/* Processing Info */}
-                <div className="mt-8 text-sm text-muted-foreground text-center max-w-md">
-                  <p>This may take 30-60 seconds depending on the content length.</p>
+                <div className="mt-12 p-4 bg-muted rounded-lg border text-sm text-muted-foreground text-center max-w-md">
+                  <p className="font-medium">⏱️ This may take 30-60 seconds</p>
                   <p className="mt-1">Please do not close this window.</p>
                 </div>
               </div>
@@ -991,29 +1080,44 @@ export default function CreateQuizPage() {
         </TabsContent>
 
         {/* Step 3: Configuration */}
-        <TabsContent value="configure" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Configure Quiz Settings</CardTitle>
-              <CardDescription>
-                Set up your quiz parameters and preferences
-              </CardDescription>
+        <TabsContent value="configure" className="space-y-6 animate-in fade-in-50 duration-500">
+          <Card className="border-2 shadow-xl bg-card/80 backdrop-blur overflow-visible">
+            <CardHeader className="bg-muted/50 border-b">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold">
+                  3
+                </div>
+                <div className="flex-1 min-w-0">
+                  <CardTitle className="text-xl">Configure Quiz Settings</CardTitle>
+                  <CardDescription className="text-base">
+                    Set up your quiz parameters and preferences
+                  </CardDescription>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 pt-6 overflow-visible">
               {/* Success Message */}
-              <Alert>
-                <Check className="h-4 w-4" />
-                <AlertTitle>AI Processing Complete</AlertTitle>
-                <AlertDescription>
-                  Successfully generated {generatedQuestions.length} questions from your content
-                </AlertDescription>
-              </Alert>
+              <div className="rounded-lg bg-primary/10 border-2 border-primary/30 p-4 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary flex items-center justify-center mt-0.5">
+                    <Check className="h-6 w-6 text-primary-foreground" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-base text-foreground mb-1">
+                      AI Processing Complete
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Successfully generated <span className="font-semibold text-primary">{generatedQuestions.length}</span> questions from your content
+                    </p>
+                  </div>
+                </div>
+              </div>
 
               {/* Configuration Form */}
-              <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+              <form className="space-y-8" onSubmit={(e) => e.preventDefault()}>
                 {/* Quiz Title */}
-                <div className="space-y-2">
-                  <Label htmlFor="title">
+                <div className="space-y-3">
+                  <Label htmlFor="title" className="text-base font-semibold">
                     Quiz Title <span className="text-destructive">*</span>
                   </Label>
                   <Input
@@ -1023,9 +1127,10 @@ export default function CreateQuizPage() {
                     onChange={(e) => handleConfigChange('title', e.target.value)}
                     placeholder="e.g., Chapter 5: Photosynthesis Quiz"
                     required
+                    className="h-11 text-base"
                   />
                   {configErrors.title && (
-                    <p className="text-sm text-destructive">{configErrors.title}</p>
+                    <p className="text-sm text-destructive font-medium">{configErrors.title}</p>
                   )}
                   <p className="text-sm text-muted-foreground">
                     Give your quiz a descriptive title
@@ -1034,7 +1139,7 @@ export default function CreateQuizPage() {
 
                 {/* Question Distribution */}
                 <div className="space-y-3">
-                  <Label>Question Type Distribution</Label>
+                  <Label className="text-base font-semibold">Question Type Distribution</Label>
                   <QuestionDistribution
                     totalQuestions={parseInt(quizConfig.questionsPerStudent) || 10}
                     distribution={questionDistribution}
@@ -1046,8 +1151,8 @@ export default function CreateQuizPage() {
                 {/* Duration and Questions Per Student - Side by Side */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Duration */}
-                  <div className="space-y-2">
-                    <Label htmlFor="duration">
+                  <div className="space-y-3">
+                    <Label htmlFor="duration" className="text-base font-semibold">
                       Duration (minutes) <span className="text-destructive">*</span>
                     </Label>
                     <Input
@@ -1059,9 +1164,10 @@ export default function CreateQuizPage() {
                       min="1"
                       max="300"
                       required
+                      className="h-11 text-base"
                     />
                     {configErrors.duration && (
-                      <p className="text-sm text-destructive">{configErrors.duration}</p>
+                      <p className="text-sm text-destructive font-medium">{configErrors.duration}</p>
                     )}
                     <p className="text-sm text-muted-foreground">
                       Time limit for students to complete the quiz
@@ -1069,8 +1175,8 @@ export default function CreateQuizPage() {
                   </div>
 
                   {/* Questions Per Student */}
-                  <div className="space-y-2">
-                    <Label htmlFor="questionsPerStudent">
+                  <div className="space-y-3">
+                    <Label htmlFor="questionsPerStudent" className="text-base font-semibold">
                       Questions Per Student <span className="text-destructive">*</span>
                     </Label>
                     <Input
@@ -1082,9 +1188,10 @@ export default function CreateQuizPage() {
                       min="1"
                       max={generatedQuestions.length}
                       required
+                      className="h-11 text-base"
                     />
                     {configErrors.questionsPerStudent && (
-                      <p className="text-sm text-destructive">{configErrors.questionsPerStudent}</p>
+                      <p className="text-sm text-destructive font-medium">{configErrors.questionsPerStudent}</p>
                     )}
                     <p className="text-sm text-muted-foreground">
                       Max: {generatedQuestions.length} questions available
@@ -1095,16 +1202,17 @@ export default function CreateQuizPage() {
                 {/* Start Date and Max Students - Side by Side */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Start Date (Optional) */}
-                  <div className="space-y-2">
-                    <Label htmlFor="startDate">Start Date & Time (Optional)</Label>
+                  <div className="space-y-3">
+                    <Label htmlFor="startDate" className="text-base font-semibold">Start Date & Time (Optional)</Label>
                     <Input
                       id="startDate"
                       type="datetime-local"
                       value={quizConfig.startDate}
                       onChange={(e) => handleConfigChange('startDate', e.target.value)}
+                      className="h-11 text-base"
                     />
                     {configErrors.startDate && (
-                      <p className="text-sm text-destructive">{configErrors.startDate}</p>
+                      <p className="text-sm text-destructive font-medium">{configErrors.startDate}</p>
                     )}
                     <p className="text-sm text-muted-foreground">
                       Quiz will be available starting from this date
@@ -1112,8 +1220,8 @@ export default function CreateQuizPage() {
                   </div>
 
                   {/* Max Students (Optional) */}
-                  <div className="space-y-2">
-                    <Label htmlFor="maxStudents">Maximum Students (Optional)</Label>
+                  <div className="space-y-3">
+                    <Label htmlFor="maxStudents" className="text-base font-semibold">Maximum Students (Optional)</Label>
                     <Input
                       id="maxStudents"
                       type="number"
@@ -1121,9 +1229,10 @@ export default function CreateQuizPage() {
                       onChange={(e) => handleConfigChange('maxStudents', e.target.value)}
                       placeholder="Leave empty for unlimited"
                       min="1"
+                      className="h-11 text-base"
                     />
                     {configErrors.maxStudents && (
-                      <p className="text-sm text-destructive">{configErrors.maxStudents}</p>
+                      <p className="text-sm text-destructive font-medium">{configErrors.maxStudents}</p>
                     )}
                     <p className="text-sm text-muted-foreground">
                       Limit the number of students who can take this quiz
@@ -1132,8 +1241,8 @@ export default function CreateQuizPage() {
                 </div>
 
                 {/* Expiration Date/Time */}
-                <div className="space-y-2">
-                  <Label htmlFor="expiresAt">
+                <div className="space-y-3">
+                  <Label htmlFor="expiresAt" className="text-base font-semibold">
                     Expiration Date & Time <span className="text-destructive">*</span>
                   </Label>
                   <Input
@@ -1142,9 +1251,10 @@ export default function CreateQuizPage() {
                     value={quizConfig.expiresAt}
                     onChange={(e) => handleConfigChange('expiresAt', e.target.value)}
                     required
+                    className="h-11 text-base"
                   />
                   {configErrors.expiresAt && (
-                    <p className="text-sm text-destructive">{configErrors.expiresAt}</p>
+                    <p className="text-sm text-destructive font-medium">{configErrors.expiresAt}</p>
                   )}
                   <p className="text-sm text-muted-foreground">
                     Students will not be able to access the quiz after this date and time
@@ -1152,14 +1262,14 @@ export default function CreateQuizPage() {
                 </div>
 
                 {/* Subjects (Multi-select) */}
-                <div className="space-y-2">
-                  <Label>Subjects (Optional)</Label>
+                <div className="space-y-3">
+                  <Label className="text-base font-semibold">Subjects (Optional)</Label>
                   <div className="flex flex-wrap gap-2">
                     {['Math', 'Science', 'History', 'English', 'Geography', 'Physics', 'Chemistry', 'Biology'].map((subject) => (
                       <Badge
                         key={subject}
                         variant={quizConfig.subjects.includes(subject) ? 'default' : 'outline'}
-                        className="cursor-pointer"
+                        className="cursor-pointer px-4 py-2 text-sm font-medium hover:scale-105 transition-transform"
                         onClick={() => {
                           const subjects = quizConfig.subjects.includes(subject)
                             ? quizConfig.subjects.filter((s) => s !== subject)
@@ -1194,8 +1304,9 @@ export default function CreateQuizPage() {
               <div className="flex justify-between pt-6 border-t">
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   onClick={handleBackToContent}
+                  className="px-6"
                 >
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back
@@ -1204,6 +1315,7 @@ export default function CreateQuizPage() {
                 <Button
                   type="button"
                   onClick={handleConfigNext}
+                  className="px-6"
                 >
                   Next: Review
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -1214,18 +1326,38 @@ export default function CreateQuizPage() {
         </TabsContent>
 
         {/* Step 4: Review & Save */}
-        <TabsContent value="review" className="space-y-6">
-          <ReviewAndSave
-            quizConfig={quizConfig}
-            questionDistribution={questionDistribution}
-            generatedQuestions={generatedQuestions}
-            selectedSource={selectedSource}
-            onBack={() => setCurrentStep('configure')}
-            onEditConfig={() => setCurrentStep('configure')}
-            onEditContent={() => setCurrentStep('upload')}
-          />
+        <TabsContent value="review" className="space-y-6 animate-in fade-in-50 duration-500">
+          <div className="space-y-6">
+            <Card className="border-2 shadow-xl bg-card/80 backdrop-blur">
+              <CardHeader className="bg-muted/50 border-b">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold">
+                    4
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl">Review & Save</CardTitle>
+                    <CardDescription className="text-base">
+                      Review your quiz configuration and generated questions before creating
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <ReviewAndSave
+                  quizConfig={quizConfig}
+                  questionDistribution={questionDistribution}
+                  generatedQuestions={generatedQuestions}
+                  selectedSource={selectedSource}
+                  onBack={() => setCurrentStep('configure')}
+                  onEditConfig={() => setCurrentStep('configure')}
+                  onEditContent={() => setCurrentStep('upload')}
+                />
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
+      </div>
     </div>
   );
 }
