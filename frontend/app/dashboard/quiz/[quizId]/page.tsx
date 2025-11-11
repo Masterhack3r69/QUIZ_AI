@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Copy, BarChart3, Settings, Trash2, ArrowLeft, CheckCircle2, Users, Clock, Calendar, TrendingUp } from 'lucide-react';
+import { Copy, BarChart3, Settings, Trash2, ArrowLeft, CheckCircle2, Users, Clock, Calendar, TrendingUp, Edit, Check } from 'lucide-react';
 import { apiClient, APIRequestError } from '@/lib/api';
 import { useToast } from '@/contexts/ToastContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { CopyButton } from '@/components/ui/shadcn-io/copy-button';
 import {
   Dialog,
   DialogContent,
@@ -31,7 +32,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { DetailPageLoadingSkeleton } from '@/components/shared/LoadingState';
 import { ErrorAlert } from '@/components/shared/ErrorAlert';
-import type { Quiz } from '@/types';
+import type { Quiz, Analytics } from '@/types';
 
 interface EditFormData {
   title: string;
@@ -58,6 +59,7 @@ export default function QuizManagementPage() {
   const { showError, showSuccess } = useToast();
 
   const [quiz, setQuiz] = useState<Quiz | null>(null);
+  const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -86,8 +88,18 @@ export default function QuizManagementPage() {
     try {
       setIsLoading(true);
       setError(null);
-      const data = await apiClient.getQuiz(quizId);
-      setQuiz(data);
+      
+      // Fetch both quiz data and analytics in parallel
+      const [quizData, analyticsData] = await Promise.all([
+        apiClient.getQuiz(quizId),
+        apiClient.getQuizAnalytics(quizId).catch(() => null), // Don't fail if analytics fails
+      ]);
+      
+      console.log('Quiz data received:', quizData);
+      console.log('Analytics data received:', analyticsData);
+      
+      setQuiz(quizData);
+      setAnalytics(analyticsData);
     } catch (err) {
       let errorMessage = 'Failed to load quiz. Please try again.';
       if (err instanceof APIRequestError) {
@@ -99,17 +111,6 @@ export default function QuizManagementPage() {
       setError(errorMessage);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleCopyAccessCode = async () => {
-    if (!quiz) return;
-    
-    try {
-      await navigator.clipboard.writeText(quiz.accessCode);
-      showSuccess('Quiz code copied to clipboard!');
-    } catch (err) {
-      showError('Failed to copy quiz code');
     }
   };
 
@@ -321,10 +322,12 @@ export default function QuizManagementPage() {
     return Math.min(((quiz.submissionCount || 0) / quiz.maxStudents) * 100, 100);
   };
 
-  // Calculate average score (placeholder - would come from API)
+  // Calculate average score from analytics data
   const getAverageScore = (): string => {
-    // This would typically come from the quiz data or a separate API call
-    return 'N/A';
+    if (!analytics || analytics.summary.totalSubmissions === 0) {
+      return 'N/A';
+    }
+    return `${analytics.summary.averageScore.toFixed(1)}%`;
   };
 
   if (isLoading) {
@@ -359,365 +362,436 @@ export default function QuizManagementPage() {
   const status = getQuizStatus(quiz);
 
   return (
-    <div className="space-y-6">
-      {/* Back Button */}
-      <Button
-        variant="ghost"
-        onClick={() => router.push('/dashboard')}
-        className="gap-2"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Dashboard
-      </Button>
-
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{quiz.title}</h1>
-          <p className="mt-2 text-muted-foreground">
-            Manage quiz settings and view performance
-          </p>
-        </div>
-        <Badge variant={status.variant} className="w-fit">
+    <div className="space-y-4">
+      {/* Compact Header */}
+      <div className="flex items-center justify-between">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push('/dashboard')}
+          className="gap-1.5 -ml-2"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Button>
+        <Badge variant={status.variant} className="text-xs">
           {status.label}
         </Badge>
       </div>
 
-      {/* Quiz Code Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quiz Access Code</CardTitle>
-          <CardDescription>
-            Share this code with students to access the quiz
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-3">
-            <div className="flex-1 bg-muted px-6 py-4 rounded-lg">
-              <p className="text-4xl font-mono font-bold text-center tracking-widest">
-                {quiz.accessCode}
-              </p>
-            </div>
-            <Button
-              size="lg"
-              onClick={handleCopyAccessCode}
-              className="gap-2"
-            >
-              <Copy className="h-4 w-4" />
-              Copy
-            </Button>
+      {/* Compact Title & Code Section */}
+      <div className="space-y-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">{quiz.title}</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Quiz Management
+          </p>
+        </div>
+
+        {/* Inline Access Code */}
+        <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg border">
+          <div className="flex-1">
+            <p className="text-xs font-medium text-muted-foreground mb-1">Access Code</p>
+            <p className="text-2xl font-mono font-bold tracking-wider">
+              {quiz.accessCode}
+            </p>
           </div>
-        </CardContent>
-      </Card>
+          <CopyButton
+            content={quiz.accessCode}
+            variant="outline"
+            size="md"
+            onCopy={() => showSuccess('Quiz code copied to clipboard!')}
+          />
+        </div>
+      </div>
 
-      {/* Quiz Details Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quiz Details</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Duration</p>
-              <p className="text-lg font-medium">{quiz.duration} minutes</p>
-            </div>
-
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Questions per Student</p>
-              <p className="text-lg font-medium">{quiz.questionsPerStudent} questions</p>
-            </div>
-
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Total Questions in Pool</p>
-              <p className="text-lg font-medium">{quiz.questions?.length || 0} questions</p>
-            </div>
-
-            {quiz.startDate && (
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Start Date</p>
-                <p className="text-lg font-medium">
-                  {new Date(quiz.startDate).toLocaleString()}
-                </p>
-              </div>
-            )}
-
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Expiration Date</p>
-              <p className="text-lg font-medium">
-                {new Date(quiz.expiresAt).toLocaleString()}
-              </p>
-            </div>
-
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Created</p>
-              <p className="text-lg font-medium">
-                {new Date(quiz.createdAt).toLocaleDateString()}
-              </p>
-            </div>
-          </div>
-
-          {quiz.subjects && quiz.subjects.length > 0 && (
-            <>
-              <Separator className="my-6" />
-              <div className="space-y-3">
-                <p className="text-sm font-medium">Subjects</p>
-                <div className="flex flex-wrap gap-2">
-                  {quiz.subjects.map((subject, index) => (
-                    <Badge key={index} variant="secondary">
-                      {subject}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-
-          {quiz.questionDistribution && (
-            <>
-              <Separator className="my-6" />
-              <div className="space-y-3">
-                <p className="text-sm font-medium">Question Distribution</p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {quiz.questionDistribution.multipleChoice > 0 && (
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Multiple Choice</p>
-                      <p className="text-2xl font-bold">{quiz.questionDistribution.multipleChoice}</p>
-                    </div>
-                  )}
-                  {quiz.questionDistribution.trueFalse > 0 && (
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">True/False</p>
-                      <p className="text-2xl font-bold">{quiz.questionDistribution.trueFalse}</p>
-                    </div>
-                  )}
-                  {quiz.questionDistribution.fillInBlank > 0 && (
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Fill in Blank</p>
-                      <p className="text-2xl font-bold">{quiz.questionDistribution.fillInBlank}</p>
-                    </div>
-                  )}
-                  {quiz.questionDistribution.matching > 0 && (
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Matching</p>
-                      <p className="text-2xl font-bold">{quiz.questionDistribution.matching}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Quick Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Submissions</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{quiz.submissionCount || 0}</div>
-            {quiz.maxStudents && (
-              <p className="text-xs text-muted-foreground">
-                of {quiz.maxStudents} max students
-              </p>
-            )}
+          <CardContent >
+            <div className="flex items-start justify-between">
+              <div className="space-y-3 flex-1">
+                <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <p className="text-sm text-muted-foreground">Submissions</p>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-3xl font-semibold tracking-tight">
+                    {analytics?.summary.totalSubmissions ?? quiz.submissionCount ?? 0}
+                  </p>
+                  {quiz.maxStudents && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      of {quiz.maxStudents} max
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Average Score</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{getAverageScore()}</div>
-            <p className="text-xs text-muted-foreground">
-              View detailed analytics
-            </p>
+          <CardContent >
+            <div className="flex items-start justify-between">
+              <div className="space-y-3 flex-1">
+                <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <p className="text-sm text-muted-foreground">Average Score</p>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-3xl font-semibold tracking-tight">{getAverageScore()}</p>
+                  {analytics && analytics.summary.totalSubmissions > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {analytics.summary.highestScore}% highest
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {quiz.maxStudents ? `${Math.round(getCompletionRate(quiz))}%` : 'N/A'}
+          <CardContent >
+            <div className="flex items-start justify-between">
+              <div className="space-y-3 flex-1">
+                <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <p className="text-sm text-muted-foreground">Completion</p>
+                  <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-3xl font-semibold tracking-tight">
+                    {quiz.maxStudents ? `${Math.round(getCompletionRate(quiz))}%` : 'N/A'}
+                  </p>
+                  {quiz.maxStudents && (
+                    <div className="mt-3">
+                      <div className="w-full bg-muted rounded-full h-1.5">
+                        <div 
+                          className="bg-foreground h-1.5 rounded-full transition-all duration-300"
+                          style={{ width: `${Math.min(getCompletionRate(quiz), 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {quiz.maxStudents ? 'Based on student limit' : 'No limit set'}
-            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Action Buttons */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+      {/* Details Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Quiz Configuration */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              Quiz Configuration
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">Duration</p>
+                <p className="text-lg font-semibold">{quiz.duration} min</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">Questions/Student</p>
+                <p className="text-lg font-semibold">{quiz.questionsPerStudent}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">Total Pool</p>
+                <p className="text-lg font-semibold">{quiz.questions?.length || 0}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">Max Students</p>
+                <p className="text-lg font-semibold">{quiz.maxStudents || 'Unlimited'}</p>
+              </div>
+            </div>
+
+            {quiz.questionDistribution && (
+              <>
+                <Separator />
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">Question Types</p>
+                  <div className="space-y-2">
+                    {quiz.questionDistribution.multipleChoice > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Multiple Choice</span>
+                        <Badge variant="secondary" className="font-semibold">
+                          {quiz.questionDistribution.multipleChoice}
+                        </Badge>
+                      </div>
+                    )}
+                    {quiz.questionDistribution.trueFalse > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">True/False</span>
+                        <Badge variant="secondary" className="font-semibold">
+                          {quiz.questionDistribution.trueFalse}
+                        </Badge>
+                      </div>
+                    )}
+                    {quiz.questionDistribution.fillInBlank > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Fill in Blank</span>
+                        <Badge variant="secondary" className="font-semibold">
+                          {quiz.questionDistribution.fillInBlank}
+                        </Badge>
+                      </div>
+                    )}
+                    {quiz.questionDistribution.matching > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Matching</span>
+                        <Badge variant="secondary" className="font-semibold">
+                          {quiz.questionDistribution.matching}
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Schedule & Metadata */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              Schedule & Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-3">
+              {quiz.startDate && (
+                <div className="flex items-start justify-between py-2 border-b">
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-medium text-muted-foreground">Start Date</p>
+                    <p className="text-sm font-medium">
+                      {new Date(quiz.startDate).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </p>
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex items-start justify-between py-2 border-b">
+                <div className="space-y-0.5">
+                  <p className="text-xs font-medium text-muted-foreground">Expiration Date</p>
+                  <p className="text-sm font-medium">
+                    {new Date(quiz.expiresAt).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start justify-between py-2 border-b">
+                <div className="space-y-0.5">
+                  <p className="text-xs font-medium text-muted-foreground">Created</p>
+                  <p className="text-sm font-medium">
+                    {new Date(quiz.createdAt).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {quiz.subjects && quiz.subjects.length > 0 && (
+              <>
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">Subjects</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {quiz.subjects.map((subject, index) => (
+                      <Badge key={index} variant="outline" className="text-xs">
+                        {subject}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Compact Action Buttons */}
+      <div className="grid grid-cols-2 gap-2">
         <Button
-          size="lg"
           onClick={handleViewResults}
-          className="w-full gap-2 min-h-[48px] touch-manipulation"
+          className="gap-1.5"
         >
           <BarChart3 className="h-4 w-4" />
-          View Results
+          Results
         </Button>
 
         <Button
           variant="outline"
-          size="lg"
           onClick={handleEditSettings}
-          className="w-full gap-2 min-h-[48px] touch-manipulation"
+          className="gap-1.5"
         >
           <Settings className="h-4 w-4" />
-          Edit Settings
+          Settings
         </Button>
 
         <Button
           variant="outline"
-          size="lg"
           onClick={() => router.push(`/dashboard/quiz/${quizId}/edit`)}
-          className="w-full gap-2 min-h-[48px] touch-manipulation"
+          className="gap-1.5"
         >
-          <Settings className="h-4 w-4" />
-          Edit Questions
+          <Edit className="h-4 w-4" />
+          Questions
         </Button>
 
         <Button
           variant="destructive"
-          size="lg"
           onClick={() => setShowDeleteDialog(true)}
-          className="w-full gap-2 min-h-[48px] touch-manipulation"
+          className="gap-1.5"
         >
           <Trash2 className="h-4 w-4" />
-          Delete Quiz
+          Delete
         </Button>
       </div>
 
-      {/* Edit Settings Dialog */}
+      {/* Compact Edit Settings Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[480px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Quiz Settings</DialogTitle>
-            <DialogDescription>
-              Update quiz configuration. The access code and questions will remain unchanged.
+            <DialogTitle className="text-lg">Edit Settings</DialogTitle>
+            <DialogDescription className="text-sm">
+              Update quiz configuration
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 sm:space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="title" className="text-sm font-medium">Quiz Title *</Label>
+          <div className="space-y-3 py-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="title" className="text-xs">Quiz Title *</Label>
               <Input
                 id="title"
                 value={editFormData.title}
                 onChange={(e) => handleEditFormChange('title', e.target.value)}
                 disabled={isUpdating}
                 placeholder="Enter quiz title"
-                className="min-h-[44px]"
               />
               {editFormErrors.title && (
-                <p className="text-sm text-destructive">{editFormErrors.title}</p>
+                <p className="text-xs text-destructive">{editFormErrors.title}</p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="duration" className="text-sm font-medium">Duration (minutes) *</Label>
-              <Input
-                id="duration"
-                type="number"
-                value={editFormData.duration.toString()}
-                onChange={(e) => handleEditFormChange('duration', parseInt(e.target.value) || 0)}
-                disabled={isUpdating}
-                min="1"
-                max="300"
-                placeholder="e.g., 30"
-                className="min-h-[44px]"
-              />
-              {editFormErrors.duration && (
-                <p className="text-sm text-destructive">{editFormErrors.duration}</p>
-              )}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="duration" className="text-xs">Duration (min) *</Label>
+                <Input
+                  id="duration"
+                  type="number"
+                  value={editFormData.duration.toString()}
+                  onChange={(e) => handleEditFormChange('duration', parseInt(e.target.value) || 0)}
+                  disabled={isUpdating}
+                  min="1"
+                  max="300"
+                  placeholder="30"
+                />
+                {editFormErrors.duration && (
+                  <p className="text-xs text-destructive">{editFormErrors.duration}</p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="maxStudents" className="text-xs">Max Students</Label>
+                <Input
+                  id="maxStudents"
+                  type="number"
+                  value={editFormData.maxStudents}
+                  onChange={(e) => handleEditFormChange('maxStudents', e.target.value)}
+                  disabled={isUpdating}
+                  min="1"
+                  max="10000"
+                  placeholder="Unlimited"
+                />
+                {editFormErrors.maxStudents && (
+                  <p className="text-xs text-destructive">{editFormErrors.maxStudents}</p>
+                )}
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="startDate" className="text-sm font-medium">Start Date & Time (Optional)</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="startDate" className="text-xs">Start Date & Time</Label>
               <Input
                 id="startDate"
                 type="datetime-local"
                 value={editFormData.startDate}
                 onChange={(e) => handleEditFormChange('startDate', e.target.value)}
                 disabled={isUpdating}
-                className="min-h-[44px]"
               />
               {editFormErrors.startDate && (
-                <p className="text-sm text-destructive">{editFormErrors.startDate}</p>
+                <p className="text-xs text-destructive">{editFormErrors.startDate}</p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="expiresAt" className="text-sm font-medium">Expiration Date & Time *</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="expiresAt" className="text-xs">Expiration Date & Time *</Label>
               <Input
                 id="expiresAt"
                 type="datetime-local"
                 value={editFormData.expiresAt}
                 onChange={(e) => handleEditFormChange('expiresAt', e.target.value)}
                 disabled={isUpdating}
-                className="min-h-[44px]"
               />
               {editFormErrors.expiresAt && (
-                <p className="text-sm text-destructive">{editFormErrors.expiresAt}</p>
+                <p className="text-xs text-destructive">{editFormErrors.expiresAt}</p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="maxStudents" className="text-sm font-medium">Maximum Students (Optional)</Label>
-              <Input
-                id="maxStudents"
-                type="number"
-                value={editFormData.maxStudents}
-                onChange={(e) => handleEditFormChange('maxStudents', e.target.value)}
-                disabled={isUpdating}
-                min="1"
-                max="10000"
-                placeholder="Leave empty for unlimited"
-                className="min-h-[44px]"
-              />
-              {editFormErrors.maxStudents && (
-                <p className="text-sm text-destructive">{editFormErrors.maxStudents}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="subjects" className="text-sm font-medium">Subjects (Optional)</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="subjects" className="text-xs">Subjects</Label>
               <Input
                 id="subjects"
                 value={editFormData.subjects}
                 onChange={(e) => handleEditFormChange('subjects', e.target.value)}
                 disabled={isUpdating}
-                placeholder="e.g., Math, Science, History (comma-separated)"
-                className="min-h-[44px]"
+                placeholder="Math, Science (comma-separated)"
               />
               {editFormErrors.subjects && (
-                <p className="text-sm text-destructive">{editFormErrors.subjects}</p>
+                <p className="text-xs text-destructive">{editFormErrors.subjects}</p>
               )}
             </div>
           </div>
-          <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+          <DialogFooter className="gap-2">
             <Button
               variant="outline"
               onClick={() => setShowEditDialog(false)}
               disabled={isUpdating}
-              className="w-full sm:w-auto min-h-[44px]"
+              size="sm"
             >
               Cancel
             </Button>
             <Button 
               onClick={handleUpdateQuiz} 
               disabled={isUpdating}
-              className="w-full sm:w-auto min-h-[44px]"
+              size="sm"
+              className="gap-1.5"
             >
-              {isUpdating ? 'Saving...' : 'Save Changes'}
+              {isUpdating ? (
+                'Saving...'
+              ) : (
+                <>
+                  <Check className="h-3.5 w-3.5" />
+                  Save
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

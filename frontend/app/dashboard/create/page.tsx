@@ -15,6 +15,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { AlertCircle, ArrowLeft, ArrowRight, Check, Copy, Home, Upload, Info, Edit, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api';
@@ -113,11 +114,15 @@ function ReviewAndSave({
       formData.append('title', quizConfig.title);
       formData.append('duration', quizConfig.duration);
       formData.append('questionsPerStudent', quizConfig.questionsPerStudent);
-      formData.append('expiresAt', quizConfig.expiresAt);
+      
+      // Convert Date objects to ISO strings
+      if (quizConfig.expiresAt) {
+        formData.append('expiresAt', quizConfig.expiresAt.toISOString());
+      }
       
       // Add optional fields
       if (quizConfig.startDate) {
-        formData.append('startDate', quizConfig.startDate);
+        formData.append('startDate', quizConfig.startDate.toISOString());
       }
       if (quizConfig.maxStudents) {
         formData.append('maxStudents', quizConfig.maxStudents);
@@ -303,17 +308,19 @@ function ReviewAndSave({
                 <div className="bg-white rounded-lg p-4 shadow-sm">
                   <p className="text-sm text-muted-foreground mb-1">Starts At</p>
                   <p className="text-base font-semibold">
-                    {new Date(quizConfig.startDate).toLocaleString()}
+                    {quizConfig.startDate.toLocaleString()}
                   </p>
                 </div>
               )}
 
-              <div className="bg-white rounded-lg p-4 shadow-sm">
-                <p className="text-sm text-muted-foreground mb-1">Expires At</p>
-                <p className="text-base font-semibold">
-                  {new Date(quizConfig.expiresAt).toLocaleString()}
-                </p>
-              </div>
+              {quizConfig.expiresAt && (
+                <div className="bg-white rounded-lg p-4 shadow-sm">
+                  <p className="text-sm text-muted-foreground mb-1">Expires At</p>
+                  <p className="text-base font-semibold">
+                    {quizConfig.expiresAt.toLocaleString()}
+                  </p>
+                </div>
+              )}
 
               {quizConfig.maxStudents && (
                 <div className="bg-white rounded-lg p-4 shadow-sm">
@@ -370,7 +377,7 @@ function ReviewAndSave({
 
         {/* Generated Questions Preview */}
         <Card className="border-2 shadow-lg">
-          <CardHeader className="bg-muted/50 border-b">
+          <CardHeader className="border-b">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
@@ -564,9 +571,9 @@ type ProcessingStage = 'extracting' | 'generating' | 'complete';
 interface QuizConfig {
   title: string;
   duration: string;
-  expiresAt: string;
+  expiresAt: Date | undefined;
   questionsPerStudent: string;
-  startDate: string;
+  startDate: Date | undefined;
   maxStudents: string;
   subjects: string[];
 }
@@ -598,9 +605,9 @@ export default function CreateQuizPage() {
   const [quizConfig, setQuizConfig] = useState<QuizConfig>({
     title: '',
     duration: '30',
-    expiresAt: '',
+    expiresAt: undefined,
     questionsPerStudent: '10',
-    startDate: '',
+    startDate: undefined,
     maxStudents: '',
     subjects: [],
   });
@@ -618,7 +625,7 @@ export default function CreateQuizPage() {
     setSourceError('');
   };
 
-  const handleConfigChange = (field: keyof QuizConfig, value: string | string[]) => {
+  const handleConfigChange = (field: keyof QuizConfig, value: string | string[] | Date | undefined) => {
     setQuizConfig((prev) => ({ ...prev, [field]: value }));
     // Clear error for this field when user starts typing
     if (configErrors[field]) {
@@ -797,7 +804,7 @@ export default function CreateQuizPage() {
       formData.append('title', 'Untitled Quiz');
       formData.append('duration', quizConfig.duration || '30');
       formData.append('questionsPerStudent', quizConfig.questionsPerStudent || '10');
-      formData.append('expiresAt', quizConfig.expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString());
+      formData.append('expiresAt', quizConfig.expiresAt ? quizConfig.expiresAt.toISOString() : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString());
       
       // Add question distribution
       formData.append('questionDistribution', JSON.stringify(questionDistribution));
@@ -956,7 +963,7 @@ export default function CreateQuizPage() {
         {/* Step 1: Upload/Content Source Selection */}
         <TabsContent value="upload" className="space-y-6 animate-in fade-in-50 duration-500">
           <Card className="border-2 shadow-xl bg-card/80 backdrop-blur">
-            <CardHeader className="bg-muted/50 border-b">
+            <CardHeader className="border-b">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold">
                   1
@@ -1004,7 +1011,7 @@ export default function CreateQuizPage() {
         {/* Step 2: AI Processing */}
         <TabsContent value="processing" className="space-y-6 animate-in fade-in-50 duration-500">
           <Card className="border-2 shadow-xl bg-card/80 backdrop-blur overflow-hidden">
-            <CardHeader className="bg-muted/50 border-b">
+            <CardHeader className="border-b">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold">
                   2
@@ -1082,243 +1089,301 @@ export default function CreateQuizPage() {
         {/* Step 3: Configuration */}
         <TabsContent value="configure" className="space-y-6 animate-in fade-in-50 duration-500">
           <Card className="border-2 shadow-xl bg-card/80 backdrop-blur overflow-visible">
-            <CardHeader className="bg-muted/50 border-b">
+            <CardHeader className="border-b">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-primary-foreground font-bold shadow-lg">
                   3
                 </div>
                 <div className="flex-1 min-w-0">
-                  <CardTitle className="text-xl">Configure Quiz Settings</CardTitle>
+                  <CardTitle className="text-xl bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+                    Configure Quiz Settings
+                  </CardTitle>
                   <CardDescription className="text-base">
                     Set up your quiz parameters and preferences
                   </CardDescription>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-6 pt-6 overflow-visible">
+            <CardContent className="space-y-8 pt-8 overflow-visible">
               {/* Success Message */}
-              <div className="rounded-lg bg-primary/10 border-2 border-primary/30 p-4 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary flex items-center justify-center mt-0.5">
+              <div className="rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 border border-primary/20 p-5 shadow-sm">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg">
                     <Check className="h-6 w-6 text-primary-foreground" />
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 pt-1">
                     <h3 className="font-semibold text-base text-foreground mb-1">
                       AI Processing Complete
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      Successfully generated <span className="font-semibold text-primary">{generatedQuestions.length}</span> questions from your content
+                      Successfully generated <span className="font-bold text-primary text-base">{generatedQuestions.length}</span> questions from your content
                     </p>
                   </div>
                 </div>
               </div>
 
               {/* Configuration Form */}
-              <form className="space-y-8" onSubmit={(e) => e.preventDefault()}>
-                {/* Quiz Title */}
-                <div className="space-y-3">
-                  <Label htmlFor="title" className="text-base font-semibold">
-                    Quiz Title <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="title"
-                    type="text"
-                    value={quizConfig.title}
-                    onChange={(e) => handleConfigChange('title', e.target.value)}
-                    placeholder="e.g., Chapter 5: Photosynthesis Quiz"
-                    required
-                    className="h-11 text-base"
-                  />
-                  {configErrors.title && (
-                    <p className="text-sm text-destructive font-medium">{configErrors.title}</p>
-                  )}
-                  <p className="text-sm text-muted-foreground">
-                    Give your quiz a descriptive title
-                  </p>
-                </div>
+              <form className="space-y-10" onSubmit={(e) => e.preventDefault()}>
+                {/* Section 1: Basic Information */}
+                <div className="space-y-6">
+                  <div className="flex items-center gap-2 pb-2">
+                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent"></div>
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Basic Information</h3>
+                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent"></div>
+                  </div>
 
-                {/* Question Distribution */}
-                <div className="space-y-3">
-                  <Label className="text-base font-semibold">Question Type Distribution</Label>
-                  <QuestionDistribution
-                    totalQuestions={parseInt(quizConfig.questionsPerStudent) || 10}
-                    distribution={questionDistribution}
-                    onChange={setQuestionDistribution}
-                    mode="percentage"
-                  />
-                </div>
-
-                {/* Duration and Questions Per Student - Side by Side */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Duration */}
+                  {/* Quiz Title */}
                   <div className="space-y-3">
-                    <Label htmlFor="duration" className="text-base font-semibold">
-                      Duration (minutes) <span className="text-destructive">*</span>
+                    <Label htmlFor="title" className="text-base font-semibold flex items-center gap-2">
+                      Quiz Title <span className="text-destructive">*</span>
                     </Label>
                     <Input
-                      id="duration"
-                      type="number"
-                      value={quizConfig.duration}
-                      onChange={(e) => handleConfigChange('duration', e.target.value)}
-                      placeholder="30"
-                      min="1"
-                      max="300"
+                      id="title"
+                      type="text"
+                      value={quizConfig.title}
+                      onChange={(e) => handleConfigChange('title', e.target.value)}
+                      placeholder="e.g., Chapter 5: Photosynthesis Quiz"
                       required
-                      className="h-11 text-base"
+                      className="h-12 text-base border-2 focus:border-primary transition-colors"
                     />
-                    {configErrors.duration && (
-                      <p className="text-sm text-destructive font-medium">{configErrors.duration}</p>
+                    {configErrors.title && (
+                      <p className="text-sm text-destructive font-medium flex items-center gap-1">
+                        <AlertCircle className="h-3.5 w-3.5" />
+                        {configErrors.title}
+                      </p>
                     )}
                     <p className="text-sm text-muted-foreground">
-                      Time limit for students to complete the quiz
+                      Give your quiz a descriptive title that students will see
                     </p>
+                  </div>
+
+                  {/* Subjects */}
+                  <div className="space-y-3">
+                    <Label className="text-base font-semibold">Subjects (Optional)</Label>
+                    <div className="flex flex-wrap gap-2 p-4 bg-muted/30 rounded-lg border-2 border-dashed">
+                      {['Math', 'Science', 'History', 'English', 'Geography', 'Physics', 'Chemistry', 'Biology'].map((subject) => (
+                        <Badge
+                          key={subject}
+                          variant={quizConfig.subjects.includes(subject) ? 'default' : 'outline'}
+                          className="cursor-pointer px-4 py-2 text-sm font-medium hover:scale-105 transition-all hover:shadow-md"
+                          onClick={() => {
+                            const subjects = quizConfig.subjects.includes(subject)
+                              ? quizConfig.subjects.filter((s) => s !== subject)
+                              : [...quizConfig.subjects, subject];
+                            handleConfigChange('subjects', subjects);
+                          }}
+                        >
+                          {subject}
+                        </Badge>
+                      ))}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Select one or more subjects to categorize this quiz
+                    </p>
+                  </div>
+                </div>
+
+                {/* Section 2: Question Settings */}
+                <div className="space-y-6">
+                  <div className="flex items-center gap-2 pb-2">
+                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent"></div>
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Question Settings</h3>
+                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent"></div>
                   </div>
 
                   {/* Questions Per Student */}
                   <div className="space-y-3">
-                    <Label htmlFor="questionsPerStudent" className="text-base font-semibold">
+                    <Label htmlFor="questionsPerStudent" className="text-base font-semibold flex items-center gap-2">
                       Questions Per Student <span className="text-destructive">*</span>
                     </Label>
-                    <Input
-                      id="questionsPerStudent"
-                      type="number"
-                      value={quizConfig.questionsPerStudent}
-                      onChange={(e) => handleConfigChange('questionsPerStudent', e.target.value)}
-                      placeholder="10"
-                      min="1"
-                      max={generatedQuestions.length}
-                      required
-                      className="h-11 text-base"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="questionsPerStudent"
+                        type="number"
+                        value={quizConfig.questionsPerStudent}
+                        onChange={(e) => handleConfigChange('questionsPerStudent', e.target.value)}
+                        placeholder="10"
+                        min="1"
+                        max={generatedQuestions.length}
+                        required
+                        className="h-12 text-base border-2 focus:border-primary transition-colors pr-24"
+                      />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium bg-muted px-2 py-1 rounded">
+                        of {generatedQuestions.length}
+                      </div>
+                    </div>
                     {configErrors.questionsPerStudent && (
-                      <p className="text-sm text-destructive font-medium">{configErrors.questionsPerStudent}</p>
+                      <p className="text-sm text-destructive font-medium flex items-center gap-1">
+                        <AlertCircle className="h-3.5 w-3.5" />
+                        {configErrors.questionsPerStudent}
+                      </p>
                     )}
                     <p className="text-sm text-muted-foreground">
-                      Max: {generatedQuestions.length} questions available
+                      Each student will receive this many random questions
                     </p>
                   </div>
-                </div>
 
-                {/* Start Date and Max Students - Side by Side */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Start Date (Optional) */}
+                  {/* Question Distribution */}
                   <div className="space-y-3">
-                    <Label htmlFor="startDate" className="text-base font-semibold">Start Date & Time (Optional)</Label>
-                    <Input
-                      id="startDate"
-                      type="datetime-local"
-                      value={quizConfig.startDate}
-                      onChange={(e) => handleConfigChange('startDate', e.target.value)}
-                      className="h-11 text-base"
-                    />
-                    {configErrors.startDate && (
-                      <p className="text-sm text-destructive font-medium">{configErrors.startDate}</p>
-                    )}
-                    <p className="text-sm text-muted-foreground">
-                      Quiz will be available starting from this date
-                    </p>
+                    <Label className="text-base font-semibold">Question Type Distribution</Label>
+                    <div className="p-5 bg-gradient-to-br from-muted/50 to-muted/30 rounded-lg border-2">
+                      <QuestionDistribution
+                        totalQuestions={parseInt(quizConfig.questionsPerStudent) || 10}
+                        distribution={questionDistribution}
+                        onChange={setQuestionDistribution}
+                        mode="percentage"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 3: Time & Access Control */}
+                <div className="space-y-6">
+                  <div className="flex items-center gap-2 pb-2">
+                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent"></div>
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Time & Access Control</h3>
+                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent"></div>
                   </div>
 
-                  {/* Max Students (Optional) */}
+                  {/* Duration */}
                   <div className="space-y-3">
-                    <Label htmlFor="maxStudents" className="text-base font-semibold">Maximum Students (Optional)</Label>
-                    <Input
-                      id="maxStudents"
-                      type="number"
-                      value={quizConfig.maxStudents}
-                      onChange={(e) => handleConfigChange('maxStudents', e.target.value)}
-                      placeholder="Leave empty for unlimited"
-                      min="1"
-                      className="h-11 text-base"
-                    />
-                    {configErrors.maxStudents && (
-                      <p className="text-sm text-destructive font-medium">{configErrors.maxStudents}</p>
+                    <Label htmlFor="duration" className="text-base font-semibold flex items-center gap-2">
+                      Duration <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="duration"
+                        type="number"
+                        value={quizConfig.duration}
+                        onChange={(e) => handleConfigChange('duration', e.target.value)}
+                        placeholder="30"
+                        min="1"
+                        max="300"
+                        required
+                        className="h-12 text-base border-2 focus:border-primary transition-colors pr-24"
+                      />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium bg-muted px-2 py-1 rounded">
+                        minutes
+                      </div>
+                    </div>
+                    {configErrors.duration && (
+                      <p className="text-sm text-destructive font-medium flex items-center gap-1">
+                        <AlertCircle className="h-3.5 w-3.5" />
+                        {configErrors.duration}
+                      </p>
                     )}
                     <p className="text-sm text-muted-foreground">
-                      Limit the number of students who can take this quiz
+                      Time limit for students to complete the quiz (1-300 minutes)
                     </p>
                   </div>
-                </div>
 
-                {/* Expiration Date/Time */}
-                <div className="space-y-3">
-                  <Label htmlFor="expiresAt" className="text-base font-semibold">
-                    Expiration Date & Time <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="expiresAt"
-                    type="datetime-local"
-                    value={quizConfig.expiresAt}
-                    onChange={(e) => handleConfigChange('expiresAt', e.target.value)}
-                    required
-                    className="h-11 text-base"
-                  />
-                  {configErrors.expiresAt && (
-                    <p className="text-sm text-destructive font-medium">{configErrors.expiresAt}</p>
-                  )}
-                  <p className="text-sm text-muted-foreground">
-                    Students will not be able to access the quiz after this date and time
-                  </p>
-                </div>
+                  {/* Date Range and Max Students */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Start Date */}
+                    <div className="space-y-3">
+                      <Label className="text-base font-semibold">
+                        Start Date & Time <span className="text-muted-foreground text-sm font-normal">(Optional)</span>
+                      </Label>
+                      <DateTimePicker
+                        date={quizConfig.startDate}
+                        setDate={(date) => handleConfigChange('startDate', date)}
+                        placeholder="Select start date and time"
+                        minDate={new Date()}
+                        maxDate={quizConfig.expiresAt}
+                      />
+                      {configErrors.startDate && (
+                        <p className="text-sm text-destructive font-medium flex items-center gap-1">
+                          <AlertCircle className="h-3.5 w-3.5" />
+                          {configErrors.startDate}
+                        </p>
+                      )}
+                      <p className="text-sm text-muted-foreground">
+                        Quiz becomes available from this date
+                      </p>
+                    </div>
 
-                {/* Subjects (Multi-select) */}
-                <div className="space-y-3">
-                  <Label className="text-base font-semibold">Subjects (Optional)</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {['Math', 'Science', 'History', 'English', 'Geography', 'Physics', 'Chemistry', 'Biology'].map((subject) => (
-                      <Badge
-                        key={subject}
-                        variant={quizConfig.subjects.includes(subject) ? 'default' : 'outline'}
-                        className="cursor-pointer px-4 py-2 text-sm font-medium hover:scale-105 transition-transform"
-                        onClick={() => {
-                          const subjects = quizConfig.subjects.includes(subject)
-                            ? quizConfig.subjects.filter((s) => s !== subject)
-                            : [...quizConfig.subjects, subject];
-                          handleConfigChange('subjects', subjects);
-                        }}
-                      >
-                        {subject}
-                      </Badge>
-                    ))}
+                    {/* Expiration Date */}
+                    <div className="space-y-3">
+                      <Label className="text-base font-semibold flex items-center gap-2">
+                        Expiration Date & Time <span className="text-destructive">*</span>
+                      </Label>
+                      <DateTimePicker
+                        date={quizConfig.expiresAt}
+                        setDate={(date) => handleConfigChange('expiresAt', date)}
+                        placeholder="Select expiration date and time"
+                        minDate={quizConfig.startDate || new Date()}
+                      />
+                      {configErrors.expiresAt && (
+                        <p className="text-sm text-destructive font-medium flex items-center gap-1">
+                          <AlertCircle className="h-3.5 w-3.5" />
+                          {configErrors.expiresAt}
+                        </p>
+                      )}
+                      <p className="text-sm text-muted-foreground">
+                        Quiz closes after this date
+                      </p>
+                    </div>
+
+                    {/* Max Students */}
+                    <div className="space-y-3">
+                      <Label htmlFor="maxStudents" className="text-base font-semibold">
+                        Maximum Students <span className="text-muted-foreground text-sm font-normal">(Optional)</span>
+                      </Label>
+                      <Input
+                        id="maxStudents"
+                        type="number"
+                        value={quizConfig.maxStudents}
+                        onChange={(e) => handleConfigChange('maxStudents', e.target.value)}
+                        placeholder="Leave empty for unlimited"
+                        min="1"
+                        className="h-12 text-base border-2 focus:border-primary transition-colors"
+                      />
+                      {configErrors.maxStudents && (
+                        <p className="text-sm text-destructive font-medium flex items-center gap-1">
+                          <AlertCircle className="h-3.5 w-3.5" />
+                          {configErrors.maxStudents}
+                        </p>
+                      )}
+                      <p className="text-sm text-muted-foreground">
+                        Limit the number of students who can take this quiz
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Select one or more subjects to categorize this quiz
-                  </p>
                 </div>
 
                 {/* Info Box */}
-                <Alert>
-                  <Info className="h-4 w-4" />
-                  <AlertTitle>About Question Randomization</AlertTitle>
-                  <AlertDescription>
+                <Alert className="border-2 border-blue-200 bg-blue-50/50">
+                  <Info className="h-5 w-5 text-blue-600" />
+                  <AlertTitle className="text-blue-900 font-semibold">About Question Randomization</AlertTitle>
+                  <AlertDescription className="text-blue-800">
                     Each student will receive a random selection of{' '}
-                    <span className="font-semibold">{quizConfig.questionsPerStudent || '?'}</span>{' '}
+                    <span className="font-bold">{quizConfig.questionsPerStudent || '?'}</span>{' '}
                     questions from the pool of{' '}
-                    <span className="font-semibold">{generatedQuestions.length}</span>{' '}
+                    <span className="font-bold">{generatedQuestions.length}</span>{' '}
                     generated questions. This ensures academic integrity while maintaining fairness.
                   </AlertDescription>
                 </Alert>
               </form>
 
               {/* Navigation Buttons */}
-              <div className="flex justify-between pt-6 border-t">
+              <div className="flex justify-between pt-8 border-t-2">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={handleBackToContent}
-                  className="px-6"
+                  className="px-8 h-12 text-base border-2 hover:border-primary transition-colors"
                 >
-                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  <ArrowLeft className="mr-2 h-5 w-5" />
                   Back
                 </Button>
 
                 <Button
                   type="button"
                   onClick={handleConfigNext}
-                  className="px-6"
+                  className="px-8 h-12 text-base shadow-lg hover:shadow-xl transition-all"
                 >
                   Next: Review
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </div>
             </CardContent>
@@ -1329,7 +1394,7 @@ export default function CreateQuizPage() {
         <TabsContent value="review" className="space-y-6 animate-in fade-in-50 duration-500">
           <div className="space-y-6">
             <Card className="border-2 shadow-xl bg-card/80 backdrop-blur">
-              <CardHeader className="bg-muted/50 border-b">
+              <CardHeader className="border-b">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold">
                     4

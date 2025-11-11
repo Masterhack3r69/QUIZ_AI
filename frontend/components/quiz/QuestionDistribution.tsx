@@ -2,7 +2,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { QuizDistribution } from '@/types';
-import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
+import { Label } from '@/components/ui/label';
+import {
+  Choicebox,
+  ChoiceboxItem,
+  ChoiceboxItemHeader,
+  ChoiceboxItemTitle,
+  ChoiceboxItemSubtitle,
+  ChoiceboxItemContent,
+  ChoiceboxItemIndicator,
+} from '@/components/ui/shadcn-io/choicebox';
 
 export interface QuestionDistributionProps {
   totalQuestions: number;
@@ -72,6 +82,7 @@ export function QuestionDistribution({
 }: QuestionDistributionProps) {
   const [localDistribution, setLocalDistribution] = useState<QuizDistribution>(distribution);
   const [validationError, setValidationError] = useState<string>('');
+  const [selectedPreset, setSelectedPreset] = useState<string>('');
 
   // Update local state when prop changes
   useEffect(() => {
@@ -110,9 +121,13 @@ export function QuestionDistribution({
 
   // Handle input change
   const handleChange = (type: keyof QuizDistribution, value: number) => {
+    // Clamp value between 0 and max
+    const maxValue = getMaxValue();
+    const clampedValue = Math.max(0, Math.min(maxValue, value));
+    
     const newDistribution = {
       ...localDistribution,
-      [type]: Math.max(0, value),
+      [type]: clampedValue,
     };
     
     setLocalDistribution(newDistribution);
@@ -125,13 +140,55 @@ export function QuestionDistribution({
     }
   };
 
-  // Handle slider change
+  // Handle slider change with auto-adjustment
   const handleSliderChange = (type: keyof QuizDistribution, value: number) => {
-    handleChange(type, value);
+    if (mode === 'percentage') {
+      // Auto-adjust other values to maintain 100% total
+      const currentValue = localDistribution[type];
+      const diff = value - currentValue;
+      
+      if (diff !== 0) {
+        const newDistribution = { ...localDistribution, [type]: value };
+        const otherTypes = (Object.keys(localDistribution) as (keyof QuizDistribution)[])
+          .filter(t => t !== type && localDistribution[t] > 0);
+        
+        if (otherTypes.length > 0) {
+          // Distribute the difference proportionally among other types
+          const totalOthers = otherTypes.reduce((sum, t) => sum + localDistribution[t], 0);
+          
+          if (totalOthers > 0) {
+            let remaining = -diff;
+            otherTypes.forEach((t, index) => {
+              if (index === otherTypes.length - 1) {
+                // Last type gets the remaining to avoid rounding errors
+                newDistribution[t] = Math.max(0, localDistribution[t] + remaining);
+              } else {
+                const adjustment = Math.round((localDistribution[t] / totalOthers) * -diff);
+                newDistribution[t] = Math.max(0, localDistribution[t] + adjustment);
+                remaining -= adjustment;
+              }
+            });
+          }
+        }
+        
+        setLocalDistribution(newDistribution);
+        const error = validateDistribution(newDistribution);
+        setValidationError(error);
+        
+        if (!error) {
+          onChange(newDistribution);
+        }
+      }
+    } else {
+      handleChange(type, value);
+    }
   };
 
   // Apply preset
-  const applyPreset = (preset: PresetDistribution) => {
+  const applyPreset = (presetName: string) => {
+    const preset = PRESETS.find(p => p.name === presetName);
+    if (!preset) return;
+    
     let newDistribution: QuizDistribution;
     
     if (mode === 'count') {
@@ -156,6 +213,7 @@ export function QuestionDistribution({
     
     setLocalDistribution(newDistribution);
     setValidationError('');
+    setSelectedPreset(presetName);
     onChange(newDistribution);
   };
 
@@ -176,85 +234,84 @@ export function QuestionDistribution({
                 localDistribution.fillInBlank + localDistribution.matching;
 
   return (
-    <div className="space-y-6">
-      {/* Preset Buttons */}
-      <div>
-        <h3 className="text-sm font-semibold text-gray-900 mb-3">Quick Presets</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {PRESETS.map((preset) => (
-            <button
-              key={preset.name}
-              onClick={() => applyPreset(preset)}
-              className="p-3 text-left border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              type="button"
-            >
-              <div className="font-medium text-gray-900 text-sm">{preset.name}</div>
-              <div className="text-xs text-gray-600 mt-1">{preset.description}</div>
-            </button>
-          ))}
+    <div className="space-y-6 ">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+         {/* Preset Selection */}
+        <div>
+          <h3 className="text-sm font-semibold mb-3">Quick Presets</h3>
+          <Choicebox value={selectedPreset} onValueChange={applyPreset}>
+            <div className="grid grid-cols-1 gap-3">
+              {PRESETS.map((preset) => (
+                <ChoiceboxItem key={preset.name} value={preset.name}>
+                  <ChoiceboxItemHeader>
+                    <ChoiceboxItemTitle>
+                      {preset.name}
+                    </ChoiceboxItemTitle>
+                    <ChoiceboxItemSubtitle>
+                      {preset.description}
+                    </ChoiceboxItemSubtitle>
+                  </ChoiceboxItemHeader>
+                  <ChoiceboxItemContent>
+                    <ChoiceboxItemIndicator />
+                  </ChoiceboxItemContent>
+                </ChoiceboxItem>
+              ))}
+            </div>
+          </Choicebox>
         </div>
-      </div>
 
-      {/* Distribution Inputs */}
-      <div>
-        <h3 className="text-sm font-semibold text-gray-900 mb-3">
+        {/* Distribution Inputs */}
+        <div className="col-span-2">
+        <h3 className="text-sm font-semibold mb-3">
           Custom Distribution {mode === 'percentage' ? '(%)' : '(Count)'}
         </h3>
         <div className="space-y-4">
           {(Object.keys(localDistribution) as (keyof QuizDistribution)[]).map((type) => (
             <div key={type} className="space-y-2">
               <div className="flex items-center justify-between">
-                <label htmlFor={`dist-${type}`} className="text-sm font-medium text-gray-700">
+                <Label htmlFor={`dist-${type}`} className="text-sm font-medium">
                   {QUESTION_TYPE_LABELS[type]}
-                </label>
+                </Label>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-gray-900">
+                  <span className="text-sm font-semibold">
                     {localDistribution[type]}{mode === 'percentage' ? '%' : ''}
                   </span>
                   {mode === 'percentage' && (
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-muted-foreground">
                       ({getQuestionCount(type)} {getQuestionCount(type) === 1 ? 'question' : 'questions'})
                     </span>
                   )}
                 </div>
               </div>
               
-              <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center gap-4">
                 {/* Slider */}
-                <input
-                  id={`dist-${type}`}
-                  type="range"
-                  min="0"
-                  max={getMaxValue()}
-                  step="1"
-                  value={localDistribution[type]}
-                  onChange={(e) => handleSliderChange(type, parseInt(e.target.value))}
-                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                  aria-label={`${QUESTION_TYPE_LABELS[type]} distribution`}
-                />
-                
-                {/* Number Input */}
-                <input
-                  type="number"
-                  min="0"
-                  max={getMaxValue()}
-                  value={localDistribution[type]}
-                  onChange={(e) => handleChange(type, parseInt(e.target.value) || 0)}
-                  className="w-20 px-3 py-2 text-sm border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  aria-label={`${QUESTION_TYPE_LABELS[type]} value`}
-                />
+                <div className="flex-1 flex items-center">
+                  <Slider
+                    id={`dist-${type}`}
+                    min={0}
+                    max={getMaxValue()}
+                    step={1}
+                    value={[localDistribution[type]]}
+                    onValueChange={(values) => handleSliderChange(type, values[0])}
+                    aria-label={`${QUESTION_TYPE_LABELS[type]} distribution`}
+                    className="w-full"
+                  />
+                </div>
               </div>
             </div>
           ))}
         </div>
       </div>
 
+      </div>
+     
       {/* Visual Representation - Bar Chart */}
       <div>
-        <h3 className="text-sm font-semibold text-gray-900 mb-3">Distribution Preview</h3>
+        <h3 className="text-sm font-semibold mb-3">Distribution Preview</h3>
         <div className="space-y-3">
           {/* Stacked Bar */}
-          <div className="h-8 flex rounded-lg overflow-hidden border-2 border-gray-200">
+          <div className="h-8 flex rounded-lg overflow-hidden border-2 border-border">
             {(Object.keys(localDistribution) as (keyof QuizDistribution)[]).map((type) => {
               const percentage = mode === 'percentage' 
                 ? localDistribution[type]
@@ -280,7 +337,7 @@ export function QuestionDistribution({
             {(Object.keys(localDistribution) as (keyof QuizDistribution)[]).map((type) => (
               <div key={type} className="flex items-center gap-2">
                 <div className={`w-3 h-3 rounded ${QUESTION_TYPE_COLORS[type]}`} />
-                <span className="text-xs text-gray-700">
+                <span className="text-xs text-muted-foreground">
                   {QUESTION_TYPE_LABELS[type]}: {getQuestionCount(type)}
                 </span>
               </div>
@@ -290,19 +347,19 @@ export function QuestionDistribution({
       </div>
 
       {/* Total and Validation */}
-      <div className="pt-4 border-t border-gray-200">
+      <div className="pt-4 border-t border-border">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-gray-700">Total:</span>
-          <span className={`text-sm font-bold ${validationError ? 'text-red-600' : 'text-green-600'}`}>
+          <span className="text-sm font-medium">Total:</span>
+          <span className={`text-sm font-bold ${validationError ? 'text-destructive' : 'text-green-600'}`}>
             {mode === 'percentage' ? `${total}%` : `${total} questions`}
           </span>
         </div>
         
         {validationError && (
-          <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="mt-3 p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
             <div className="flex items-start gap-2">
               <svg
-                className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5"
+                className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -314,7 +371,7 @@ export function QuestionDistribution({
                   d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              <p className="text-sm text-red-700">{validationError}</p>
+              <p className="text-sm text-destructive">{validationError}</p>
             </div>
           </div>
         )}

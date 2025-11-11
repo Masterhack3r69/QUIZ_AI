@@ -6,6 +6,7 @@ import { MoreVertical, Eye, Pencil, BarChart3, Trash2, Clock, Users, FileQuestio
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { CopyButton } from '@/components/ui/shadcn-io/copy-button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -82,15 +83,7 @@ export function QuizCard({ quiz, submissionCount = 0, onDelete }: QuizCardProps)
     }
   };
 
-  const handleCopyCode = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      await navigator.clipboard.writeText(quiz.accessCode);
-      showSuccess('Access code copied to clipboard');
-    } catch (error) {
-      showError('Failed to copy access code');
-    }
-  };
+
 
   return (
     <>
@@ -159,22 +152,23 @@ export function QuizCard({ quiz, submissionCount = 0, onDelete }: QuizCardProps)
 
           {/* Access Code - Prominent Display */}
           <div className="relative p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg border border-primary/20">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-muted-foreground mb-1">Access Code</p>
-                <p className="text-2xl font-mono font-bold tracking-wider" aria-label={`Access code: ${quiz.accessCode}`}>
+                <p className="text-2xl font-mono font-bold tracking-wider truncate" aria-label={`Access code: ${quiz.accessCode}`}>
                   {quiz.accessCode}
                 </p>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleCopyCode}
-                className="h-9 w-9 hover:bg-primary/20"
-                aria-label="Copy access code"
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
+              <div onClick={(e) => e.stopPropagation()}>
+                <CopyButton
+                  content={quiz.accessCode}
+                  variant="ghost"
+                  size="default"
+                  onCopy={() => showSuccess('Access code copied to clipboard')}
+                  className="hover:bg-primary/20"
+                  aria-label="Copy access code"
+                />
+              </div>
             </div>
           </div>
 
