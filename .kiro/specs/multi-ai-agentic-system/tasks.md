@@ -180,7 +180,7 @@
   - Validate variable types match expected format
   - _Requirements: 8.5_
 
-- [ ] 5. Implement content extraction agent
+- [x] 5. Implement content extraction agent
 
 
 
@@ -216,26 +216,37 @@
   - Throw ValidationError if response is invalid
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 6. Implement question generation agent
+- [x] 6. Implement question generation agent
+
+
+
+
+
   - Create agent to generate questions from concepts
   - Support all four question types with proper distribution
   - Validate question formats
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7_
 
-- [ ] 6.1 Create question generation agent class
+- [x] 6.1 Create question generation agent class
+
+
   - Create `backend/src/services/agents/question-generation-agent.js`
   - Initialize with task router and prompt manager dependencies
   - Implement `generateQuestions()` method with concepts, distribution, and count parameters
   - _Requirements: 3.1_
 
-- [ ] 6.2 Implement question generation logic
+- [x] 6.2 Implement question generation logic
+
+
   - Build prompt with extracted concepts and question requirements
   - Include distribution requirements in prompt (counts per type)
   - Execute prompt via task router with 'question-generation' task
   - Parse JSON array response
   - _Requirements: 3.1, 3.2, 3.7_
 
-- [ ] 6.3 Implement question format validation
+- [x] 6.3 Implement question format validation
+
+
   - Create `validateQuestionFormat()` method for type-specific validation
   - Validate multiple choice: 4 options, correctAnswer 0-3
   - Validate true/false: boolean correctAnswer
@@ -244,7 +255,9 @@
   - Filter out invalid questions
   - _Requirements: 3.2, 3.3, 3.6_
 
-- [ ] 6.4 Implement distribution adjustment logic
+- [x] 6.4 Implement distribution adjustment logic
+
+
   - Create `adjustDistribution()` method to handle mismatches
   - Count generated questions by type
   - If AI didn't generate enough of a type, redistribute to available types
@@ -252,34 +265,43 @@
   - Log warnings when distribution can't be met exactly
   - _Requirements: 3.7_
 
-- [ ] 7. Implement quality validation agent
+- [x] 7. Implement quality validation agent
+
+
+
+
   - Create agent to evaluate question quality
   - Score questions across four criteria
   - Identify questions needing improvement
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
-- [ ] 7.1 Create quality validation agent class
+- [x] 7.1 Create quality validation agent class
+
+
   - Create `backend/src/services/agents/quality-validation-agent.js`
   - Initialize with task router and prompt manager dependencies
   - Implement `validateQuestion()` method for single question validation
   - Implement `validateBatch()` method for parallel validation
   - _Requirements: 4.1_
 
-- [ ] 7.2 Implement question validation logic
+- [x] 7.2 Implement question validation logic
+
   - Build validation prompt with question details
   - Execute prompt via task router with 'quality-validation' task
   - Parse JSON response with scores and feedback
   - Calculate overall score and grade
   - _Requirements: 4.1, 4.2, 4.3_
 
-- [ ] 7.3 Implement batch validation
+- [x] 7.3 Implement batch validation
+
   - Process multiple questions in parallel using Promise.all()
   - Limit concurrency to avoid rate limits (max 5 concurrent)
   - Aggregate validation results
   - Identify questions with score < 70 for improvement
   - _Requirements: 4.4_
 
-- [ ] 7.4 Add validation result parsing
+- [x] 7.4 Add validation result parsing
+
   - Parse clarity, correctness, distractorQuality, educationalValue scores
   - Extract issues and suggestions arrays
   - Set passesQuality flag based on score threshold (>= 70)
