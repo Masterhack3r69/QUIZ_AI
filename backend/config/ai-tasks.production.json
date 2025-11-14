@@ -1,0 +1,59 @@
+{
+  "tasks": {
+    "content-extraction": {
+      "primary": "openrouter",
+      "fallback": ["gemini", "ollama"],
+      "maxRetries": 3,
+      "timeout": 30000,
+      "model": "meta-llama/llama-3.2-3b-instruct:free"
+    },
+    "question-generation": {
+      "primary": "openrouter",
+      "fallback": ["gemini", "ollama"],
+      "maxRetries": 2,
+      "timeout": 60000,
+      "model": "meta-llama/llama-3.2-3b-instruct:free"
+    },
+    "quality-validation": {
+      "primary": "openrouter",
+      "fallback": ["gemini", "ollama"],
+      "maxRetries": 2,
+      "timeout": 30000,
+      "model": "meta-llama/llama-3.2-3b-instruct:free"
+    },
+    "question-improvement": {
+      "primary": "openrouter",
+      "fallback": ["gemini", "ollama"],
+      "maxRetries": 2,
+      "timeout": 45000,
+      "model": "meta-llama/llama-3.2-3b-instruct:free"
+    },
+    "analytics": {
+      "primary": "openrouter",
+      "fallback": ["gemini", "ollama"],
+      "maxRetries": 2,
+      "timeout": 45000,
+      "model": "meta-llama/llama-3.1-8b-instruct:free"
+    }
+  },
+  "providers": {
+    "openrouter": {
+      "enabled": true,
+      "baseURL": "https://openrouter.ai/api/v1",
+      "models": {
+        "free": "meta-llama/llama-3.2-3b-instruct:free",
+        "fast": "google/gemini-flash-1.5:free",
+        "quality": "meta-llama/llama-3.1-8b-instruct:free"
+      }
+    },
+    "gemini": {
+      "enabled": true,
+      "model": "gemini-2.0-flash-exp"
+    },
+    "ollama": {
+      "enabled": true,
+      "baseURL": "http://localhost:11434",
+      "model": "llama3.2:1b"
+    }
+  }
+}

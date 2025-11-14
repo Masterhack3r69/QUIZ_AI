@@ -1,0 +1,92 @@
+{
+  "agents": {
+    "content-extraction": {
+      "name": "Content Extraction Agent",
+      "role": "expert educational content analyzer specializing in identifying key learning concepts",
+      "systemPrompt": "You are an expert educational content analyzer specializing in identifying key learning concepts.",
+      "template": "TASK: Analyze the following educational content and extract the most important information for creating quiz questions.\n\nCONTENT:\n{content}\n\nEXTRACT THE FOLLOWING:\n\n1. MAIN TOPICS (3-5 broad subjects covered)\n   - What are the primary subjects or themes?\n   - What would a chapter title be?\n\n2. KEY CONCEPTS (5-10 specific ideas)\n   - Important principles or theories\n   - Core ideas students must understand\n   - Concepts that build on each other\n\n3. CRITICAL FACTS (5-10 testable facts)\n   - Specific data, dates, names, numbers\n   - Definitions of key terms\n   - Important relationships or processes\n\n4. LEARNING OBJECTIVES (3-5 goals)\n   - What should students be able to do after learning this?\n   - What understanding should they demonstrate?\n\nGUIDELINES:\n- Focus on information that can be tested\n- Prioritize concepts over trivial details\n- Identify both factual and conceptual knowledge\n- Note any exceptions to rules (these make good questions)\n- Consider different difficulty levels\n\nOUTPUT FORMAT (JSON):\n{\n  \"mainTopics\": [\"topic1\", \"topic2\", \"topic3\"],\n  \"keyConcepts\": [\n    {\n      \"name\": \"concept name\",\n      \"description\": \"brief explanation\",\n      \"difficulty\": \"easy|medium|hard\",\n      \"testable\": true\n    }\n  ],\n  \"criticalFacts\": [\n    {\n      \"fact\": \"the fact statement\",\n      \"category\": \"definition|date|process|relationship\",\n      \"importance\": \"high|medium|low\"\n    }\n  ],\n  \"learningObjectives\": [\n    \"Students will be able to...\",\n    \"Students will understand...\"\n  ],\n  \"exceptions\": [\n    {\n      \"rule\": \"general rule\",\n      \"exception\": \"exception to the rule\",\n      \"context\": \"when this applies\"\n    }\n  ]\n}\n\nReturn ONLY valid JSON, no additional text.",
+      "requiredVariables": ["content"],
+      "outputFormat": "json",
+      "outputSchema": {
+        "mainTopics": "array",
+        "keyConcepts": "array",
+        "criticalFacts": "array",
+        "learningObjectives": "array",
+        "exceptions": "array"
+      }
+    },
+    "question-generation": {
+      "name": "Question Generation Agent",
+      "role": "expert educational assessment designer with 20+ years of experience creating standardized tests",
+      "systemPrompt": "You are an expert educational assessment designer with 20+ years of experience creating standardized tests.",
+      "template": "TASK: Generate {questionCount} high-quality multiple-choice questions based on the extracted concepts below.\n\nEXTRACTED CONCEPTS:\n{concepts}\n\nQUESTION REQUIREMENTS:\n\n1. QUESTION QUALITY\n   - Test understanding, not just memorization\n   - Clear, unambiguous wording\n   - Appropriate difficulty level: {difficulty}\n   - No trick questions or unnecessarily complex language\n   - Each question should have ONE clearly correct answer\n\n2. ANSWER OPTIONS (4 options: A, B, C, D)\n   - ONE correct answer\n   - THREE plausible distractors (wrong answers)\n   - All options should be similar in length and style\n   - No \"all of the above\" or \"none of the above\"\n\n3. DISTRACTOR STRATEGY (Use these techniques for wrong answers)\n\n   **Distractor Type 1: Verbatim Trap**\n   - Use exact phrases from the content that sound relevant\n   - But don't actually answer this specific question\n   - Example: If content mentions \"photosynthesis occurs in chloroplasts\"\n     and question asks \"What is the product of photosynthesis?\"\n     Wrong answer: \"Chloroplasts\" (verbatim but wrong context)\n\n   **Distractor Type 2: Close Concept**\n   - Provide an answer that would be correct for a related question\n   - Example: If asking \"What is the capital of France?\"\n     Wrong answer: \"Lyon\" (major French city, but not capital)\n\n   **Distractor Type 3: Common Misconception**\n   - Include answers that reflect typical student errors\n   - Example: If asking \"What is 2 + 2 × 3?\"\n     Wrong answer: \"12\" (common error: adding first instead of order of operations)\n\n4. QUESTION TYPES TO INCLUDE\n   - Factual: Test recall of specific information\n   - Conceptual: Test understanding of ideas and relationships\n   - Application: Test ability to apply knowledge to new situations\n   - Analysis: Test ability to break down complex information\n\n5. DIFFICULTY DISTRIBUTION\n   - Easy (30%): Direct recall, clear answers\n   - Medium (50%): Requires understanding and connection\n   - Hard (20%): Requires analysis, exceptions, or application\n\n6. AVOID THESE COMMON MISTAKES\n   ❌ Correct answer is obviously longer or more detailed\n   ❌ Using \"always\" or \"never\" in correct answers\n   ❌ Distractors that are obviously wrong\n   ❌ Questions that give away answers to other questions\n   ❌ Ambiguous wording that could have multiple interpretations\n   ❌ Testing trivial or unimportant details\n\n7. EXCEPTION TESTING (If applicable)\n   - If content includes exceptions to rules, create questions about them\n   - Include a distractor that would be correct if the exception didn't exist\n   - This tests deeper understanding, not just memorization\n\nOUTPUT FORMAT (JSON):\n[\n  {\n    \"question\": \"Clear, specific question text?\",\n    \"options\": [\n      \"Correct answer (index 0)\",\n      \"Distractor 1: Verbatim trap\",\n      \"Distractor 2: Close concept\",\n      \"Distractor 3: Common misconception\"\n    ],\n    \"correctAnswer\": 0,\n    \"explanation\": \"Why the correct answer is right and why others are wrong\",\n    \"difficulty\": \"easy|medium|hard\",\n    \"type\": \"factual|conceptual|application|analysis\",\n    \"distractorTypes\": [\"verbatimTrap\", \"closeConcept\", \"commonMisconception\"],\n    \"conceptTested\": \"Which concept this question tests\",\n    \"bloomsLevel\": \"remember|understand|apply|analyze|evaluate|create\"\n  }\n]\n\nEXAMPLE OF EXCELLENT QUESTION:\n\nQuestion: \"In photosynthesis, what is the primary function of chlorophyll?\"\nA) To absorb light energy (CORRECT - clear, specific)\nB) To produce glucose (Close concept - this is the overall process, not chlorophyll's function)\nC) To release oxygen (Verbatim trap - oxygen is released, but not chlorophyll's primary function)\nD) To store energy in ATP (Common misconception - confusing with cellular respiration)\n\nGenerate {questionCount} questions following these guidelines.\nReturn ONLY valid JSON array, no additional text.",
+      "requiredVariables": ["questionCount", "concepts", "difficulty"],
+      "outputFormat": "json",
+      "outputSchema": {
+        "type": "array",
+        "items": {
+          "question": "string",
+          "options": "array",
+          "correctAnswer": "number",
+          "explanation": "string",
+          "difficulty": "string",
+          "type": "string",
+          "distractorTypes": "array",
+          "conceptTested": "string",
+          "bloomsLevel": "string"
+        }
+      }
+    },
+    "quality-validation": {
+      "name": "Quality Validation Agent",
+      "role": "expert educational assessment quality reviewer",
+      "systemPrompt": "You are an expert educational assessment quality reviewer. Your job is to evaluate multiple-choice questions for quality and educational effectiveness."
+,
+      "template": "TASK: Evaluate the following question and provide a detailed quality assessment.\n\nQUESTION TO EVALUATE:\n{question}\n\nEVALUATION CRITERIA:\n\n1. CLARITY (0-25 points)\n   - Is the question clear and unambiguous?\n   - Can it be understood on first reading?\n   - Is the language appropriate for the target audience?\n   - Are there any confusing or misleading words?\n\n2. CORRECTNESS (0-25 points)\n   - Is there ONE clearly correct answer?\n   - Is the correct answer definitively right?\n   - Are all distractors definitively wrong?\n   - Is the explanation accurate?\n\n3. DISTRACTOR QUALITY (0-25 points)\n   - Are distractors plausible and tempting?\n   - Do they reflect common misconceptions?\n   - Are they similar in length and style to the correct answer?\n   - Do they test understanding rather than just guessing?\n\n4. EDUCATIONAL VALUE (0-25 points)\n   - Does it test important knowledge?\n   - Does it assess understanding, not just memorization?\n   - Is the difficulty level appropriate?\n   - Does it help identify student misconceptions?\n\nCHECK FOR THESE ISSUES:\n\n❌ **Critical Issues** (Automatic fail - score < 50)\n- Multiple correct answers possible\n- Correct answer is wrong\n- Question is ambiguous or unclear\n- Distractors are obviously wrong\n- Question contains errors\n\n⚠️ **Major Issues** (Score 50-70)\n- Correct answer is obviously longer/different\n- Uses \"always\" or \"never\" in correct answer\n- Distractors are not plausible\n- Tests trivial information\n- Poor grammar or spelling\n\n⚡ **Minor Issues** (Score 70-85)\n- Could be worded more clearly\n- One distractor is weak\n- Slightly unbalanced option lengths\n- Could test deeper understanding\n\n✅ **Excellent** (Score 85-100)\n- Clear, unambiguous question\n- One definitively correct answer\n- Three plausible, educational distractors\n- Tests important understanding\n- Appropriate difficulty\n- Well-written and professional\n\nOUTPUT FORMAT (JSON):\n{\n  \"score\": 85,\n  \"grade\": \"excellent|good|fair|poor\",\n  \"clarity\": {\n    \"score\": 22,\n    \"issues\": [\"List any clarity issues\"],\n    \"suggestions\": [\"How to improve\"]\n  },\n  \"correctness\": {\n    \"score\": 25,\n    \"issues\": [],\n    \"suggestions\": []\n  },\n  \"distractorQuality\": {\n    \"score\": 20,\n    \"issues\": [\"Distractor C is too obviously wrong\"],\n    \"suggestions\": [\"Make distractor C more plausible by...\"]\n  },\n  \"educationalValue\": {\n    \"score\": 18,\n    \"issues\": [\"Tests memorization rather than understanding\"],\n    \"suggestions\": [\"Rephrase to test application of concept\"]\n  },\n  \"overallIssues\": [\n    \"Main issues with the question\"\n  ],\n  \"strengths\": [\n    \"What the question does well\"\n  ],\n  \"recommendations\": [\n    \"Specific actions to improve the question\"\n  ],\n  \"passesQuality\": true,\n  \"requiresImprovement\": false\n}\n\nReturn ONLY valid JSON, no additional text.",
+      "requiredVariables": ["question"],
+      "outputFormat": "json",
+      "outputSchema": {
+        "score": "number",
+        "grade": "string",
+        "clarity": "object",
+        "correctness": "object",
+        "distractorQuality": "object",
+        "educationalValue": "object",
+        "overallIssues": "array",
+        "strengths": "array",
+        "recommendations": "array",
+        "passesQuality": "boolean",
+        "requiresImprovement": "boolean"
+      }
+    },
+    "question-improvement": {
+      "name": "Question Improvement Agent",
+      "role": "expert educational assessment designer specializing in improving question quality",
+      "systemPrompt": "You are an expert educational assessment designer specializing in improving question quality.",
+      "template": "TASK: Improve the following question based on the quality assessment feedback.\n\nORIGINAL QUESTION:\n{originalQuestion}\n\nQUALITY ASSESSMENT:\n{validationFeedback}\n\nIMPROVEMENT GUIDELINES:\n\n1. ADDRESS ALL IDENTIFIED ISSUES\n   - Fix clarity problems\n   - Improve weak distractors\n   - Balance option lengths\n   - Enhance educational value\n\n2. MAINTAIN WHAT WORKS\n   - Keep the core concept being tested\n   - Preserve good distractors\n   - Maintain appropriate difficulty level\n\n3. IMPROVE DISTRACTORS\n   - Make them more plausible\n   - Ensure they reflect common misconceptions\n   - Use verbatim traps, close concepts, or partial truths\n   - Make all options similar in length and style\n\n4. ENHANCE CLARITY\n   - Use simple, direct language\n   - Remove ambiguity\n   - Ensure one clear correct answer\n   - Make the question specific and focused\n\n5. INCREASE EDUCATIONAL VALUE\n   - Test understanding, not just recall\n   - Include context if helpful\n   - Consider testing exceptions or applications\n   - Ensure it assesses important knowledge\n\nEXAMPLE IMPROVEMENT:\n\n**Before** (Score: 65/100):\nQuestion: \"What does photosynthesis do?\"\nA) Makes food for plants (CORRECT but vague)\nB) Nothing (Obviously wrong)\nC) Kills plants (Obviously wrong)\nD) Makes plants green (Weak distractor)\n\nIssues: Vague question, obviously wrong distractors, doesn't test understanding\n\n**After** (Score: 90/100):\nQuestion: \"What is the primary product of photosynthesis that plants use for energy?\"\nA) Glucose (CORRECT - specific, clear)\nB) Oxygen (Verbatim trap - produced but not used for energy)\nC) Chlorophyll (Close concept - involved in process but not the product)\nD) Carbon dioxide (Common misconception - this is a reactant, not product)\n\nImprovements: Specific question, plausible distractors, tests understanding\n\nOUTPUT FORMAT (JSON):\n{\n  \"improvedQuestion\": {\n    \"question\": \"Improved question text?\",\n    \"options\": [\n      \"Improved correct answer\",\n      \"Improved distractor 1\",\n      \"Improved distractor 2\",\n      \"Improved distractor 3\"\n    ],\n    \"correctAnswer\": 0,\n    \"explanation\": \"Updated explanation\",\n    \"difficulty\": \"easy|medium|hard\",\n    \"type\": \"factual|conceptual|application\",\n    \"distractorTypes\": [\"verbatimTrap\", \"closeConcept\", \"commonMisconception\"]\n  },\n  \"improvements\": [\n    \"Made question more specific\",\n    \"Improved distractor B to be more plausible\",\n    \"Balanced option lengths\",\n    \"Enhanced educational value by testing application\"\n  ],\n  \"expectedScore\": 90,\n  \"changesSummary\": \"Brief summary of what was changed and why\"\n}\n\nReturn ONLY valid JSON, no additional text.",
+      "requiredVariables": ["originalQuestion", "validationFeedback"],
+      "outputFormat": "json",
+      "outputSchema": {
+        "improvedQuestion": "object",
+        "improvements": "array",
+        "expectedScore": "number",
+        "changesSummary": "string"
+      }
+    },
+    "analytics": {
+      "name": "Analytics Agent",
+      "role": "expert educational data analyst specializing in assessment analytics and student performance insights",
+      "systemPrompt": "You are an expert educational data analyst specializing in assessment analytics and student performance insights.",
+      "template": "TASK: Analyze the quiz performance data and provide actionable insights for the teacher.\n\nQUIZ DATA:\n{quizData}\n\nSUBMISSION DATA:\n{submissions}\n\nANALYSIS REQUIREMENTS:\n\n1. OVERALL PERFORMANCE\n   - Class average score\n   - Score distribution (how spread out are the scores?)\n   - Completion rate\n   - Time taken analysis\n\n2. QUESTION ANALYSIS\n   - Which questions were easiest? (>80% correct)\n   - Which questions were hardest? (<40% correct)\n   - Which questions best discriminated between high and low performers?\n   - Any questions that might be flawed?\n\n3. STUDENT INSIGHTS\n   - Identify struggling students (score < 60%)\n   - Identify high performers (score > 90%)\n   - Common misconceptions (based on wrong answer patterns)\n   - Topics that need review\n\n4. RECOMMENDATIONS\n   - Should any questions be reviewed or removed?\n   - What topics need more teaching time?\n   - Which students need additional support?\n   - Suggestions for follow-up activities\n\n5. PATTERNS AND TRENDS\n   - Do students who get question X right also get question Y right?\n   - Are there clusters of related questions students struggle with?\n   - Time management issues? (students rushing or taking too long)\n\nOUTPUT FORMAT (JSON):\n{\n  \"summary\": {\n    \"totalStudents\": 30,\n    \"averageScore\": 75.5,\n    \"highestScore\": 95,\n    \"lowestScore\": 45,\n    \"averageTimeMinutes\": 18.5,\n    \"completionRate\": 100\n  },\n  \"questionAnalysis\": [\n    {\n      \"questionId\": \"q1\",\n      \"questionText\": \"...\",\n      \"correctRate\": 85,\n      \"difficulty\": \"easy\",\n      \"discrimination\": 0.45,\n      \"commonWrongAnswer\": \"B\",\n      \"insight\": \"Most students who got this wrong chose B, suggesting confusion about...\",\n      \"recommendation\": \"Consider reviewing the concept of...\"\n    }\n  ],\n  \"studentInsights\": {\n    \"strugglingStudents\": [\n      {\n        \"studentId\": \"...\",\n        \"score\": 45,\n        \"weakTopics\": [\"photosynthesis\", \"cell structure\"],\n        \"recommendation\": \"Needs review of basic biology concepts\"\n      }\n    ],\n    \"highPerformers\": [],\n    \"commonMisconceptions\": [\n      {\n        \"misconception\": \"Students think oxygen is the primary product used by plants\",\n        \"affectedQuestions\": [\"q3\", \"q7\"],\n        \"percentageAffected\": 40,\n        \"recommendation\": \"Clarify the difference between products and reactants\"\n      }\n    ]\n  },\n  \"recommendations\": {\n    \"questionsToReview\": [\n      {\n        \"questionId\": \"q5\",\n        \"reason\": \"Only 25% got it correct, might be too hard or unclear\",\n        \"suggestion\": \"Consider rewording or providing more context\"\n      }\n    ],\n    \"topicsToReteach\": [\n      {\n        \"topic\": \"Photosynthesis products\",\n        \"reason\": \"40% of students showed confusion\",\n        \"priority\": \"high\"\n      }\n    ],\n    \"followUpActivities\": [\n      \"Lab activity on photosynthesis\",\n      \"Review session on cellular processes\",\n      \"Practice problems on energy conversion\"\n    ]\n  },\n  \"insights\": [\n    \"Students performed well on factual recall but struggled with application questions\",\n    \"Time management was good - most students finished with time to spare\",\n    \"Strong correlation between questions 3 and 7 suggests related concepts\"\n  ]\n}\n\nReturn ONLY valid JSON, no additional text.",
+      "requiredVariables": ["quizData", "submissions"],
+      "outputFormat": "json",
+      "outputSchema": {
+        "summary": "object",
+        "questionAnalysis": "array",
+        "studentInsights": "object",
+        "recommendations": "object",
+        "insights": "array"
+      }
+    }
+  }
+}
