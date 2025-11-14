@@ -198,14 +198,14 @@ class OpenRouterProvider extends BaseAIProvider {
       if (status === 429) {
         const retryAfter = error.response.headers['retry-after'];
         const errorMsg = data.error?.message || 'Rate limit exceeded';
-        const enhancedError = new Error(`${errorMsg}${retryAfter ? ` (retry after ${retryAfter}s)` : ''}`);
+        const enhancedError = new Error(`rate limit ${errorMsg}${retryAfter ? ` (retry after ${retryAfter}s)` : ''}`);
         super.handleError(enhancedError);
       }
 
       // Authentication error
       if (status === 401 || status === 403) {
         const errorMsg = data.error?.message || 'Authentication failed';
-        super.handleError(new Error(errorMsg));
+        super.handleError(new Error(`authentication ${errorMsg}`));
       }
 
       // Model not found
