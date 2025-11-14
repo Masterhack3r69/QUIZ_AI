@@ -8,7 +8,7 @@ import submissionRoutes from './routes/submission.routes.js';
 import templateRoutes from './routes/template.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import AgenticPipeline from './services/agentic-pipeline.js';
-import AITaskRouter from './services/ai-task-router.js';
+import aiTaskRouter from './services/ai-task-router.js';
 import PromptManager from './services/prompt-manager.js';
 import ContentExtractionAgent from './services/agents/content-extraction-agent.js';
 import QuestionGenerationAgent from './services/agents/question-generation-agent.js';
@@ -38,8 +38,8 @@ const initializeAgenticPipeline = () => {
       return null;
     }
     
-    // Initialize task router and prompt manager
-    const taskRouter = new AITaskRouter();
+    // Use the singleton task router instance and create prompt manager
+    const taskRouter = aiTaskRouter;
     const promptManager = new PromptManager();
     
     // Initialize all agents
