@@ -10,6 +10,7 @@ import {
   validateTopicContent,
   generateQuestions 
 } from '../utils/quiz.utils.js';
+import { generateQuestionsWithAgentic } from '../utils/agentic-compatibility.js';
 import upload from '../middleware/upload.middleware.js';
 
 const router = express.Router();
@@ -59,7 +60,25 @@ router.post('/test-create', upload.single('file'), async (req, res) => {
 
     // Generate questions using AI with distribution
     const total = totalQuestions ? parseInt(totalQuestions) : 20;
-    const questions = await generateQuestions(content, distribution, total);
+    
+    // Check if agentic pipeline is enabled
+    const useAgenticPipeline = process.env.ENABLE_AGENTIC_PIPELINE === 'true';
+    const agenticPipeline = req.app.locals.agenticPipeline;
+    
+    let questions;
+    if (useAgenticPipeline && agenticPipeline) {
+      console.log('[Quiz Routes] Using agentic pipeline for question generation');
+      questions = await generateQuestionsWithAgentic(
+        agenticPipeline,
+        content,
+        distribution,
+        total,
+        generateQuestions
+      );
+    } else {
+      console.log('[Quiz Routes] Using traditional question generation');
+      questions = await generateQuestions(content, distribution, total);
+    }
 
     const accessCode = generateAccessCode();
 
@@ -170,7 +189,25 @@ router.post('/generate-questions', protect, async (req, res) => {
     }
     
     const total = totalQuestions ? parseInt(totalQuestions) : 20;
-    const questions = await generateQuestions(content, distribution, total);
+    
+    // Check if agentic pipeline is enabled
+    const useAgenticPipeline = process.env.ENABLE_AGENTIC_PIPELINE === 'true';
+    const agenticPipeline = req.app.locals.agenticPipeline;
+    
+    let questions;
+    if (useAgenticPipeline && agenticPipeline) {
+      console.log('[Quiz Routes] Using agentic pipeline for question generation');
+      questions = await generateQuestionsWithAgentic(
+        agenticPipeline,
+        content,
+        distribution,
+        total,
+        generateQuestions
+      );
+    } else {
+      console.log('[Quiz Routes] Using traditional question generation');
+      questions = await generateQuestions(content, distribution, total);
+    }
     
     res.json({ 
       questions,
@@ -245,7 +282,25 @@ router.post('/create', protect, upload.single('file'), async (req, res) => {
 
     // Generate questions using AI with distribution
     const total = totalQuestions ? parseInt(totalQuestions) : 20;
-    const questions = await generateQuestions(content, distribution, total);
+    
+    // Check if agentic pipeline is enabled
+    const useAgenticPipeline = process.env.ENABLE_AGENTIC_PIPELINE === 'true';
+    const agenticPipeline = req.app.locals.agenticPipeline;
+    
+    let questions;
+    if (useAgenticPipeline && agenticPipeline) {
+      console.log('[Quiz Routes] Using agentic pipeline for question generation');
+      questions = await generateQuestionsWithAgentic(
+        agenticPipeline,
+        content,
+        distribution,
+        total,
+        generateQuestions
+      );
+    } else {
+      console.log('[Quiz Routes] Using traditional question generation');
+      questions = await generateQuestions(content, distribution, total);
+    }
 
     const accessCode = generateAccessCode();
 

@@ -9,6 +9,7 @@ import configLoader from './config-loader.js';
 import OpenRouterProvider from './ai-providers/openrouter-provider.js';
 import GeminiProvider from './ai-providers/gemini-provider.js';
 import OllamaProvider from './ai-providers/ollama-provider.js';
+import usageTracker from './usage-tracker.js';
 import {
   AIProviderError,
   AIProviderRateLimitError,
@@ -90,6 +91,9 @@ class AITaskRouter {
     const taskConfig = this.getTaskConfig(taskName);
     const attemptedProviders = [];
     const errors = [];
+
+    // Check rate limits before executing
+    this.checkRateLimits();
 
     this.log('info', `Executing task: ${taskName}`, {
       taskName,
@@ -351,6 +355,18 @@ class AITaskRouter {
       model: result.model,
       success: true
     });
+
+    // Track usage
+    usageTracker.trackRequest({
+      taskName,
+      provider,
+      model: result.model,
+      tokensUsed: result.tokensUsed,
+      inputTokens: result.inputTokens,
+      outputTokens: result.outputTokens,
+      executionTime,
+      success: true
+    });
   }
 
   /**
@@ -367,6 +383,19 @@ class AITaskRouter {
       error: error.message,
       errorType: error.name,
       success: false
+    });
+
+    // Track failed request
+    usageTracker.trackRequest({
+      taskName,
+      provider,
+      model: 'unknown',
+      tokensUsed: 0,
+      inputTokens: 0,
+      outputTokens: 0,
+      executionTime: 0,
+      success: false,
+      error: error.message
     });
   }
 
@@ -427,6 +456,33 @@ class AITaskRouter {
    */
   sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Check rate limits and log warnings
+   */
+  checkRateLimits() {
+    const warnings = usageTracker.getRateLimitWarnings();
+    
+    warnings.forEach(warning => {
+      if (warning.severity === 'error') {
+        this.log('error', `Rate limit exceeded: ${warning.message}`, {
+          provider: warning.provider,
+          type: warning.type,
+          current: warning.current,
+          limit: warning.limit,
+          percentUsed: warning.percentUsed
+        });
+      } else if (warning.severity === 'warning') {
+        this.log('warn', `Approaching rate limit: ${warning.message}`, {
+          provider: warning.provider,
+          type: warning.type,
+          current: warning.current,
+          limit: warning.limit,
+          percentUsed: warning.percentUsed
+        });
+      }
+    });
   }
 
   /**

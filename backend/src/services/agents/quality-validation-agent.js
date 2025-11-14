@@ -88,20 +88,34 @@ class QualityValidationAgent {
       // Calculate overall score and grade
       const processedResult = this.processValidationResult(validationResult, question);
 
-      // Log success
-      console.log(`[QualityValidationAgent] Validation complete`, {
+      // Log success with structured format
+      this.log('info', 'Validation complete', {
         questionText: question.question.substring(0, 100),
         score: processedResult.score,
         grade: processedResult.grade,
         passesQuality: processedResult.passesQuality,
+        requiresImprovement: processedResult.requiresImprovement,
         provider: result.provider,
         executionTime: result.executionTime
       });
 
+      // Log validation failure details if question doesn't pass
+      if (!processedResult.passesQuality) {
+        this.log('warn', 'Question failed quality validation', {
+          questionText: question.question.substring(0, 100),
+          score: processedResult.score,
+          issues: processedResult.overallIssues,
+          clarityScore: processedResult.clarity.score,
+          correctnessScore: processedResult.correctness.score,
+          distractorScore: processedResult.distractorQuality.score,
+          educationalScore: processedResult.educationalValue.score
+        });
+      }
+
       return processedResult;
 
     } catch (error) {
-      console.error(`[QualityValidationAgent] Failed to validate question`, {
+      this.log('error', 'Failed to validate question', {
         error: error.message,
         errorType: error.name,
         questionText: question.question?.substring(0, 100)
@@ -394,6 +408,29 @@ class QualityValidationAgent {
       issues: Array.isArray(criteria.issues) ? criteria.issues : [],
       suggestions: Array.isArray(criteria.suggestions) ? criteria.suggestions : []
     };
+  }
+
+  /**
+   * Structured logging
+   * 
+   * @param {string} level - Log level (info, warn, error)
+   * @param {string} message - Log message
+   * @param {Object} data - Additional structured data
+   */
+  log(level, message, data = {}) {
+    const timestamp = new Date().toISOString();
+    const logMessage = `[${timestamp}] [${level.toUpperCase()}] [QualityValidationAgent] ${message}`;
+
+    switch (level) {
+      case 'error':
+        console.error(logMessage, JSON.stringify(data, null, 2));
+        break;
+      case 'warn':
+        console.warn(logMessage, JSON.stringify(data, null, 2));
+        break;
+      default:
+        console.log(logMessage, JSON.stringify(data, null, 2));
+    }
   }
 
   /**

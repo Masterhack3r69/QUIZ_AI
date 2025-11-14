@@ -308,53 +308,73 @@
   - Set requiresImprovement flag for low scores
   - _Requirements: 4.2, 4.3, 4.4, 4.5_
 
-- [ ] 8. Implement question improvement agent
+- [x] 8. Implement question improvement agent
+
+
   - Create agent to improve low-quality questions
   - Apply validation feedback to enhance questions
   - Track improvements made
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6_
 
-- [ ] 8.1 Create question improvement agent class
+- [x] 8.1 Create question improvement agent class
+
+
   - Create `backend/src/services/agents/question-improvement-agent.js`
   - Initialize with task router and prompt manager dependencies
   - Implement `improveQuestion()` method for single question improvement
   - Implement `improveBatch()` method for parallel improvement
   - _Requirements: 5.1_
 
-- [ ] 8.2 Implement question improvement logic
+
+
+- [x] 8.2 Implement question improvement logic
   - Build improvement prompt with original question and validation feedback
   - Include specific issues and suggestions from validation
   - Execute prompt via task router with 'question-improvement' task
+
   - Parse improved question from JSON response
   - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-- [ ] 8.3 Implement batch improvement
+
+- [x] 8.3 Implement batch improvement
   - Process multiple questions in parallel using Promise.all()
+
   - Pair each question with its validation feedback
   - Limit concurrency to avoid rate limits (max 5 concurrent)
   - Track which questions were improved
+
   - _Requirements: 5.6_
 
-- [ ] 8.4 Add improvement tracking
+- [x] 8.4 Add improvement tracking
+
+
   - Parse improvements array from response
   - Parse changesSummary and expectedScore
   - Log all improvements made for monitoring
   - Validate improved question format matches original type
   - _Requirements: 5.5, 5.6_
 
-- [ ] 9. Implement agentic pipeline orchestrator
+- [x] 9. Implement agentic pipeline orchestrator
+
+
+
+
   - Create orchestrator to coordinate all agents
   - Implement full quiz generation workflow
   - Handle errors and edge cases
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
 
-- [ ] 9.1 Create pipeline orchestrator class
+- [x] 9.1 Create pipeline orchestrator class
+
+
   - Create `backend/src/services/agentic-pipeline.js`
   - Initialize with all agent instances and configuration
   - Implement `generateQuiz()` method as main entry point
   - _Requirements: 9.1, 9.5_
 
-- [ ] 9.2 Implement quiz generation workflow
+- [x] 9.2 Implement quiz generation workflow
+
+
   - Step 1: Call content extraction agent with raw content
   - Step 2: Call question generation agent with concepts and distribution
   - Step 3: Call quality validation agent to evaluate all questions
@@ -363,7 +383,9 @@
   - Step 6: Merge improved questions back into final set
   - _Requirements: 9.1, 9.2, 9.3, 9.4_
 
-- [ ] 9.3 Implement question merging logic
+- [x] 9.3 Implement question merging logic
+
+
   - Create `mergeFinalQuestions()` method
   - Replace low-quality questions with improved versions
   - Ensure all final questions meet minimum threshold (score >= 70)
@@ -371,27 +393,37 @@
   - Return final validated question array
   - _Requirements: 9.5_
 
-- [ ] 9.4 Add pipeline error handling
+- [x] 9.4 Add pipeline error handling
+
+
   - Wrap each agent call in try-catch
   - Log errors with context (which agent, what input)
   - Provide fallback behavior (use original questions if improvement fails)
   - Throw clear error if critical steps fail (extraction, generation)
   - _Requirements: 9.5_
 
-- [ ] 10. Integrate agentic pipeline with existing quiz API
+- [x] 10. Integrate agentic pipeline with existing quiz API
+
+
+
+
   - Update quiz creation endpoint to use agentic pipeline
   - Add feature flag for gradual rollout
   - Maintain backward compatibility
   - _Requirements: 9.5, 9.6_
 
-- [ ] 10.1 Add feature flag configuration
+- [x] 10.1 Add feature flag configuration
+
+
   - Add ENABLE_AGENTIC_PIPELINE environment variable to .env
   - Add ENABLE_QUALITY_VALIDATION environment variable
   - Add ENABLE_QUESTION_IMPROVEMENT environment variable
   - Default all to false for safe rollout
   - _Requirements: 9.6_
 
-- [ ] 10.2 Update quiz creation endpoint
+- [x] 10.2 Update quiz creation endpoint
+
+
   - Modify `backend/src/routes/quiz.routes.js` POST /api/quizzes endpoint
   - Check ENABLE_AGENTIC_PIPELINE feature flag
   - If enabled, use agentic pipeline instead of direct generateQuestions()
@@ -399,27 +431,38 @@
   - Ensure response format remains the same
   - _Requirements: 9.5, 9.6_
 
-- [ ] 10.3 Initialize agentic pipeline in server startup
+- [x] 10.3 Initialize agentic pipeline in server startup
+
+
   - Create pipeline instance in `backend/src/server.js` or main app file
   - Initialize all agents with task router and prompt manager
   - Make pipeline available to routes
   - Add startup validation (check configs load correctly)
   - _Requirements: 9.5_
 
-- [ ] 10.4 Add backward compatibility layer
+- [x] 10.4 Add backward compatibility layer
+
+
   - Ensure agentic pipeline returns same question format as existing system
   - Map agent output to existing database schema
   - Handle all four question types consistently
   - Test with existing frontend components
   - _Requirements: 9.6_
 
-- [ ] 11. Add comprehensive logging and monitoring
+- [x] 11. Add comprehensive logging and monitoring
+
+
+
+
+
   - Implement structured logging for all AI operations
   - Track usage statistics and costs
   - Add admin endpoint for monitoring
   - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5_
 
-- [ ] 11.1 Implement usage tracking
+
+- [x] 11.1 Implement usage tracking
+
   - Create `backend/src/services/usage-tracker.js` service
   - Track requests per provider with timestamps
   - Track token usage per request
@@ -427,7 +470,10 @@
   - Store in-memory with periodic persistence
   - _Requirements: 11.1, 11.2, 11.3_
 
-- [ ] 11.2 Add structured logging
+
+
+- [x] 11.2 Add structured logging
+
   - Use consistent log format: [timestamp] [level] [component] message {data}
   - Log all AI requests: task, provider, duration, tokens, success/failure
   - Log fallback events with reason
@@ -435,7 +481,9 @@
   - Log improvement actions with before/after scores
   - _Requirements: 11.1, 7.3_
 
-- [ ] 11.3 Create admin monitoring endpoint
+
+- [x] 11.3 Create admin monitoring endpoint
+
   - Add GET /api/admin/ai-usage endpoint
   - Return usage statistics: requests per provider, success rates, avg response times
   - Return cost estimates per provider
@@ -443,7 +491,15 @@
   - Require admin authentication
   - _Requirements: 11.5_
 
-- [ ] 11.4 Add rate limit warnings
+
+
+
+- [x] 11.4 Add rate limit warnings
+
+
+
+
+
   - Monitor request counts against known free tier limits
   - Log warning when approaching 80% of limit
   - Log error when limit exceeded

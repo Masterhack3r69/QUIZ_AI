@@ -6,6 +6,14 @@ import authRoutes from './routes/auth.routes.js';
 import quizRoutes from './routes/quiz.routes.js';
 import submissionRoutes from './routes/submission.routes.js';
 import templateRoutes from './routes/template.routes.js';
+import adminRoutes from './routes/admin.routes.js';
+import AgenticPipeline from './services/agentic-pipeline.js';
+import AITaskRouter from './services/ai-task-router.js';
+import PromptManager from './services/prompt-manager.js';
+import ContentExtractionAgent from './services/agents/content-extraction-agent.js';
+import QuestionGenerationAgent from './services/agents/question-generation-agent.js';
+import QualityValidationAgent from './services/agents/quality-validation-agent.js';
+import QuestionImprovementAgent from './services/agents/question-improvement-agent.js';
 
 dotenv.config();
 
@@ -14,6 +22,64 @@ const PORT = process.env.PORT || 5000;
 
 // Connect to MongoDB
 connectDB();
+
+// Initialize Agentic Pipeline (if enabled)
+let agenticPipeline = null;
+
+const initializeAgenticPipeline = () => {
+  try {
+    console.log('[Server] Initializing Agentic Pipeline...');
+    
+    // Check if agentic pipeline is enabled
+    const isEnabled = process.env.ENABLE_AGENTIC_PIPELINE === 'true';
+    
+    if (!isEnabled) {
+      console.log('[Server] Agentic Pipeline is disabled (ENABLE_AGENTIC_PIPELINE=false)');
+      return null;
+    }
+    
+    // Initialize task router and prompt manager
+    const taskRouter = new AITaskRouter();
+    const promptManager = new PromptManager();
+    
+    // Initialize all agents
+    const agents = {
+      contentExtraction: new ContentExtractionAgent(taskRouter, promptManager),
+      questionGeneration: new QuestionGenerationAgent(taskRouter, promptManager),
+      qualityValidation: new QualityValidationAgent(taskRouter, promptManager),
+      questionImprovement: new QuestionImprovementAgent(taskRouter, promptManager)
+    };
+    
+    // Initialize pipeline with agents and configuration
+    const config = {
+      qualityThreshold: 70,
+      enableQualityValidation: process.env.ENABLE_QUALITY_VALIDATION === 'true',
+      enableQuestionImprovement: process.env.ENABLE_QUESTION_IMPROVEMENT === 'true',
+      maxImprovementAttempts: 1
+    };
+    
+    const pipeline = new AgenticPipeline(agents, config);
+    
+    console.log('[Server] Agentic Pipeline initialized successfully', {
+      enableQualityValidation: config.enableQualityValidation,
+      enableQuestionImprovement: config.enableQuestionImprovement,
+      qualityThreshold: config.qualityThreshold
+    });
+    
+    return pipeline;
+    
+  } catch (error) {
+    console.error('[Server] Failed to initialize Agentic Pipeline:', error.message);
+    console.error('[Server] Falling back to traditional quiz generation');
+    return null;
+  }
+};
+
+// Initialize pipeline on startup
+agenticPipeline = initializeAgenticPipeline();
+
+// Make pipeline available to routes via app.locals
+app.locals.agenticPipeline = agenticPipeline;
 
 // Middleware
 const allowedOrigins = [
@@ -43,6 +109,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/quiz', quizRoutes);
 app.use('/api/submission', submissionRoutes);
 app.use('/api/templates', templateRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
