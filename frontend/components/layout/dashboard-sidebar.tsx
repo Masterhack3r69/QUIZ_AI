@@ -42,11 +42,11 @@ const navItems = [
     label: "Create Quiz",
     icon: PlusCircle,
   },
-  {
-    href: "/dashboard/templates",
-    label: "Templates",
-    icon: FileText,
-  },
+  // {
+  //   href: "/dashboard/templates",
+  //   label: "Templates",
+  //   icon: FileText,
+  // },
   {
     href: "/dashboard/settings",
     label: "Settings",

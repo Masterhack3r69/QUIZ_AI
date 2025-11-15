@@ -100,13 +100,40 @@ const normalizeMultipleChoice = (question, baseQuestion) => {
  * Normalize true/false question
  */
 const normalizeTrueFalse = (question, baseQuestion) => {
-  if (typeof question.correctAnswer !== 'boolean') {
-    throw new Error('True/false correctAnswer must be boolean');
+  let correctAnswer;
+  
+  // Handle two formats:
+  // 1. Boolean correctAnswer (true/false)
+  // 2. Options array with numeric correctAnswer (0 or 1)
+  if (typeof question.correctAnswer === 'boolean') {
+    correctAnswer = question.correctAnswer;
+  } else if (typeof question.correctAnswer === 'number' && Array.isArray(question.options)) {
+    // Convert numeric index to boolean
+    // Assume options[0] = "True" and options[1] = "False"
+    if (question.correctAnswer === 0) {
+      correctAnswer = true;
+    } else if (question.correctAnswer === 1) {
+      correctAnswer = false;
+    } else {
+      throw new Error('True/false correctAnswer must be 0 (true) or 1 (false)');
+    }
+  } else if (typeof question.correctAnswer === 'string') {
+    // Handle string values like "true" or "false"
+    const lowerAnswer = question.correctAnswer.toLowerCase().trim();
+    if (lowerAnswer === 'true') {
+      correctAnswer = true;
+    } else if (lowerAnswer === 'false') {
+      correctAnswer = false;
+    } else {
+      throw new Error('True/false correctAnswer string must be "true" or "false"');
+    }
+  } else {
+    throw new Error('True/false correctAnswer must be boolean, number (0/1), or string ("true"/"false")');
   }
 
   return {
     ...baseQuestion,
-    correctAnswer: question.correctAnswer,
+    correctAnswer: correctAnswer,
     explanation: question.explanation || undefined
   };
 };

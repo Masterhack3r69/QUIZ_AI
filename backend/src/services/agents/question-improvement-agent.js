@@ -138,7 +138,7 @@ class QuestionImprovementAgent {
       return [];
     }
 
-    const concurrency = options.concurrency || 5;
+    const concurrency = options.concurrency || 2; // Default to 2 to avoid rate limits
 
     console.log(`[QuestionImprovementAgent] Starting batch improvement`, {
       totalQuestions: questionsWithFeedback.length,
@@ -174,6 +174,11 @@ class QuestionImprovementAgent {
                            originalItem.question.question.substring(0, 50);
           improvedQuestionIds.push(questionId);
         });
+        
+        // Add small delay between batches to avoid rate limits
+        if (i + concurrency < questionsWithFeedback.length) {
+          await new Promise(resolve => setTimeout(resolve, 500)); // 500ms delay
+        }
       }
 
       // Log summary

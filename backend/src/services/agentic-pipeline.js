@@ -258,7 +258,8 @@ class AgenticPipeline {
   async validateQuestions(questions, options) {
     try {
       const validationResults = await this.qualityValidationAgent.validateBatch(questions, {
-        forceProvider: options.forceProvider
+        forceProvider: options.forceProvider,
+        concurrency: options.concurrency || 2 // Limit to 2 concurrent requests to avoid rate limits
       });
 
       const lowQualityCount = validationResults.filter(
@@ -333,7 +334,8 @@ class AgenticPipeline {
       const improvementResults = await this.questionImprovementAgent.improveBatch(
         lowQualityQuestions,
         {
-          forceProvider: options.forceProvider
+          forceProvider: options.forceProvider,
+          concurrency: options.concurrency || 2 // Limit to 2 concurrent requests to avoid rate limits
         }
       );
 

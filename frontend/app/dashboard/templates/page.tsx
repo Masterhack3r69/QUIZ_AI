@@ -1,344 +1,85 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Icon } from '@/components/ui/Icon';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { TemplateCard } from '@/components/quiz/TemplateCard';
-import { TemplateForm } from '@/components/quiz/TemplateForm';
-import { apiClient } from '@/lib/api';
-import { useToast } from '@/contexts/ToastContext';
-import type { QuizTemplate, QuizDistribution } from '@/types';
-
-// Predefined templates
-const PREDEFINED_TEMPLATES: Omit<QuizTemplate, '_id' | 'teacher' | 'createdAt' | 'updatedAt'>[] = [
-  {
-    name: 'Short Quiz',
-    type: 'short',
-    questionCount: 10,
-    duration: 15,
-    questionDistribution: {
-      multipleChoice: 100,
-      trueFalse: 0,
-      fillInBlank: 0,
-      matching: 0,
-    },
-    expirationPeriod: 7,
-    subjects: [],
-  },
-  {
-    name: 'Long Quiz',
-    type: 'long',
-    questionCount: 25,
-    duration: 45,
-    questionDistribution: {
-      multipleChoice: 70,
-      trueFalse: 20,
-      fillInBlank: 10,
-      matching: 0,
-    },
-    expirationPeriod: 14,
-    subjects: [],
-  },
-  {
-    name: 'Exam',
-    type: 'exam',
-    questionCount: 50,
-    duration: 90,
-    questionDistribution: {
-      multipleChoice: 60,
-      trueFalse: 20,
-      fillInBlank: 15,
-      matching: 5,
-    },
-    expirationPeriod: 30,
-    subjects: [],
-  },
-];
+import { Card, CardContent } from '@/components/ui/card';
+import { ArrowLeft, FileText, Clock, Sparkles } from 'lucide-react';
 
 export default function TemplatesPage() {
   const router = useRouter();
-  const { showToast } = useToast();
-  const [templates, setTemplates] = useState<QuizTemplate[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<QuizTemplate | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    loadTemplates();
-  }, []);
-
-  const loadTemplates = async () => {
-    try {
-      setIsLoading(true);
-      const data = await apiClient.getMyTemplates();
-      // Filter out predefined templates (they're shown separately)
-      const customOnly = data.filter((t: any) => !t.isPredefined && !t._id.startsWith('predefined-'));
-      setTemplates(customOnly);
-    } catch (error: any) {
-      showToast('error', error.message || 'Failed to load templates');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleCreateTemplate = async (
-    data: Omit<QuizTemplate, '_id' | 'teacher' | 'createdAt' | 'updatedAt'>
-  ) => {
-    try {
-      setIsSubmitting(true);
-      await apiClient.createTemplate(data);
-      showToast('success', 'Template created successfully');
-      setShowCreateModal(false);
-      loadTemplates();
-    } catch (error: any) {
-      showToast('error', error.message || 'Failed to create template');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleEditTemplate = async (
-    data: Omit<QuizTemplate, '_id' | 'teacher' | 'createdAt' | 'updatedAt'>
-  ) => {
-    if (!selectedTemplate) return;
-
-    try {
-      setIsSubmitting(true);
-      await apiClient.updateTemplate(selectedTemplate._id, data);
-      showToast('success', 'Template updated successfully');
-      setShowEditModal(false);
-      setSelectedTemplate(null);
-      loadTemplates();
-    } catch (error: any) {
-      showToast('error', error.message || 'Failed to update template');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleDeleteTemplate = async () => {
-    if (!selectedTemplate) return;
-
-    try {
-      setIsSubmitting(true);
-      await apiClient.deleteTemplate(selectedTemplate._id);
-      showToast('success', 'Template deleted successfully');
-      setShowDeleteModal(false);
-      setSelectedTemplate(null);
-      loadTemplates();
-    } catch (error: any) {
-      showToast('error', error.message || 'Failed to delete template');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleDuplicateTemplate = async (template: QuizTemplate) => {
-    try {
-      setIsSubmitting(true);
-      const duplicateData = {
-        name: `${template.name} (Copy)`,
-        type: 'custom' as const, // Always use 'custom' type for duplicated templates
-        questionCount: template.questionCount,
-        duration: template.duration,
-        questionDistribution: template.questionDistribution,
-        expirationPeriod: template.expirationPeriod,
-        subjects: template.subjects,
-      };
-      await apiClient.createTemplate(duplicateData);
-      showToast('success', 'Template duplicated successfully');
-      loadTemplates();
-    } catch (error: any) {
-      showToast('error', error.message || 'Failed to duplicate template');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const openEditModal = (template: QuizTemplate) => {
-    setSelectedTemplate(template);
-    setShowEditModal(true);
-  };
-
-  const openDeleteModal = (template: QuizTemplate) => {
-    setSelectedTemplate(template);
-    setShowDeleteModal(true);
-  };
 
   return (
-    <main id="main-content">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Quiz Templates</h1>
-            <p className="mt-2 text-gray-600">
-              Create and manage reusable quiz templates
+    <div className="min-h-[calc(100vh-200px)] flex items-center justify-center p-4">
+      <Card className="max-w-2xl w-full">
+        <CardContent className="pt-12 pb-12">
+          <div className="flex flex-col items-center text-center space-y-6">
+            {/* Icon */}
+            <div className="relative">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
+                <FileText className="w-12 h-12 text-blue-600" />
+              </div>
+              <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center animate-pulse">
+                <Sparkles className="w-5 h-5 text-white" />
+              </div>
+            </div>
+
+            {/* Title */}
+            <div className="space-y-2">
+              <h1 className="text-3xl font-bold text-gray-900">
+                Quiz Templates
+              </h1>
+              <p className="text-lg text-gray-600">
+                Coming Soon
+              </p>
+            </div>
+
+            {/* Description */}
+            <div className="max-w-md space-y-4">
+              <p className="text-gray-600">
+                We're working on an exciting new feature that will let you create and save reusable quiz templates. 
+                This will make creating quizzes even faster and more efficient!
+              </p>
+              
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
+                <h3 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  What to expect:
+                </h3>
+                <ul className="text-sm text-blue-800 space-y-1">
+                  <li>• Pre-built templates for common quiz types</li>
+                  <li>• Save your own custom templates</li>
+                  <li>• Quick quiz creation from templates</li>
+                  <li>• Share templates with other teachers</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row gap-3 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => router.push('/dashboard')}
+                className="gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Dashboard
+              </Button>
+              <Button
+                onClick={() => router.push('/dashboard/create')}
+                className="gap-2"
+              >
+                Create Quiz Now
+                <ArrowLeft className="w-4 h-4 rotate-180" />
+              </Button>
+            </div>
+
+            {/* Footer Note */}
+            <p className="text-sm text-gray-500 pt-4">
+              In the meantime, you can create quizzes directly from the Create Quiz page.
             </p>
           </div>
-          <Button
-            variant="default"
-            size="lg"
-            onClick={() => setShowCreateModal(true)}
-            aria-label="Create new template"
-          >
-            <Icon name="plus" className="mr-2" />
-            Create New Template
-          </Button>
-        </div>
-      </div>
-
-      {/* Loading State */}
-      {isLoading && (
-        <div className="flex justify-center items-center py-12">
-          <LoadingSpinner size="lg" />
-        </div>
-      )}
-
-      {/* Content */}
-      {!isLoading && (
-        <>
-          {/* Predefined Templates */}
-          <section className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              Predefined Templates
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {PREDEFINED_TEMPLATES.map((template, index) => (
-                <TemplateCard
-                  key={`predefined-${index}`}
-                  template={{
-                    ...template,
-                    _id: `predefined-${index}`,
-                    teacher: '',
-                    createdAt: '',
-                    updatedAt: '',
-                  }}
-                  isPredefined={true}
-                />
-              ))}
-            </div>
-          </section>
-
-          {/* Custom Templates */}
-          <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              Custom Templates
-            </h2>
-            {templates.length === 0 ? (
-              <Card className="text-center py-12">
-                <div className="flex justify-center mb-4">
-                  <Icon name="document" className="w-16 h-16 text-gray-400" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  No Custom Templates Yet
-                </h3>
-                <p className="text-gray-600 mb-6">
-                  Create your first custom template to get started
-                </p>
-                <Button
-                  variant="default"
-                  onClick={() => setShowCreateModal(true)}
-                >
-                  <Icon name="plus" className="mr-2" />
-                  Create Template
-                </Button>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {templates.map((template) => (
-                  <TemplateCard
-                    key={template._id}
-                    template={template}
-                    onEdit={openEditModal}
-                    onDelete={openDeleteModal}
-                    onDuplicate={handleDuplicateTemplate}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-        </>
-      )}
-
-      {/* Create Template Dialog */}
-      <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Create New Template</DialogTitle>
-          </DialogHeader>
-          <TemplateForm
-            onSubmit={handleCreateTemplate}
-            onCancel={() => setShowCreateModal(false)}
-            isLoading={isSubmitting}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Template Dialog */}
-      <Dialog open={showEditModal} onOpenChange={(open) => {
-        setShowEditModal(open);
-        if (!open) setSelectedTemplate(null);
-      }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Template</DialogTitle>
-          </DialogHeader>
-          {selectedTemplate && (
-            <TemplateForm
-              template={selectedTemplate}
-              onSubmit={handleEditTemplate}
-              onCancel={() => {
-                setShowEditModal(false);
-                setSelectedTemplate(null);
-              }}
-              isLoading={isSubmitting}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={showDeleteModal} onOpenChange={(open) => {
-        setShowDeleteModal(open);
-        if (!open) setSelectedTemplate(null);
-      }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Template</DialogTitle>
-          </DialogHeader>
-          <p className="text-gray-700">
-            Are you sure you want to delete the template{' '}
-            <strong>{selectedTemplate?.name}</strong>? This action cannot be undone.
-          </p>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowDeleteModal(false);
-                setSelectedTemplate(null);
-              }}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeleteTemplate}
-              disabled={isSubmitting}
-            >
-              Delete Template
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </main>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

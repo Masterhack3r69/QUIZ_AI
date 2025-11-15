@@ -291,7 +291,8 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
 
-              <Card 
+              {/* Templates - Coming Soon */}
+              {/* <Card 
                 className="cursor-pointer hover:shadow-lg transition-shadow"
                 onClick={() => router.push('/dashboard/templates')}
               >
@@ -308,7 +309,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 </CardContent>
-              </Card>
+              </Card> */}
             </div>
           </section>
         </>

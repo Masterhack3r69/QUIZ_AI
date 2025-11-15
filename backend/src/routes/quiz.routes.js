@@ -233,35 +233,108 @@ router.post('/create', protect, upload.single('file'), async (req, res) => {
       videoUrl,
       webUrl,
       questionDistribution,
-      totalQuestions
+      totalQuestions,
+      questions: preGeneratedQuestions // Accept pre-generated questions from frontend
     } = req.body;
     
     let content = '';
     let sourceInfo = { type: 'text', content: '' };
+    let questions;
     
-    // Extract content based on source type
-    if (req.file) {
-      content = await extractContent(req.file);
-      sourceInfo = { type: 'file', content: req.file.originalname };
-    } else if (sourceType === 'video' && videoUrl) {
-      content = await extractVideoContent(videoUrl);
-      sourceInfo = { type: 'video', content: videoUrl };
-    } else if (sourceType === 'url' && webUrl) {
-      content = await extractWebContent(webUrl);
-      sourceInfo = { type: 'url', content: webUrl };
-    } else if (sourceType === 'topic' && textContent) {
-      content = validateTopicContent(textContent);
-      sourceInfo = { type: 'topic', content: textContent.substring(0, 200) + '...' };
-    } else if (textContent) {
-      content = textContent;
-      sourceInfo = { type: 'text', content: textContent.substring(0, 200) + '...' };
+    // Check if questions are already provided (from preview step)
+    if (preGeneratedQuestions) {
+      try {
+        questions = typeof preGeneratedQuestions === 'string' 
+          ? JSON.parse(preGeneratedQuestions) 
+          : preGeneratedQuestions;
+        console.log('[Quiz Routes] Using pre-generated questions from frontend:', questions.length);
+      } catch (e) {
+        console.error('Error parsing preGeneratedQuestions:', e);
+        return res.status(400).json({ message: 'Invalid questions format' });
+      }
     }
+    
+    // Only extract content and generate questions if not provided
+    if (!questions) {
+      // Extract content based on source type
+      if (req.file) {
+        content = await extractContent(req.file);
+        sourceInfo = { type: 'file', content: req.file.originalname };
+      } else if (sourceType === 'video' && videoUrl) {
+        content = await extractVideoContent(videoUrl);
+        sourceInfo = { type: 'video', content: videoUrl };
+      } else if (sourceType === 'url' && webUrl) {
+        content = await extractWebContent(webUrl);
+        sourceInfo = { type: 'url', content: webUrl };
+      } else if (sourceType === 'topic' && textContent) {
+        content = validateTopicContent(textContent);
+        sourceInfo = { type: 'topic', content: textContent.substring(0, 200) + '...' };
+      } else if (textContent) {
+        content = textContent;
+        sourceInfo = { type: 'text', content: textContent.substring(0, 200) + '...' };
+      }
 
-    if (!content) {
-      return res.status(400).json({ message: 'No content provided' });
+      if (!content) {
+        return res.status(400).json({ message: 'No content or questions provided' });
+      }
+
+      // Parse distribution if provided
+      let distribution = null;
+      if (questionDistribution) {
+        try {
+          const parsed = typeof questionDistribution === 'string' 
+            ? JSON.parse(questionDistribution) 
+            : questionDistribution;
+          
+          distribution = {
+            multipleChoice: parseInt(parsed.multipleChoice) || 0,
+            trueFalse: parseInt(parsed.trueFalse) || 0,
+            fillInBlank: parseInt(parsed.fillInBlank) || 0,
+            matching: parseInt(parsed.matching) || 0
+          };
+        } catch (e) {
+          console.error('Error parsing questionDistribution:', e);
+        }
+      }
+
+      // Generate questions using AI with distribution
+      const total = totalQuestions ? parseInt(totalQuestions) : 20;
+      
+      // Check if agentic pipeline is enabled
+      const useAgenticPipeline = process.env.ENABLE_AGENTIC_PIPELINE === 'true';
+      const agenticPipeline = req.app.locals.agenticPipeline;
+      
+      if (useAgenticPipeline && agenticPipeline) {
+        console.log('[Quiz Routes] Using agentic pipeline for question generation');
+        questions = await generateQuestionsWithAgentic(
+          agenticPipeline,
+          content,
+          distribution,
+          total,
+          generateQuestions
+        );
+      } else {
+        console.log('[Quiz Routes] Using traditional question generation');
+        questions = await generateQuestions(content, distribution, total);
+      }
+    } else {
+      // Set sourceInfo from sourceType if questions are pre-generated
+      if (sourceType === 'video' && videoUrl) {
+        sourceInfo = { type: 'video', content: videoUrl };
+        content = videoUrl; // Use URL as content reference
+      } else if (sourceType === 'url' && webUrl) {
+        sourceInfo = { type: 'url', content: webUrl };
+        content = webUrl; // Use URL as content reference
+      } else if (sourceType === 'topic' && textContent) {
+        sourceInfo = { type: 'topic', content: textContent.substring(0, 200) + '...' };
+        content = textContent; // Use topic text as content
+      } else if (req.file) {
+        sourceInfo = { type: 'file', content: req.file.originalname };
+        content = req.file.originalname; // Use filename as content reference
+      }
     }
-
-    // Parse distribution if provided
+    
+    // Parse distribution if provided (needed for both paths)
     let distribution = null;
     if (questionDistribution) {
       try {
@@ -278,28 +351,6 @@ router.post('/create', protect, upload.single('file'), async (req, res) => {
       } catch (e) {
         console.error('Error parsing questionDistribution:', e);
       }
-    }
-
-    // Generate questions using AI with distribution
-    const total = totalQuestions ? parseInt(totalQuestions) : 20;
-    
-    // Check if agentic pipeline is enabled
-    const useAgenticPipeline = process.env.ENABLE_AGENTIC_PIPELINE === 'true';
-    const agenticPipeline = req.app.locals.agenticPipeline;
-    
-    let questions;
-    if (useAgenticPipeline && agenticPipeline) {
-      console.log('[Quiz Routes] Using agentic pipeline for question generation');
-      questions = await generateQuestionsWithAgentic(
-        agenticPipeline,
-        content,
-        distribution,
-        total,
-        generateQuestions
-      );
-    } else {
-      console.log('[Quiz Routes] Using traditional question generation');
-      questions = await generateQuestions(content, distribution, total);
     }
 
     const accessCode = generateAccessCode();
@@ -334,7 +385,7 @@ router.post('/create', protect, upload.single('file'), async (req, res) => {
       },
       sourceContent: {
         type: sourceInfo.type,
-        content: content.substring(0, 1000) // Store first 1000 chars
+        content: content ? content.substring(0, 1000) : 'Pre-generated questions' // Store first 1000 chars or placeholder
       }
     });
 

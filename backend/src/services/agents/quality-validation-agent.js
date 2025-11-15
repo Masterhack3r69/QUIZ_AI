@@ -144,7 +144,7 @@ class QualityValidationAgent {
       return [];
     }
 
-    const concurrency = options.concurrency || 5;
+    const concurrency = options.concurrency || 2; // Default to 2 to avoid rate limits
 
     console.log(`[QualityValidationAgent] Starting batch validation`, {
       totalQuestions: questions.length,
@@ -169,6 +169,11 @@ class QualityValidationAgent {
         );
 
         results.push(...batchResults);
+        
+        // Add small delay between batches to avoid rate limits
+        if (i + concurrency < questions.length) {
+          await new Promise(resolve => setTimeout(resolve, 500)); // 500ms delay
+        }
       }
 
       // Aggregate results

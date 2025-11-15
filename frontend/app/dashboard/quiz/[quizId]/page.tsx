@@ -118,12 +118,11 @@ export default function QuizManagementPage() {
     try {
       setIsDeleting(true);
       await apiClient.deleteQuiz(quizId);
+      setShowDeleteDialog(false);
       showSuccess('Quiz deleted successfully');
       
-      // Redirect to dashboard after a short delay
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 1500);
+      // Redirect immediately to dashboard
+      router.push('/dashboard');
     } catch (err) {
       if (err instanceof APIRequestError) {
         showError(err.message);

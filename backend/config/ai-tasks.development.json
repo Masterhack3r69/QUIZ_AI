@@ -34,8 +34,8 @@
   "providers": {
     "github": {
       "enabled": true,
-      "endpoint": "https://models.inference.ai.azure.com",
-      "model": "gpt-4o"
+      "endpoint": "https://models.github.ai/inference",
+      "model": "meta/Llama-4-Scout-17B-16E-Instruct"
     },
     "ollama": {
       "enabled": true,

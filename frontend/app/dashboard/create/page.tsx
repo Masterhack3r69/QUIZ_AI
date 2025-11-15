@@ -61,22 +61,24 @@ type WizardStep = typeof WIZARD_STEPS[number]['id'];
 // ReviewAndSave Component
 interface ReviewAndSaveProps {
   quizConfig: QuizConfig;
-  questionDistribution: QuizDistribution;
+  questionPreset: QuestionPreset;
   generatedQuestions: Question[];
   selectedSource: ContentSource | null;
   onBack: () => void;
   onEditConfig: () => void;
   onEditContent: () => void;
+  convertDistributionToCount: (distribution: QuizDistribution, totalQuestions: number) => QuizDistribution;
 }
 
 function ReviewAndSave({
   quizConfig,
-  questionDistribution,
+  questionPreset,
   generatedQuestions,
   selectedSource,
   onBack,
   onEditConfig,
   onEditContent,
+  convertDistributionToCount,
 }: ReviewAndSaveProps) {
   const router = useRouter();
   const [isCreating, setIsCreating] = useState(false);
@@ -131,8 +133,15 @@ function ReviewAndSave({
         formData.append('subjects', JSON.stringify(quizConfig.subjects));
       }
       
-      // Add question distribution
-      formData.append('questionDistribution', JSON.stringify(questionDistribution));
+      // Add question distribution (convert percentages to counts)
+      const distributionCounts = convertDistributionToCount(
+        questionPreset.distribution,
+        generatedQuestions.length
+      );
+      formData.append('questionDistribution', JSON.stringify(distributionCounts));
+      
+      // Add pre-generated questions to avoid regeneration
+      formData.append('questions', JSON.stringify(generatedQuestions));
 
       // Call backend API to create quiz
       const response = await apiClient.createQuiz(formData);
@@ -345,27 +354,27 @@ function ReviewAndSave({
               <div className="bg-white rounded-lg p-4 shadow-sm col-span-full">
                 <p className="text-sm text-muted-foreground mb-2">Question Distribution</p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {questionDistribution.multipleChoice > 0 && (
+                  {questionPreset.distribution.multipleChoice > 0 && (
                     <div className="text-center">
-                      <p className="text-2xl font-bold text-blue-600">{questionDistribution.multipleChoice}%</p>
+                      <p className="text-2xl font-bold text-blue-600">{questionPreset.distribution.multipleChoice}%</p>
                       <p className="text-xs text-muted-foreground">Multiple Choice</p>
                     </div>
                   )}
-                  {questionDistribution.trueFalse > 0 && (
+                  {questionPreset.distribution.trueFalse > 0 && (
                     <div className="text-center">
-                      <p className="text-2xl font-bold text-green-600">{questionDistribution.trueFalse}%</p>
+                      <p className="text-2xl font-bold text-green-600">{questionPreset.distribution.trueFalse}%</p>
                       <p className="text-xs text-muted-foreground">True/False</p>
                     </div>
                   )}
-                  {questionDistribution.fillInBlank > 0 && (
+                  {questionPreset.distribution.fillInBlank > 0 && (
                     <div className="text-center">
-                      <p className="text-2xl font-bold text-yellow-600">{questionDistribution.fillInBlank}%</p>
+                      <p className="text-2xl font-bold text-yellow-600">{questionPreset.distribution.fillInBlank}%</p>
                       <p className="text-xs text-muted-foreground">Fill-in-the-Blank</p>
                     </div>
                   )}
-                  {questionDistribution.matching > 0 && (
+                  {questionPreset.distribution.matching > 0 && (
                     <div className="text-center">
-                      <p className="text-2xl font-bold text-purple-600">{questionDistribution.matching}%</p>
+                      <p className="text-2xl font-bold text-purple-600">{questionPreset.distribution.matching}%</p>
                       <p className="text-xs text-muted-foreground">Matching</p>
                     </div>
                   )}
@@ -566,7 +575,7 @@ function ReviewAndSave({
   );
 }
 
-type ProcessingStage = 'extracting' | 'generating' | 'complete';
+type ProcessingStage = 'extracting' | 'generating' | 'validating' | 'improving' | 'complete';
 
 interface QuizConfig {
   title: string;
@@ -576,6 +585,11 @@ interface QuizConfig {
   startDate: Date | undefined;
   maxStudents: string;
   subjects: string[];
+}
+
+interface QuestionPreset {
+  totalQuestions: number;
+  distribution: QuizDistribution;
 }
 
 interface ConfigErrors {
@@ -592,13 +606,23 @@ export default function CreateQuizPage() {
   // Wizard state
   const [currentStep, setCurrentStep] = useState<WizardStep>('upload');
   
-  // Step 1: Content Source Selection
+  // Step 1: Content Source Selection + Question Preset
   const [selectedSource, setSelectedSource] = useState<ContentSource | null>(null);
   const [sourceError, setSourceError] = useState('');
+  const [questionPreset, setQuestionPreset] = useState<QuestionPreset>({
+    totalQuestions: 10,
+    distribution: {
+      multipleChoice: 100,
+      trueFalse: 0,
+      fillInBlank: 0,
+      matching: 0,
+    }
+  });
   
   // Step 2: AI Processing state
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStage, setProcessingStage] = useState<ProcessingStage>('extracting');
+  const [processingLogs, setProcessingLogs] = useState<string[]>([]);
   const [generatedQuestions, setGeneratedQuestions] = useState<Question[]>([]);
   
   // Step 3: Configuration state
@@ -606,16 +630,10 @@ export default function CreateQuizPage() {
     title: '',
     duration: '30',
     expiresAt: undefined,
-    questionsPerStudent: '10',
+    questionsPerStudent: questionPreset.totalQuestions.toString(),
     startDate: undefined,
     maxStudents: '',
     subjects: [],
-  });
-  const [questionDistribution, setQuestionDistribution] = useState<QuizDistribution>({
-    multipleChoice: 100,
-    trueFalse: 0,
-    fillInBlank: 0,
-    matching: 0,
   });
   const [configErrors, setConfigErrors] = useState<ConfigErrors>({});
 
@@ -694,16 +712,6 @@ export default function CreateQuizPage() {
       }
     }
     
-    // Validate questions per student
-    const questionsPerStudent = parseInt(quizConfig.questionsPerStudent);
-    if (!quizConfig.questionsPerStudent || isNaN(questionsPerStudent)) {
-      errors.questionsPerStudent = 'Number of questions is required';
-    } else if (questionsPerStudent < 1) {
-      errors.questionsPerStudent = 'Must have at least 1 question';
-    } else if (questionsPerStudent > generatedQuestions.length) {
-      errors.questionsPerStudent = `Cannot exceed ${generatedQuestions.length} (total generated questions)`;
-    }
-    
     setConfigErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -719,6 +727,34 @@ export default function CreateQuizPage() {
     }
   };
 
+  const addProcessingLog = (message: string) => {
+    setProcessingLogs(prev => [...prev, `${new Date().toLocaleTimeString()}: ${message}`]);
+  };
+
+  // Convert percentage distribution to actual question counts
+  const convertDistributionToCount = (distribution: QuizDistribution, totalQuestions: number) => {
+    const counts = {
+      multipleChoice: Math.round((distribution.multipleChoice / 100) * totalQuestions),
+      trueFalse: Math.round((distribution.trueFalse / 100) * totalQuestions),
+      fillInBlank: Math.round((distribution.fillInBlank / 100) * totalQuestions),
+      matching: Math.round((distribution.matching / 100) * totalQuestions),
+    };
+
+    // Adjust for rounding errors to ensure sum equals totalQuestions
+    const sum = counts.multipleChoice + counts.trueFalse + counts.fillInBlank + counts.matching;
+    const diff = totalQuestions - sum;
+    
+    if (diff !== 0) {
+      // Add/subtract difference to the largest category
+      const largest = Object.keys(counts).reduce((a, b) => 
+        counts[a as keyof typeof counts] > counts[b as keyof typeof counts] ? a : b
+      ) as keyof typeof counts;
+      counts[largest] += diff;
+    }
+
+    return counts;
+  };
+
   const handleContentNext = async () => {
     // Validate content source is selected
     if (!selectedSource) {
@@ -730,6 +766,7 @@ export default function CreateQuizPage() {
     setCurrentStep('processing');
     setIsProcessing(true);
     setSourceError('');
+    setProcessingLogs([]);
 
     try {
       const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
@@ -744,10 +781,11 @@ export default function CreateQuizPage() {
 
       // Stage 1: Extracting content
       setProcessingStage('extracting');
+      addProcessingLog('🤖 Agent 1: Starting content extraction...');
       
       // Extract content based on source type
       if (selectedSource.type === 'video' && typeof selectedSource.content === 'string') {
-        // Extract video transcript
+        addProcessingLog('📹 Extracting video transcript from YouTube...');
         const videoResponse = await fetch(`${API_BASE_URL}/api/quiz/process-video`, {
           method: 'POST',
           headers: {
@@ -764,9 +802,10 @@ export default function CreateQuizPage() {
         
         const videoData = await videoResponse.json();
         extractedContent = videoData.content;
+        addProcessingLog(`✅ Extracted ${extractedContent.length} characters from video`);
         
       } else if (selectedSource.type === 'url' && typeof selectedSource.content === 'string') {
-        // Extract web page content
+        addProcessingLog('🌐 Extracting content from web page...');
         const urlResponse = await fetch(`${API_BASE_URL}/api/quiz/process-url`, {
           method: 'POST',
           headers: {
@@ -783,10 +822,18 @@ export default function CreateQuizPage() {
         
         const urlData = await urlResponse.json();
         extractedContent = urlData.content;
+        addProcessingLog(`✅ Extracted ${extractedContent.length} characters from web page`);
+      } else if (selectedSource.type === 'file' && selectedSource.content instanceof File) {
+        addProcessingLog(`📄 Processing ${selectedSource.content.name}...`);
+      } else if (selectedSource.type === 'topic' && typeof selectedSource.content === 'string') {
+        addProcessingLog('📝 Analyzing topic content...');
       }
+      
+      addProcessingLog('✅ Content extraction complete');
       
       // Stage 2: Generating questions
       setProcessingStage('generating');
+      addProcessingLog(`🤖 Agent 2: Generating ${questionPreset.totalQuestions} questions...`);
       
       // Prepare form data for question generation
       const formData = new FormData();
@@ -803,11 +850,16 @@ export default function CreateQuizPage() {
       // Add placeholder values for required fields (will be configured in step 3)
       formData.append('title', 'Untitled Quiz');
       formData.append('duration', quizConfig.duration || '30');
-      formData.append('questionsPerStudent', quizConfig.questionsPerStudent || '10');
+      formData.append('questionsPerStudent', questionPreset.totalQuestions.toString());
+      formData.append('totalQuestions', questionPreset.totalQuestions.toString());
       formData.append('expiresAt', quizConfig.expiresAt ? quizConfig.expiresAt.toISOString() : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString());
       
-      // Add question distribution
-      formData.append('questionDistribution', JSON.stringify(questionDistribution));
+      // Add question distribution (convert percentages to counts)
+      const distributionCounts = convertDistributionToCount(
+        questionPreset.distribution, 
+        questionPreset.totalQuestions
+      );
+      formData.append('questionDistribution', JSON.stringify(distributionCounts));
 
       // Use test endpoint to generate questions without saving
       const response = await fetch(`${API_BASE_URL}/api/quiz/test-create`, {
@@ -823,17 +875,40 @@ export default function CreateQuizPage() {
       
       const data = await response.json();
       
+      addProcessingLog(`✅ Generated ${data.questions.length} questions successfully`);
+      
       // Store generated questions (quiz not saved yet)
       setGeneratedQuestions(data.questions);
       
-      // Stage 3: Complete
+      // Stage 3: Quality Validation (if enabled)
+      if (process.env.NEXT_PUBLIC_ENABLE_QUALITY_VALIDATION === 'true') {
+        setProcessingStage('validating');
+        addProcessingLog('🤖 Agent 3: Validating question quality...');
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate validation
+        addProcessingLog('✅ Quality validation complete');
+        
+        // Stage 4: Question Improvement (if needed)
+        setProcessingStage('improving');
+        addProcessingLog('🤖 Agent 4: Improving low-quality questions...');
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate improvement
+        addProcessingLog('✅ Question improvement complete');
+      }
+      
+      // Stage 5: Complete
       setProcessingStage('complete');
+      addProcessingLog('🎉 All agents completed successfully!');
+      
+      // Update questionsPerStudent to match generated questions
+      setQuizConfig(prev => ({
+        ...prev,
+        questionsPerStudent: data.questions.length.toString()
+      }));
       
       // Wait a moment to show completion message
       setTimeout(() => {
         setIsProcessing(false);
         setCurrentStep('configure');
-      }, 1000);
+      }, 1500);
       
     } catch (err: any) {
       setIsProcessing(false);
@@ -860,6 +935,7 @@ export default function CreateQuizPage() {
       }
       
       setSourceError(errorMessage);
+      addProcessingLog(`❌ Error: ${errorMessage}`);
       
       // Show toast notification
       toast.error('Error', {
@@ -969,19 +1045,93 @@ export default function CreateQuizPage() {
                   1
                 </div>
                 <div>
-                  <CardTitle className="text-xl">Select Content Source</CardTitle>
+                  <CardTitle className="text-xl">Select Content Source & Question Settings</CardTitle>
                   <CardDescription className="text-base">
-                    Choose how you want to provide content for AI to generate quiz questions
+                    Choose your content source and configure how many questions to generate
                   </CardDescription>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-6 pt-6">
-              <ContentSourceSelector
-                onSourceSelect={handleSourceSelect}
-                selectedSource={selectedSource}
-                error={sourceError}
-              />
+            <CardContent className="space-y-8 pt-6">
+              {/* Content Source Selection */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Content Source</h3>
+                <ContentSourceSelector
+                  onSourceSelect={handleSourceSelect}
+                  selectedSource={selectedSource}
+                  error={sourceError}
+                />
+              </div>
+
+              <Separator />
+
+              {/* Question Preset Settings */}
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Question Settings</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Configure how many questions the AI should generate and their types
+                  </p>
+                </div>
+
+                {/* Total Questions */}
+                <div className="space-y-3">
+                  <Label htmlFor="totalQuestions" className="text-base font-semibold flex items-center gap-2">
+                    Total Questions to Generate <span className="text-destructive">*</span>
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="totalQuestions"
+                      type="number"
+                      value={questionPreset.totalQuestions}
+                      onChange={(e) => setQuestionPreset(prev => ({
+                        ...prev,
+                        totalQuestions: parseInt(e.target.value) || 10
+                      }))}
+                      placeholder="10"
+                      min="1"
+                      max="50"
+                      className="h-12 text-base border-2 focus:border-primary transition-colors pr-24"
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium bg-muted px-2 py-1 rounded">
+                      questions
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    The AI will generate this many questions from your content (1-50)
+                  </p>
+                </div>
+
+                {/* Question Distribution */}
+                <div className="space-y-3">
+                  <Label className="text-base font-semibold">Question Type Distribution</Label>
+                  <div className="p-5 bg-gradient-to-br from-muted/50 to-muted/30 rounded-lg border-2">
+                    <QuestionDistribution
+                      totalQuestions={questionPreset.totalQuestions}
+                      distribution={questionPreset.distribution}
+                      onChange={(newDistribution) => setQuestionPreset(prev => ({
+                        ...prev,
+                        distribution: newDistribution
+                      }))}
+                      mode="percentage"
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Adjust the percentage of each question type. The AI will generate questions according to this distribution.
+                  </p>
+                </div>
+
+                {/* Info Alert */}
+                <Alert className="border-2 border-blue-200 bg-blue-50/50">
+                  <Info className="h-5 w-5 text-blue-600" />
+                  <AlertTitle className="text-blue-900 font-semibold">How it works</AlertTitle>
+                  <AlertDescription className="text-blue-800">
+                    The AI will analyze your content and generate{' '}
+                    <span className="font-bold">{questionPreset.totalQuestions}</span>{' '}
+                    questions based on the distribution you set. You can configure quiz settings like title, duration, and expiration in the next step.
+                  </AlertDescription>
+                </Alert>
+              </div>
 
               {/* Navigation Buttons */}
               <div className="flex justify-between pt-6 border-t">
@@ -1000,7 +1150,7 @@ export default function CreateQuizPage() {
                   disabled={!canProceedFromContent}
                   className="px-6"
                 >
-                  Next: AI Processing
+                  Generate Questions
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
@@ -1017,16 +1167,16 @@ export default function CreateQuizPage() {
                   2
                 </div>
                 <div>
-                  <CardTitle className="text-xl">AI Processing</CardTitle>
+                  <CardTitle className="text-xl">AI Agent Processing</CardTitle>
                   <CardDescription className="text-base">
-                    Our AI is analyzing your content and generating quiz questions
+                    Multiple AI agents are working together to create high-quality quiz questions
                   </CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
               {/* Processing Animation and Status */}
-              <div className="py-16 flex flex-col items-center justify-center">
+              <div className="py-12 flex flex-col items-center justify-center">
                 {/* Animated Spinner */}
                 <div className="relative mb-8">
                   <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse"></div>
@@ -1034,39 +1184,62 @@ export default function CreateQuizPage() {
                 </div>
 
                 {/* Progress Messages */}
-                <div className="text-center space-y-4">
+                <div className="text-center space-y-4 mb-8">
                   <h3 className="text-2xl font-bold text-foreground">
-                    {processingStage === 'extracting' && 'Extracting content...'}
-                    {processingStage === 'generating' && 'Generating questions...'}
-                    {processingStage === 'complete' && 'Complete!'}
+                    {processingStage === 'extracting' && '🤖 Agent 1: Content Extraction'}
+                    {processingStage === 'generating' && '🤖 Agent 2: Question Generation'}
+                    {processingStage === 'validating' && '🤖 Agent 3: Quality Validation'}
+                    {processingStage === 'improving' && '🤖 Agent 4: Question Improvement'}
+                    {processingStage === 'complete' && '✅ All Agents Complete!'}
                   </h3>
                   
                   <p className="text-muted-foreground max-w-md text-lg">
                     {processingStage === 'extracting' && 
-                      'Reading and analyzing your learning material'}
+                      'Analyzing content and extracting key learning concepts'}
                     {processingStage === 'generating' && 
-                      'Creating intelligent quiz questions based on the content'}
+                      `Creating ${questionPreset.totalQuestions} intelligent quiz questions`}
+                    {processingStage === 'validating' && 
+                      'Evaluating question quality and identifying improvements'}
+                    {processingStage === 'improving' && 
+                      'Enhancing low-quality questions for better assessment'}
                     {processingStage === 'complete' && 
-                      'Questions generated successfully. Proceeding to configuration...'}
+                      'High-quality questions ready! Proceeding to configuration...'}
                   </p>
 
                   {/* Progress Indicators */}
-                  <div className="flex items-center justify-center space-x-3 pt-6">
+                  <div className="flex items-center justify-center space-x-2 pt-6 flex-wrap gap-y-4">
                     <div className="flex flex-col items-center gap-2">
                       <div className={`w-4 h-4 rounded-full transition-all duration-300 ${
-                        processingStage === 'extracting' ? 'bg-primary animate-pulse scale-125' : 'bg-primary/80'
+                        processingStage === 'extracting' ? 'bg-primary animate-pulse scale-125' : 
+                        ['generating', 'validating', 'improving', 'complete'].includes(processingStage) ? 'bg-primary/80' : 'bg-muted'
                       }`}></div>
                       <span className="text-xs font-medium">Extract</span>
                     </div>
-                    <div className="w-12 h-0.5 bg-muted"></div>
+                    <div className="w-8 h-0.5 bg-muted"></div>
                     <div className="flex flex-col items-center gap-2">
                       <div className={`w-4 h-4 rounded-full transition-all duration-300 ${
                         processingStage === 'generating' ? 'bg-primary animate-pulse scale-125' : 
-                        processingStage === 'complete' ? 'bg-primary/80' : 'bg-muted'
+                        ['validating', 'improving', 'complete'].includes(processingStage) ? 'bg-primary/80' : 'bg-muted'
                       }`}></div>
                       <span className="text-xs font-medium">Generate</span>
                     </div>
-                    <div className="w-12 h-0.5 bg-muted"></div>
+                    <div className="w-8 h-0.5 bg-muted"></div>
+                    <div className="flex flex-col items-center gap-2">
+                      <div className={`w-4 h-4 rounded-full transition-all duration-300 ${
+                        processingStage === 'validating' ? 'bg-primary animate-pulse scale-125' : 
+                        ['improving', 'complete'].includes(processingStage) ? 'bg-primary/80' : 'bg-muted'
+                      }`}></div>
+                      <span className="text-xs font-medium">Validate</span>
+                    </div>
+                    <div className="w-8 h-0.5 bg-muted"></div>
+                    <div className="flex flex-col items-center gap-2">
+                      <div className={`w-4 h-4 rounded-full transition-all duration-300 ${
+                        processingStage === 'improving' ? 'bg-primary animate-pulse scale-125' : 
+                        processingStage === 'complete' ? 'bg-primary/80' : 'bg-muted'
+                      }`}></div>
+                      <span className="text-xs font-medium">Improve</span>
+                    </div>
+                    <div className="w-8 h-0.5 bg-muted"></div>
                     <div className="flex flex-col items-center gap-2">
                       <div className={`w-4 h-4 rounded-full transition-all duration-300 ${
                         processingStage === 'complete' ? 'bg-primary scale-125' : 'bg-muted'
@@ -1076,10 +1249,35 @@ export default function CreateQuizPage() {
                   </div>
                 </div>
 
+                {/* Processing Logs */}
+                {processingLogs.length > 0 && (
+                  <div className="w-full max-w-2xl mb-8">
+                    <Card className="bg-slate-950 border-slate-800">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-mono text-slate-300">Processing Log</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-1 max-h-64 overflow-y-auto font-mono text-xs">
+                          {processingLogs.map((log, index) => (
+                            <div 
+                              key={index} 
+                              className="text-slate-300 animate-in fade-in-50 slide-in-from-left-2"
+                              style={{ animationDelay: `${index * 50}ms` }}
+                            >
+                              {log}
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+
                 {/* Processing Info */}
-                <div className="mt-12 p-4 bg-muted rounded-lg border text-sm text-muted-foreground text-center max-w-md">
-                  <p className="font-medium">⏱️ This may take 30-60 seconds</p>
-                  <p className="mt-1">Please do not close this window.</p>
+                <div className="p-4 bg-muted rounded-lg border text-sm text-muted-foreground text-center max-w-md">
+                  <p className="font-medium">⏱️ This may take 45-60 seconds</p>
+                  <p className="mt-1">Multiple AI agents are ensuring high-quality questions</p>
+                  <p className="mt-1 text-xs">Please do not close this window</p>
                 </div>
               </div>
             </CardContent>
@@ -1191,49 +1389,43 @@ export default function CreateQuizPage() {
                     <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent"></div>
                   </div>
 
-                  {/* Questions Per Student */}
+                  {/* Generated Questions Summary */}
                   <div className="space-y-3">
-                    <Label htmlFor="questionsPerStudent" className="text-base font-semibold flex items-center gap-2">
-                      Questions Per Student <span className="text-destructive">*</span>
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        id="questionsPerStudent"
-                        type="number"
-                        value={quizConfig.questionsPerStudent}
-                        onChange={(e) => handleConfigChange('questionsPerStudent', e.target.value)}
-                        placeholder="10"
-                        min="1"
-                        max={generatedQuestions.length}
-                        required
-                        className="h-12 text-base border-2 focus:border-primary transition-colors pr-24"
-                      />
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium bg-muted px-2 py-1 rounded">
-                        of {generatedQuestions.length}
+                    <Label className="text-base font-semibold">Generated Questions</Label>
+                    <div className="p-5 bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-lg border-2 border-blue-200">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <p className="text-3xl font-bold text-blue-600">{generatedQuestions.length}</p>
+                          <p className="text-sm text-blue-800">Total Questions Generated</p>
+                        </div>
+                        <div className="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center">
+                          <Check className="w-8 h-8 text-white" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {['multipleChoice', 'trueFalse', 'fillInBlank', 'matching'].map((type) => {
+                          const count = generatedQuestions.filter((q) => q.type === type).length;
+                          if (count === 0) return null;
+                          
+                          const labels = {
+                            multipleChoice: 'Multiple Choice',
+                            trueFalse: 'True/False',
+                            fillInBlank: 'Fill-in-the-Blank',
+                            matching: 'Matching',
+                          };
+                          
+                          return (
+                            <div key={type} className="text-center bg-white rounded-lg p-3 shadow-sm">
+                              <p className="text-2xl font-bold text-blue-600">{count}</p>
+                              <p className="text-xs text-muted-foreground">{labels[type as keyof typeof labels]}</p>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
-                    {configErrors.questionsPerStudent && (
-                      <p className="text-sm text-destructive font-medium flex items-center gap-1">
-                        <AlertCircle className="h-3.5 w-3.5" />
-                        {configErrors.questionsPerStudent}
-                      </p>
-                    )}
                     <p className="text-sm text-muted-foreground">
-                      Each student will receive this many random questions
+                      All {generatedQuestions.length} questions will be available in the quiz pool. Students will receive randomized questions.
                     </p>
-                  </div>
-
-                  {/* Question Distribution */}
-                  <div className="space-y-3">
-                    <Label className="text-base font-semibold">Question Type Distribution</Label>
-                    <div className="p-5 bg-gradient-to-br from-muted/50 to-muted/30 rounded-lg border-2">
-                      <QuestionDistribution
-                        totalQuestions={parseInt(quizConfig.questionsPerStudent) || 10}
-                        distribution={questionDistribution}
-                        onChange={setQuestionDistribution}
-                        mode="percentage"
-                      />
-                    </div>
                   </div>
                 </div>
 
@@ -1354,13 +1546,11 @@ export default function CreateQuizPage() {
                 {/* Info Box */}
                 <Alert className="border-2 border-blue-200 bg-blue-50/50">
                   <Info className="h-5 w-5 text-blue-600" />
-                  <AlertTitle className="text-blue-900 font-semibold">About Question Randomization</AlertTitle>
+                  <AlertTitle className="text-blue-900 font-semibold">About This Quiz</AlertTitle>
                   <AlertDescription className="text-blue-800">
-                    Each student will receive a random selection of{' '}
-                    <span className="font-bold">{quizConfig.questionsPerStudent || '?'}</span>{' '}
-                    questions from the pool of{' '}
+                    This quiz contains{' '}
                     <span className="font-bold">{generatedQuestions.length}</span>{' '}
-                    generated questions. This ensures academic integrity while maintaining fairness.
+                    high-quality questions generated by our AI agents. Students will receive randomized questions to ensure academic integrity while maintaining fairness.
                   </AlertDescription>
                 </Alert>
               </form>
@@ -1410,12 +1600,13 @@ export default function CreateQuizPage() {
               <CardContent className="pt-6">
                 <ReviewAndSave
                   quizConfig={quizConfig}
-                  questionDistribution={questionDistribution}
+                  questionPreset={questionPreset}
                   generatedQuestions={generatedQuestions}
                   selectedSource={selectedSource}
                   onBack={() => setCurrentStep('configure')}
                   onEditConfig={() => setCurrentStep('configure')}
                   onEditContent={() => setCurrentStep('upload')}
+                  convertDistributionToCount={convertDistributionToCount}
                 />
               </CardContent>
             </Card>

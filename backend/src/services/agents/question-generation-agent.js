@@ -251,15 +251,24 @@ class QuestionGenerationAgent {
       if (typeof response === 'string') {
         // Remove markdown code blocks if present
         let cleaned = response.trim();
-        if (cleaned.startsWith('```json')) {
-          cleaned = cleaned.substring(7);
+        
+        // Handle text before code fence (e.g., "Here are the questions:```json")
+        const jsonFenceIndex = cleaned.indexOf('```json');
+        const fenceIndex = cleaned.indexOf('```');
+        
+        if (jsonFenceIndex !== -1) {
+          // Found ```json, extract everything after it
+          cleaned = cleaned.substring(jsonFenceIndex + 7);
+        } else if (fenceIndex !== -1) {
+          // Found ```, extract everything after it
+          cleaned = cleaned.substring(fenceIndex + 3);
         }
-        if (cleaned.startsWith('```')) {
-          cleaned = cleaned.substring(3);
-        }
+        
+        // Remove trailing code fence
         if (cleaned.endsWith('```')) {
           cleaned = cleaned.substring(0, cleaned.length - 3);
         }
+        
         cleaned = cleaned.trim();
 
         const parsed = JSON.parse(cleaned);
