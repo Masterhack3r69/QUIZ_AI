@@ -1,37 +1,42 @@
 {
   "tasks": {
     "content-extraction": {
-      "primary": "openrouter",
-      "fallback": ["gemini", "ollama"],
+      "primary": "github",
+      "fallback": ["openrouter", "gemini", "ollama"],
       "maxRetries": 2,
-      "timeout": 30000
+      "timeout": 120000
     },
     "question-generation": {
-      "primary": "openrouter",
-      "fallback": ["gemini", "ollama"],
+      "primary": "github",
+      "fallback": ["openrouter", "gemini", "ollama"],
       "maxRetries": 2,
-      "timeout": 60000
+      "timeout": 180000
     },
     "quality-validation": {
-      "primary": "openrouter",
-      "fallback": ["gemini", "ollama"],
+      "primary": "github",
+      "fallback": ["openrouter", "gemini", "ollama"],
       "maxRetries": 2,
-      "timeout": 30000
+      "timeout": 120000
     },
     "question-improvement": {
-      "primary": "openrouter",
-      "fallback": ["gemini", "ollama"],
+      "primary": "github",
+      "fallback": ["openrouter", "gemini", "ollama"],
       "maxRetries": 2,
-      "timeout": 45000
+      "timeout": 120000
     },
     "analytics": {
-      "primary": "openrouter",
-      "fallback": ["gemini", "ollama"],
+      "primary": "github",
+      "fallback": ["openrouter", "gemini", "ollama"],
       "maxRetries": 2,
-      "timeout": 45000
+      "timeout": 120000
     }
   },
   "providers": {
+    "github": {
+      "enabled": true,
+      "endpoint": "https://models.inference.ai.azure.com",
+      "model": "gpt-4o"
+    },
     "ollama": {
       "enabled": true,
       "baseURL": "http://localhost:11434",

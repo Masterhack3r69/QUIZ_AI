@@ -116,6 +116,13 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+// Increase timeout for long-running AI operations (5 minutes)
+server.timeout = 300000; // 5 minutes
+server.keepAliveTimeout = 310000; // Slightly longer than timeout
+server.headersTimeout = 320000; // Slightly longer than keepAliveTimeout
+
+console.log(`Server timeout set to ${server.timeout}ms (${server.timeout / 1000}s)`);

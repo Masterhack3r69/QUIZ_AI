@@ -9,6 +9,7 @@ import configLoader from './config-loader.js';
 import OpenRouterProvider from './ai-providers/openrouter-provider.js';
 import GeminiProvider from './ai-providers/gemini-provider.js';
 import OllamaProvider from './ai-providers/ollama-provider.js';
+import GitHubProvider from './ai-providers/github-provider.js';
 import usageTracker from './usage-tracker.js';
 import {
   AIProviderError,
@@ -52,6 +53,7 @@ class AITaskRouter {
       
       // Initialize provider instances
       this.providers = {
+        github: new GitHubProvider(this.config.providers.github),
         openrouter: new OpenRouterProvider(this.config.providers.openrouter),
         gemini: new GeminiProvider(this.config.providers.gemini),
         ollama: new OllamaProvider(this.config.providers.ollama)

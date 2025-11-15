@@ -257,7 +257,7 @@ async function createQuizWithAI(token) {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        timeout: 120000 // 2 minutes timeout for AI processing
+        timeout: 300000 // 5 minutes timeout for AI processing (free models are slower)
       }
     );
     

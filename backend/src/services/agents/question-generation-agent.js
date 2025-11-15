@@ -90,22 +90,28 @@ class QuestionGenerationAgent {
       });
 
       // Execute via task router
+      // Note: Don't use jsonMode as it may constrain to single object instead of array
       const result = await this.taskRouter.executeTask(
         'question-generation',
         fullPrompt,
         {
           forceProvider: options.forceProvider,
           temperature: options.temperature || 0.7, // Higher temperature for more creative questions
-          jsonMode: true,
+          jsonMode: false, // Disabled to allow array responses
           maxTokens: 4000
         }
       );
 
       // Parse JSON response
+      console.log('[QuestionGenerationAgent] Raw AI response length:', result.text.length);
+      console.log('[QuestionGenerationAgent] Raw AI response preview:', result.text.substring(0, 500));
+      
       const rawQuestions = this.parseResponse(result.text);
+      console.log('[QuestionGenerationAgent] Parsed questions count:', Array.isArray(rawQuestions) ? rawQuestions.length : 'not an array');
 
       // Validate question formats
       const validQuestions = this.validateAndFilterQuestions(rawQuestions);
+      console.log('[QuestionGenerationAgent] Valid questions count:', validQuestions.length);
 
       // Adjust distribution if needed
       const finalQuestions = this.adjustDistribution(validQuestions, distribution);

@@ -15,6 +15,7 @@ import BaseAIProvider, {
 import OpenRouterProvider from './openrouter-provider.js';
 import GeminiProvider from './gemini-provider.js';
 import OllamaProvider from './ollama-provider.js';
+import GitHubProvider from './github-provider.js';
 
 export {
   // Base class
@@ -24,6 +25,7 @@ export {
   OpenRouterProvider,
   GeminiProvider,
   OllamaProvider,
+  GitHubProvider,
   
   // Error classes
   AIProviderError,
@@ -51,6 +53,9 @@ export function createProvider(providerName, config) {
     
     case 'ollama':
       return new OllamaProvider(config);
+    
+    case 'github':
+      return new GitHubProvider(config);
     
     default:
       throw new Error(`Unknown provider: ${providerName}`);
