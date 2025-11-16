@@ -13,6 +13,8 @@ import ContentExtractionAgent from './agents/content-extraction-agent.js';
 import QuestionGenerationAgent from './agents/question-generation-agent.js';
 import QualityValidationAgent from './agents/quality-validation-agent.js';
 import QuestionImprovementAgent from './agents/question-improvement-agent.js';
+import SubjectDetector from './subject-detector.js';
+import ProcessLogger from '../utils/process-logger.js';
 
 /**
  * Agentic Pipeline Orchestrator
@@ -26,11 +28,13 @@ class AgenticPipeline {
       this.questionGenerationAgent = agents.questionGeneration;
       this.qualityValidationAgent = agents.qualityValidation;
       this.questionImprovementAgent = agents.questionImprovement;
+      this.subjectDetector = agents.subjectDetector;
     } else {
       this.contentExtractionAgent = new ContentExtractionAgent();
       this.questionGenerationAgent = new QuestionGenerationAgent();
       this.qualityValidationAgent = new QualityValidationAgent();
       this.questionImprovementAgent = new QuestionImprovementAgent();
+      this.subjectDetector = new SubjectDetector();
     }
 
     // Configuration
@@ -38,14 +42,25 @@ class AgenticPipeline {
       qualityThreshold: config.qualityThreshold || 70,
       enableQualityValidation: config.enableQualityValidation !== false,
       enableQuestionImprovement: config.enableQuestionImprovement !== false,
+      enableSubjectDetection: config.enableSubjectDetection !== false,
       maxImprovementAttempts: config.maxImprovementAttempts || 1,
+      enableLogging: config.enableLogging !== false,
+      verboseLogging: config.verboseLogging || false,
       ...config
     };
+
+    // Initialize logger
+    this.logger = new ProcessLogger({
+      enabled: this.config.enableLogging,
+      verbose: this.config.verboseLogging
+    });
 
     console.log('[AgenticPipeline] Initialized', {
       qualityThreshold: this.config.qualityThreshold,
       enableQualityValidation: this.config.enableQualityValidation,
-      enableQuestionImprovement: this.config.enableQuestionImprovement
+      enableQuestionImprovement: this.config.enableQuestionImprovement,
+      enableSubjectDetection: this.config.enableSubjectDetection,
+      enableLogging: this.config.enableLogging
     });
   }
 
@@ -64,6 +79,9 @@ class AgenticPipeline {
   async generateQuiz(content, options = {}) {
     const startTime = Date.now();
     
+    // Log header
+    this.logger.logHeader('AI Quiz Generation Pipeline');
+    
     console.log('[AgenticPipeline] Starting quiz generation', {
       contentLength: content?.length || 0,
       totalQuestions: options.totalQuestions,
@@ -75,42 +93,127 @@ class AgenticPipeline {
       // Validate inputs
       this.validateInputs(content, options);
 
+      // Step 0: Subject Detection (if enabled)
+      let subjectDetection = null;
+      let recommendedPrompt = 'question-generation';
+      
+      if (this.config.enableSubjectDetection) {
+        this.logger.logStepStart(0, 'Subject Detection', 'Analyzing content to identify academic subject...');
+        
+        subjectDetection = await this.subjectDetector.detectSubject(content, {
+          useAI: options.useAIDetection !== false
+        });
+        
+        recommendedPrompt = subjectDetection.recommendedPrompt;
+        
+        this.logger.logSubjectDetection(subjectDetection);
+        this.logger.logStepComplete({
+          subject: subjectDetection.primarySubject,
+          confidence: subjectDetection.confidence,
+          prompt: recommendedPrompt
+        });
+      }
+
       // Step 1: Extract concepts from content
-      console.log('[AgenticPipeline] Step 1: Extracting concepts...');
+      this.logger.logStepStart(1, 'Content Extraction', 'Extracting key concepts, facts, and learning objectives...');
+      
+      // Add subject context if detected
+      if (subjectDetection) {
+        options.subjectContext = this.subjectDetector.getSubjectContext(subjectDetection);
+        this.logger.logInfo(`Using subject context: ${options.subjectContext.substring(0, 80)}...`);
+      }
+      
       const concepts = await this.extractConcepts(content, options);
+      
+      this.logger.logContentExtraction(concepts);
+      this.logger.logStepComplete({
+        mainTopics: concepts.mainTopics?.length || 0,
+        keyConcepts: concepts.keyConcepts?.length || 0,
+        criticalFacts: concepts.criticalFacts?.length || 0
+      });
 
       // Step 2: Generate questions from concepts
-      console.log('[AgenticPipeline] Step 2: Generating questions...');
+      this.logger.logStepStart(2, 'Question Generation', 'Generating questions using specialized prompt...');
+      this.logger.logInfo(`Using prompt: ${recommendedPrompt}`);
+      this.logger.logInfo(`Distribution: ${JSON.stringify(options.distribution)}`);
+      
+      // Use recommended prompt if subject was detected
+      options.recommendedPrompt = recommendedPrompt;
+      
       const rawQuestions = await this.generateQuestions(concepts, options);
+      
+      this.logger.logQuestionGeneration(rawQuestions, options.distribution, recommendedPrompt);
+      this.logger.logStepComplete({
+        questionsGenerated: rawQuestions.length,
+        distribution: this.countByType(rawQuestions)
+      });
 
       // Step 3: Validate question quality (if enabled)
       let validationResults = null;
       if (this.config.enableQualityValidation) {
-        console.log('[AgenticPipeline] Step 3: Validating question quality...');
+        this.logger.logStepStart(3, 'Quality Validation', 'Validating question quality and identifying issues...');
+        this.logger.logInfo(`Validating ${rawQuestions.length} questions...`);
+        
         validationResults = await this.validateQuestions(rawQuestions, options);
+        
+        if (validationResults) {
+          this.logger.logQualityValidation(validationResults);
+          
+          const avgScore = validationResults.reduce((sum, r) => sum + r.score, 0) / validationResults.length;
+          const lowQualityCount = validationResults.filter(r => !r.passesQuality).length;
+          
+          this.logger.logStepComplete({
+            averageScore: Math.round(avgScore),
+            lowQualityCount,
+            passRate: Math.round(((validationResults.length - lowQualityCount) / validationResults.length) * 100)
+          });
+        } else {
+          this.logger.logWarning('Quality validation failed, continuing with original questions');
+        }
       }
 
       // Step 4: Identify and improve low-quality questions (if enabled)
       let improvedQuestions = [];
       if (this.config.enableQuestionImprovement && validationResults) {
-        console.log('[AgenticPipeline] Step 4: Improving low-quality questions...');
         const lowQualityQuestions = this.identifyLowQualityQuestions(
           rawQuestions,
           validationResults
         );
         
         if (lowQualityQuestions.length > 0) {
+          this.logger.logStepStart(4, 'Question Improvement', `Improving ${lowQualityQuestions.length} low-quality questions...`);
+          this.logger.logInfo('Improving questions in batches...');
+          
           improvedQuestions = await this.improveQuestions(lowQualityQuestions, options);
+          
+          this.logger.logQuestionImprovement(improvedQuestions);
+          
+          const avgIncrease = improvedQuestions.reduce((sum, r) => 
+            sum + (r.expectedScore - r.originalScore), 0
+          ) / improvedQuestions.length;
+          
+          this.logger.logStepComplete({
+            questionsImproved: improvedQuestions.length,
+            averageScoreIncrease: Math.round(avgIncrease)
+          });
+        } else {
+          this.logger.logSuccess('All questions passed quality validation - no improvements needed');
         }
       }
 
       // Step 5: Merge improved questions into final set
-      console.log('[AgenticPipeline] Step 5: Merging final questions...');
+      this.logger.logStepStart(5, 'Final Merging', 'Combining improved questions into final set...');
+      
       const finalQuestions = this.mergeFinalQuestions(
         rawQuestions,
         improvedQuestions,
         validationResults
       );
+      
+      this.logger.logInfo(`Final question count: ${finalQuestions.length}`);
+      this.logger.logStepComplete({
+        finalQuestions: finalQuestions.length
+      });
 
       const executionTime = Date.now() - startTime;
 
@@ -121,6 +224,7 @@ class AgenticPipeline {
           totalQuestions: finalQuestions.length,
           distribution: this.countQuestionsByType(finalQuestions),
           concepts: concepts,
+          subjectDetection: subjectDetection,
           qualityMetrics: validationResults ? this.calculateQualityMetrics(validationResults) : null,
           improvementMetrics: improvedQuestions.length > 0 ? {
             questionsImproved: improvedQuestions.length,
@@ -130,6 +234,11 @@ class AgenticPipeline {
           generatedAt: new Date().toISOString()
         }
       };
+
+      // Log summary
+      this.logger.logSummary();
+      
+      this.logger.logSuccess(`Quiz generation complete! Generated ${finalQuestions.length} questions in ${this.logger.formatDuration(executionTime)}`);
 
       console.log('[AgenticPipeline] Quiz generation complete', {
         totalQuestions: finalQuestions.length,
@@ -141,6 +250,8 @@ class AgenticPipeline {
       return result;
 
     } catch (error) {
+      this.logger.logError('Quiz Generation', error);
+      
       console.error('[AgenticPipeline] Quiz generation failed', {
         error: error.message,
         errorType: error.name,
@@ -469,6 +580,16 @@ class AgenticPipeline {
     });
 
     return counts;
+  }
+
+  /**
+   * Helper: Count questions by type (alias for logger compatibility)
+   * 
+   * @param {Array} questions - Questions to count
+   * @returns {Object} Counts by type
+   */
+  countByType(questions) {
+    return this.countQuestionsByType(questions);
   }
 
   /**

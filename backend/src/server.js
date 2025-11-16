@@ -14,6 +14,7 @@ import ContentExtractionAgent from './services/agents/content-extraction-agent.j
 import QuestionGenerationAgent from './services/agents/question-generation-agent.js';
 import QualityValidationAgent from './services/agents/quality-validation-agent.js';
 import QuestionImprovementAgent from './services/agents/question-improvement-agent.js';
+import SubjectDetector from './services/subject-detector.js';
 
 dotenv.config();
 
@@ -47,7 +48,8 @@ const initializeAgenticPipeline = () => {
       contentExtraction: new ContentExtractionAgent(taskRouter, promptManager),
       questionGeneration: new QuestionGenerationAgent(taskRouter, promptManager),
       qualityValidation: new QualityValidationAgent(taskRouter, promptManager),
-      questionImprovement: new QuestionImprovementAgent(taskRouter, promptManager)
+      questionImprovement: new QuestionImprovementAgent(taskRouter, promptManager),
+      subjectDetector: new SubjectDetector(promptManager, taskRouter)
     };
     
     // Initialize pipeline with agents and configuration
@@ -55,6 +57,9 @@ const initializeAgenticPipeline = () => {
       qualityThreshold: 70,
       enableQualityValidation: process.env.ENABLE_QUALITY_VALIDATION === 'true',
       enableQuestionImprovement: process.env.ENABLE_QUESTION_IMPROVEMENT === 'true',
+      enableSubjectDetection: process.env.ENABLE_SUBJECT_DETECTION !== 'false', // Enabled by default
+      enableLogging: process.env.ENABLE_LOGGING !== 'false', // Enabled by default
+      verboseLogging: process.env.VERBOSE_LOGGING === 'true',
       maxImprovementAttempts: 1
     };
     
@@ -63,6 +68,8 @@ const initializeAgenticPipeline = () => {
     console.log('[Server] Agentic Pipeline initialized successfully', {
       enableQualityValidation: config.enableQualityValidation,
       enableQuestionImprovement: config.enableQuestionImprovement,
+      enableSubjectDetection: config.enableSubjectDetection,
+      enableLogging: config.enableLogging,
       qualityThreshold: config.qualityThreshold
     });
     

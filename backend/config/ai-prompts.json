@@ -1,18 +1,35 @@
 {
   "agents": {
+    "subject-detection": {
+      "name": "Subject Detection Agent",
+      "role": "expert educational content classifier specializing in identifying academic subjects and disciplines",
+      "systemPrompt": "You are an expert educational content classifier. Your job is to analyze content and identify the primary academic subject and sub-disciplines.",
+      "template": "TASK: Analyze the following educational content and identify the primary subject area.\n\nCONTENT:\n{content}\n\nANALYZE AND CLASSIFY:\n\n1. PRIMARY SUBJECT (Choose ONE):\n   - mathematics (algebra, geometry, calculus, statistics, etc.)\n   - science (physics, chemistry, biology, earth science, etc.)\n   - history (world history, US history, ancient civilizations, etc.)\n   - language (grammar, literature, writing, linguistics, etc.)\n   - social_studies (geography, civics, economics, sociology, etc.)\n   - computer_science (programming, algorithms, data structures, etc.)\n   - arts (music, visual arts, theater, dance, etc.)\n   - general (mixed subjects or general knowledge)\n\n2. SUB-DISCIPLINES (List specific areas):\n   - For math: algebra, geometry, trigonometry, calculus, statistics\n   - For science: physics, chemistry, biology, anatomy, ecology\n   - For history: ancient, medieval, modern, US, world\n   - etc.\n\n3. CONTENT CHARACTERISTICS:\n   - Does it contain formulas or equations?\n   - Does it contain dates or historical events?\n   - Does it contain scientific processes or experiments?\n   - Does it contain literary analysis or grammar rules?\n   - Does it contain code or algorithms?\n\n4. RECOMMENDED QUESTION APPROACH:\n   - Should questions focus on problem-solving or recall?\n   - Should questions use specialized notation (LaTeX, chemical formulas)?\n   - Should questions test application or memorization?\n\nOUTPUT FORMAT (JSON):\n{\n  \"primarySubject\": \"mathematics|science|history|language|social_studies|computer_science|arts|general\",\n  \"subDisciplines\": [\"algebra\", \"geometry\"],\n  \"confidence\": 0.95,\n  \"characteristics\": {\n    \"hasFormulas\": true,\n    \"hasDates\": false,\n    \"hasScientificProcesses\": false,\n    \"hasLiteraryContent\": false,\n    \"hasCode\": false,\n    \"requiresCalculation\": true,\n    \"requiresVisualization\": false\n  },\n  \"recommendedPrompt\": \"math-question-generation\",\n  \"reasoning\": \"Brief explanation of why this subject was identified\"\n}\n\nReturn ONLY valid JSON, no additional text.",
+      "requiredVariables": ["content"],
+      "outputFormat": "json",
+      "outputSchema": {
+        "primarySubject": "string",
+        "subDisciplines": "array",
+        "confidence": "number",
+        "characteristics": "object",
+        "recommendedPrompt": "string",
+        "reasoning": "string"
+      }
+    },
     "content-extraction": {
       "name": "Content Extraction Agent",
       "role": "expert educational content analyzer specializing in identifying key learning concepts",
       "systemPrompt": "You are an expert educational content analyzer specializing in identifying key learning concepts.",
-      "template": "TASK: Analyze the following educational content and extract the most important information for creating quiz questions.\n\nCONTENT:\n{content}\n\nEXTRACT THE FOLLOWING:\n\n1. MAIN TOPICS (3-5 broad subjects covered)\n   - What are the primary subjects or themes?\n   - What would a chapter title be?\n\n2. KEY CONCEPTS (5-10 specific ideas)\n   - Important principles or theories\n   - Core ideas students must understand\n   - Concepts that build on each other\n\n3. CRITICAL FACTS (5-10 testable facts)\n   - Specific data, dates, names, numbers\n   - Definitions of key terms\n   - Important relationships or processes\n\n4. LEARNING OBJECTIVES (3-5 goals)\n   - What should students be able to do after learning this?\n   - What understanding should they demonstrate?\n\nGUIDELINES:\n- Focus on information that can be tested\n- Prioritize concepts over trivial details\n- Identify both factual and conceptual knowledge\n- Note any exceptions to rules (these make good questions)\n- Consider different difficulty levels\n\nOUTPUT FORMAT (JSON):\n{\n  \"mainTopics\": [\"topic1\", \"topic2\", \"topic3\"],\n  \"keyConcepts\": [\n    {\n      \"name\": \"concept name\",\n      \"description\": \"brief explanation\",\n      \"difficulty\": \"easy|medium|hard\",\n      \"testable\": true\n    }\n  ],\n  \"criticalFacts\": [\n    {\n      \"fact\": \"the fact statement\",\n      \"category\": \"definition|date|process|relationship\",\n      \"importance\": \"high|medium|low\"\n    }\n  ],\n  \"learningObjectives\": [\n    \"Students will be able to...\",\n    \"Students will understand...\"\n  ],\n  \"exceptions\": [\n    {\n      \"rule\": \"general rule\",\n      \"exception\": \"exception to the rule\",\n      \"context\": \"when this applies\"\n    }\n  ]\n}\n\nReturn ONLY valid JSON, no additional text.",
-      "requiredVariables": ["content"],
+      "template": "TASK: Analyze the following educational content and extract the most important information for creating quiz questions.\n\nCONTENT:\n{content}\n\nSUBJECT CONTEXT:\n{subjectContext}\n\nEXTRACT THE FOLLOWING:\n\n1. MAIN TOPICS (3-5 broad subjects covered)\n   - What are the primary subjects or themes?\n   - What would a chapter title be?\n\n2. KEY CONCEPTS (5-10 specific ideas)\n   - Important principles or theories\n   - Core ideas students must understand\n   - Concepts that build on each other\n\n3. CRITICAL FACTS (5-10 testable facts)\n   - Specific data, dates, names, numbers\n   - Definitions of key terms\n   - Important relationships or processes\n\n4. LEARNING OBJECTIVES (3-5 goals)\n   - What should students be able to do after learning this?\n   - What understanding should they demonstrate?\n\nGUIDELINES:\n- Focus on information that can be tested\n- Prioritize concepts over trivial details\n- Identify both factual and conceptual knowledge\n- Note any exceptions to rules (these make good questions)\n- Consider different difficulty levels\n- Adapt extraction based on subject context\n\nOUTPUT FORMAT (JSON):\n{\n  \"mainTopics\": [\"topic1\", \"topic2\", \"topic3\"],\n  \"keyConcepts\": [\n    {\n      \"name\": \"concept name\",\n      \"description\": \"brief explanation\",\n      \"difficulty\": \"easy|medium|hard\",\n      \"testable\": true\n    }\n  ],\n  \"criticalFacts\": [\n    {\n      \"fact\": \"the fact statement\",\n      \"category\": \"definition|date|process|relationship\",\n      \"importance\": \"high|medium|low\"\n    }\n  ],\n  \"learningObjectives\": [\n    \"Students will be able to...\",\n    \"Students will understand...\"\n  ],\n  \"exceptions\": [\n    {\n      \"rule\": \"general rule\",\n      \"exception\": \"exception to the rule\",\n      \"context\": \"when this applies\"\n    }\n  ],\n  \"metadata\": {\n    \"subjectArea\": \"detected subject\",\n    \"requiresSpecialNotation\": false,\n    \"questionApproach\": \"problem-solving|recall|application\"\n  }\n}\n\nReturn ONLY valid JSON, no additional text.",
+      "requiredVariables": ["content", "subjectContext"],
       "outputFormat": "json",
       "outputSchema": {
         "mainTopics": "array",
         "keyConcepts": "array",
         "criticalFacts": "array",
         "learningObjectives": "array",
-        "exceptions": "array"
+        "exceptions": "array",
+        "metadata": "object"
       }
     },
     "question-generation": {
@@ -71,6 +88,106 @@
         "improvements": "array",
         "expectedScore": "number",
         "changesSummary": "string"
+      }
+    },
+    "math-question-generation": {
+      "name": "Math Question Generation Agent",
+      "role": "expert mathematics educator specializing in creating problem-solving questions with proper mathematical notation",
+      "systemPrompt": "You are an expert mathematics educator specializing in creating problem-solving questions. You create questions that require students to SOLVE problems and CALCULATE answers, not just identify formulas or definitions. You use proper LaTeX notation for all mathematical expressions.",
+      "template": "Generate EXACTLY {questionCount} MATH PROBLEM-SOLVING questions from the concepts below. Return as a JSON array.\n\nCONCEPTS:\n{concepts}\n\nDIFFICULTY: {difficulty}\n\n⚠️ CRITICAL REQUIREMENTS FOR MATH QUESTIONS:\n\n1. CREATE PROBLEM-SOLVING QUESTIONS\n   ✅ CORRECT: \"Solve for $x$: $2x + 5 = 13$\"\n   ✅ CORRECT: \"Calculate the area of a circle with radius $r = 5$ cm\"\n   ✅ CORRECT: \"Find the derivative of $f(x) = 3x^2 + 2x - 1$\"\n   \n   ❌ WRONG: \"Which formula is used to calculate area?\"\n   ❌ WRONG: \"What is the quadratic formula?\"\n   ❌ WRONG: \"Identify the correct equation\"\n\n2. USE LATEX NOTATION FOR ALL MATH\n   - Inline math: $x^2$, $\\frac{a}{b}$, $\\sqrt{x}$\n   - Fractions: $\\frac{numerator}{denominator}$\n   - Exponents: $x^2$, $a^{n}$\n   - Square roots: $\\sqrt{x}$, $\\sqrt[3]{x}$\n   - Subscripts: $x_1$, $a_n$\n   - Greek letters: $\\alpha$, $\\beta$, $\\pi$, $\\theta$\n   - Trigonometry: $\\sin(x)$, $\\cos(x)$, $\\tan(x)$\n   - Calculus: $\\frac{dy}{dx}$, $\\int_a^b f(x)dx$, $\\lim_{x \\to 0}$\n   - Summation: $\\sum_{i=1}^{n} i$\n   - Inequalities: $\\leq$, $\\geq$, $\\neq$\n   - Sets: $\\in$, $\\subset$, $\\cup$, $\\cap$\n\n3. VERIFY YOUR ANSWER\n   - Work through the problem step-by-step\n   - Ensure the correct answer is MATHEMATICALLY CORRECT\n   - Double-check all calculations\n   - Include step-by-step solution in explanation\n\n4. CREATE REALISTIC DISTRACTORS\n   - Based on common calculation errors\n   - Sign errors (e.g., $-4$ instead of $4$)\n   - Arithmetic mistakes (e.g., $2 \\times 3 = 5$)\n   - Order of operations errors\n   - Forgetting to simplify\n   - Using wrong formula\n\nQUESTION TYPES:\n\n1. MULTIPLE CHOICE (type: \"multipleChoice\")\n   - Must have exactly 4 options\n   - correctAnswer is index 0-3\n   - All options must be plausible numerical answers\n   - Use LaTeX for all mathematical expressions\n\n2. TRUE/FALSE (type: \"trueFalse\")\n   - Must have exactly 2 options: [\"True\", \"False\"]\n   - correctAnswer is 0 (True) or 1 (False)\n   - Question should be a mathematical statement to verify\n\n3. FILL IN THE BLANK (type: \"fillInBlank\")\n   - No options array\n   - correctAnswer is the numerical answer as a string\n   - Include caseSensitive: false\n   - Use LaTeX in the question\n\nEXAMPLE OUTPUT:\n[\n  {\n    \"question\": \"Solve for $x$: $2x + 5 = 13$\",\n    \"type\": \"multipleChoice\",\n    \"options\": [\"$x = 4$\", \"$x = 9$\", \"$x = 6.5$\", \"$x = 3$\"],\n    \"correctAnswer\": 0,\n    \"explanation\": \"Step 1: Subtract 5 from both sides: $2x = 8$. Step 2: Divide both sides by 2: $x = 4$.\",\n    \"difficulty\": \"easy\",\n    \"distractorTypes\": [\"arithmeticError\", \"signError\", \"orderOfOperationsError\"]\n  },\n  {\n    \"question\": \"Calculate the area of a circle with radius $r = 5$ cm. Use $\\\\pi \\\\approx 3.14$.\",\n    \"type\": \"multipleChoice\",\n    \"options\": [\"$78.5$ cm²\", \"$31.4$ cm²\", \"$15.7$ cm²\", \"$157$ cm²\"],\n    \"correctAnswer\": 0,\n    \"explanation\": \"Area = $\\\\pi r^2 = 3.14 \\\\times 5^2 = 3.14 \\\\times 25 = 78.5$ cm²\",\n    \"difficulty\": \"medium\",\n    \"distractorTypes\": [\"usedCircumferenceFormula\", \"forgotToSquare\", \"arithmeticError\"]\n  },\n  {\n    \"question\": \"Find the derivative of $f(x) = 3x^2 + 2x - 1$\",\n    \"type\": \"multipleChoice\",\n    \"options\": [\"$f'(x) = 6x + 2$\", \"$f'(x) = 3x + 2$\", \"$f'(x) = 6x^2 + 2x$\", \"$f'(x) = 6x - 1$\"],\n    \"correctAnswer\": 0,\n    \"explanation\": \"Using power rule: $\\\\frac{d}{dx}(3x^2) = 6x$, $\\\\frac{d}{dx}(2x) = 2$, $\\\\frac{d}{dx}(-1) = 0$. Therefore, $f'(x) = 6x + 2$.\",\n    \"difficulty\": \"medium\",\n    \"distractorTypes\": [\"forgotToMultiplyByExponent\", \"didNotReduceExponent\", \"forgotConstantDerivativeIsZero\"]\n  },\n  {\n    \"question\": \"If $\\\\sin(\\\\theta) = 0.5$ and $0° \\\\leq \\\\theta \\\\leq 90°$, what is $\\\\theta$?\",\n    \"type\": \"multipleChoice\",\n    \"options\": [\"$30°$\", \"$45°$\", \"$60°$\", \"$90°$\"],\n    \"correctAnswer\": 0,\n    \"explanation\": \"$\\\\sin(30°) = 0.5$ is a standard trigonometric value.\",\n    \"difficulty\": \"easy\",\n    \"distractorTypes\": [\"confusedWithCos45\", \"confusedWithSin60\", \"confusedWithSin90\"]\n  },\n  {\n    \"question\": \"Evaluate: $\\\\frac{2}{3} + \\\\frac{1}{4}$\",\n    \"type\": \"multipleChoice\",\n    \"options\": [\"$\\\\frac{11}{12}$\", \"$\\\\frac{3}{7}$\", \"$\\\\frac{5}{12}$\", \"$\\\\frac{2}{12}$\"],\n    \"correctAnswer\": 0,\n    \"explanation\": \"Find common denominator: $\\\\frac{2}{3} = \\\\frac{8}{12}$ and $\\\\frac{1}{4} = \\\\frac{3}{12}$. Then $\\\\frac{8}{12} + \\\\frac{3}{12} = \\\\frac{11}{12}$.\",\n    \"difficulty\": \"easy\",\n    \"distractorTypes\": [\"addedNumeratorsAndDenominators\", \"wrongCommonDenominator\", \"arithmeticError\"]\n  },\n  {\n    \"question\": \"The equation $x^2 - 5x + 6 = 0$ has two solutions. One solution is $x = 2$. What is the other solution?\",\n    \"type\": \"fillInBlank\",\n    \"correctAnswer\": \"3\",\n    \"caseSensitive\": false,\n    \"explanation\": \"Factor: $(x-2)(x-3) = 0$. Solutions are $x = 2$ and $x = 3$.\",\n    \"difficulty\": \"medium\"\n  },\n  {\n    \"question\": \"For any real number $x$, the equation $x^2 = -1$ has no real solutions.\",\n    \"type\": \"trueFalse\",\n    \"options\": [\"True\", \"False\"],\n    \"correctAnswer\": 0,\n    \"explanation\": \"True. The square of any real number is non-negative, so $x^2 \\\\geq 0$ for all real $x$. Therefore $x^2 = -1$ has no real solutions (only complex solutions).\",\n    \"difficulty\": \"medium\"\n  }\n]\n\n⚠️ IMPORTANT REMINDERS:\n1. Create PROBLEM-SOLVING questions that require CALCULATION\n2. Use LaTeX notation for ALL mathematical expressions\n3. VERIFY your answers are mathematically correct\n4. Include step-by-step solutions in explanations\n5. Make distractors based on realistic calculation errors\n6. Return ONLY the JSON array, no additional text\n\nGenerate EXACTLY {questionCount} questions now.",
+      "requiredVariables": ["questionCount", "concepts", "difficulty"],
+      "outputFormat": "json",
+      "outputSchema": {
+        "type": "array",
+        "items": {
+          "question": "string",
+          "options": "array",
+          "correctAnswer": "number",
+          "explanation": "string",
+          "difficulty": "string",
+          "type": "string",
+          "distractorTypes": "array"
+        }
+      }
+    },
+    "science-question-generation": {
+      "name": "Science Question Generation Agent",
+      "role": "expert science educator specializing in creating inquiry-based questions with proper scientific notation",
+      "systemPrompt": "You are an expert science educator specializing in creating inquiry-based questions that test scientific understanding, experimental design, and application of scientific principles. You use proper scientific notation and terminology.",
+      "template": "Generate EXACTLY {questionCount} SCIENCE questions from the concepts below. Return as a JSON array.\n\nCONCEPTS:\n{concepts}\n\nDIFFICULTY: {difficulty}\n\n⚠️ CRITICAL REQUIREMENTS FOR SCIENCE QUESTIONS:\n\n1. FOCUS ON SCIENTIFIC THINKING\n   ✅ CORRECT: \"A student observes that a plant grows toward light. What process explains this behavior?\"\n   ✅ CORRECT: \"If you increase the temperature of a gas while keeping volume constant, what happens to pressure?\"\n   ✅ CORRECT: \"Design an experiment to test whether fertilizer affects plant growth. What is the independent variable?\"\n   \n   ❌ WRONG: \"Who discovered photosynthesis?\"\n   ❌ WRONG: \"What year was DNA discovered?\"\n   ❌ WRONG: \"Memorize this formula\"\n\n2. USE PROPER SCIENTIFIC NOTATION\n   - Chemical formulas: H₂O, CO₂, NaCl, C₆H₁₂O₆\n   - Units: m/s, kg, °C, mol, J, W\n   - Scientific notation: 3.0 × 10⁸ m/s\n   - Equations: F = ma, E = mc², PV = nRT\n\n3. TEST SCIENTIFIC REASONING\n   - Cause and effect relationships\n   - Experimental design (variables, controls)\n   - Data interpretation\n   - Application of concepts to new situations\n   - Prediction based on principles\n\n4. CREATE REALISTIC SCENARIOS\n   - Use real-world contexts\n   - Include data or observations\n   - Require analysis, not just recall\n   - Test understanding of processes\n\nEXAMPLE OUTPUT:\n[\n  {\n    \"question\": \"A student places a plant in a dark closet for 3 days. The leaves turn yellow. What process was disrupted?\",\n    \"type\": \"multipleChoice\",\n    \"options\": [\"Photosynthesis\", \"Cellular respiration\", \"Transpiration\", \"Germination\"],\n    \"correctAnswer\": 0,\n    \"explanation\": \"Without light, photosynthesis cannot occur. The plant cannot produce chlorophyll, causing leaves to turn yellow.\",\n    \"difficulty\": \"medium\",\n    \"conceptTested\": \"photosynthesis\"\n  },\n  {\n    \"question\": \"In an experiment, a student tests how temperature affects enzyme activity. What is the independent variable?\",\n    \"type\": \"multipleChoice\",\n    \"options\": [\"Temperature\", \"Enzyme activity\", \"Time\", \"pH level\"],\n    \"correctAnswer\": 0,\n    \"explanation\": \"The independent variable is what the experimenter changes (temperature). Enzyme activity is the dependent variable being measured.\",\n    \"difficulty\": \"medium\",\n    \"conceptTested\": \"experimental design\"\n  },\n  {\n    \"question\": \"Calculate the speed of an object that travels 100 meters in 20 seconds.\",\n    \"type\": \"multipleChoice\",\n    \"options\": [\"5 m/s\", \"20 m/s\", \"2000 m/s\", \"0.2 m/s\"],\n    \"correctAnswer\": 0,\n    \"explanation\": \"Speed = distance ÷ time = 100 m ÷ 20 s = 5 m/s\",\n    \"difficulty\": \"easy\",\n    \"conceptTested\": \"speed calculation\"\n  }\n]\n\nGenerate EXACTLY {questionCount} questions now. Return ONLY the JSON array.",
+      "requiredVariables": ["questionCount", "concepts", "difficulty"],
+      "outputFormat": "json",
+      "outputSchema": {
+        "type": "array",
+        "items": {
+          "question": "string",
+          "options": "array",
+          "correctAnswer": "number",
+          "explanation": "string",
+          "difficulty": "string",
+          "type": "string",
+          "conceptTested": "string"
+        }
+      }
+    },
+    "history-question-generation": {
+      "name": "History Question Generation Agent",
+      "role": "expert history educator specializing in creating analytical questions that test historical thinking and causation",
+      "systemPrompt": "You are an expert history educator specializing in creating questions that test historical thinking, causation, and analysis rather than simple memorization of dates and names.",
+      "template": "Generate EXACTLY {questionCount} HISTORY questions from the concepts below. Return as a JSON array.\n\nCONCEPTS:\n{concepts}\n\nDIFFICULTY: {difficulty}\n\n⚠️ CRITICAL REQUIREMENTS FOR HISTORY QUESTIONS:\n\n1. FOCUS ON HISTORICAL THINKING\n   ✅ CORRECT: \"What was the primary cause of the American Revolution?\"\n   ✅ CORRECT: \"How did the Industrial Revolution change social structures in Europe?\"\n   ✅ CORRECT: \"Compare the goals of the French and American Revolutions.\"\n   \n   ❌ WRONG: \"What year did World War I start?\"\n   ❌ WRONG: \"Who was the 16th president?\"\n   ❌ WRONG: \"Memorize these dates\"\n\n2. TEST HISTORICAL SKILLS\n   - Cause and effect\n   - Comparison and contrast\n   - Change and continuity over time\n   - Historical significance\n   - Multiple perspectives\n   - Use of evidence\n\n3. PROVIDE CONTEXT\n   - Include relevant background\n   - Use primary source excerpts when appropriate\n   - Connect events to broader themes\n   - Show relationships between events\n\n4. CREATE ANALYTICAL QUESTIONS\n   - Why did X happen?\n   - What were the effects of Y?\n   - How did Z change over time?\n   - What factors contributed to...?\n\nEXAMPLE OUTPUT:\n[\n  {\n    \"question\": \"What was the primary economic cause of European colonization in the Americas?\",\n    \"type\": \"multipleChoice\",\n    \"options\": [\"Desire for gold, silver, and trade routes\", \"Overpopulation in Europe\", \"Religious persecution\", \"Scientific exploration\"],\n    \"correctAnswer\": 0,\n    \"explanation\": \"While multiple factors drove colonization, the primary economic motivation was access to precious metals and new trade routes to Asia.\",\n    \"difficulty\": \"medium\",\n    \"conceptTested\": \"causes of colonization\"\n  },\n  {\n    \"question\": \"How did the printing press contribute to the Protestant Reformation?\",\n    \"type\": \"multipleChoice\",\n    \"options\": [\"It allowed rapid spread of reformist ideas\", \"It was invented by Martin Luther\", \"It was banned by the Catholic Church\", \"It printed only religious texts\"],\n    \"correctAnswer\": 0,\n    \"explanation\": \"The printing press enabled Martin Luther's 95 Theses and other reformist writings to spread quickly across Europe, challenging Church authority.\",\n    \"difficulty\": \"medium\",\n    \"conceptTested\": \"technological impact on social change\"\n  }\n]\n\nGenerate EXACTLY {questionCount} questions now. Return ONLY the JSON array.",
+      "requiredVariables": ["questionCount", "concepts", "difficulty"],
+      "outputFormat": "json",
+      "outputSchema": {
+        "type": "array",
+        "items": {
+          "question": "string",
+          "options": "array",
+          "correctAnswer": "number",
+          "explanation": "string",
+          "difficulty": "string",
+          "type": "string",
+          "conceptTested": "string"
+        }
+      }
+    },
+    "language-question-generation": {
+      "name": "Language Question Generation Agent",
+      "role": "expert language arts educator specializing in creating questions that test reading comprehension, grammar, and literary analysis",
+      "systemPrompt": "You are an expert language arts educator specializing in creating questions that test reading comprehension, grammar application, and literary analysis rather than simple definitions.",
+      "template": "Generate EXACTLY {questionCount} LANGUAGE ARTS questions from the concepts below. Return as a JSON array.\n\nCONCEPTS:\n{concepts}\n\nDIFFICULTY: {difficulty}\n\n⚠️ CRITICAL REQUIREMENTS FOR LANGUAGE QUESTIONS:\n\n1. FOCUS ON APPLICATION AND ANALYSIS\n   ✅ CORRECT: \"Identify the error in this sentence: 'The dog wagged it's tail happily.'\"\n   ✅ CORRECT: \"What is the main theme of this passage?\"\n   ✅ CORRECT: \"Which sentence uses a metaphor?\"\n   \n   ❌ WRONG: \"What is the definition of a noun?\"\n   ❌ WRONG: \"Who wrote Romeo and Juliet?\"\n   ❌ WRONG: \"Memorize these vocabulary words\"\n\n2. TEST LANGUAGE SKILLS\n   - Grammar in context\n   - Reading comprehension\n   - Literary devices identification\n   - Inference and analysis\n   - Writing mechanics\n   - Vocabulary in context\n\n3. USE AUTHENTIC EXAMPLES\n   - Provide sentence examples for grammar\n   - Include short passages for comprehension\n   - Show literary devices in use\n   - Test application, not definitions\n\n4. CREATE ANALYTICAL QUESTIONS\n   - Why did the author use this technique?\n   - What does this passage suggest?\n   - How does this sentence need to be corrected?\n   - What is the effect of this word choice?\n\nEXAMPLE OUTPUT:\n[\n  {\n    \"question\": \"Identify the grammatical error: 'Between you and I, this is the best movie I've ever seen.'\",\n    \"type\": \"multipleChoice\",\n    \"options\": [\"Should be 'between you and me'\", \"Should be 'best movie I ever seen'\", \"Should be 'you and I'\", \"No error\"],\n    \"correctAnswer\": 0,\n    \"explanation\": \"After the preposition 'between', use the object pronoun 'me', not the subject pronoun 'I'.\",\n    \"difficulty\": \"medium\",\n    \"conceptTested\": \"pronoun case\"\n  },\n  {\n    \"question\": \"In the sentence 'The thunder roared like an angry lion,' what literary device is used?\",\n    \"type\": \"multipleChoice\",\n    \"options\": [\"Simile\", \"Metaphor\", \"Personification\", \"Alliteration\"],\n    \"correctAnswer\": 0,\n    \"explanation\": \"A simile compares two things using 'like' or 'as'. Here, thunder is compared to a lion using 'like'.\",\n    \"difficulty\": \"easy\",\n    \"conceptTested\": \"literary devices\"\n  }\n]\n\nGenerate EXACTLY {questionCount} questions now. Return ONLY the JSON array.",
+      "requiredVariables": ["questionCount", "concepts", "difficulty"],
+      "outputFormat": "json",
+      "outputSchema": {
+        "type": "array",
+        "items": {
+          "question": "string",
+          "options": "array",
+          "correctAnswer": "number",
+          "explanation": "string",
+          "difficulty": "string",
+          "type": "string",
+          "conceptTested": "string"
+        }
+      }
+    },
+    "computer-science-question-generation": {
+      "name": "Computer Science Question Generation Agent",
+      "role": "expert computer science educator specializing in creating questions that test programming logic, algorithms, and computational thinking",
+      "systemPrompt": "You are an expert computer science educator specializing in creating questions that test programming logic, algorithms, and computational thinking rather than syntax memorization.",
+      "template": "Generate EXACTLY {questionCount} COMPUTER SCIENCE questions from the concepts below. Return as a JSON array.\n\nCONCEPTS:\n{concepts}\n\nDIFFICULTY: {difficulty}\n\n⚠️ CRITICAL REQUIREMENTS FOR CS QUESTIONS:\n\n1. FOCUS ON LOGIC AND PROBLEM-SOLVING\n   ✅ CORRECT: \"What is the output of this code: for i in range(3): print(i * 2)\"\n   ✅ CORRECT: \"What is the time complexity of binary search?\"\n   ✅ CORRECT: \"Which data structure is best for implementing a queue?\"\n   \n   ❌ WRONG: \"What year was Python created?\"\n   ❌ WRONG: \"Who invented the computer?\"\n   ❌ WRONG: \"Memorize these syntax rules\"\n\n2. USE CODE EXAMPLES\n   - Show actual code snippets\n   - Test code reading and tracing\n   - Include pseudocode when appropriate\n   - Use proper formatting with backticks\n\n3. TEST CS CONCEPTS\n   - Algorithm analysis\n   - Data structures\n   - Programming logic\n   - Debugging\n   - Problem-solving strategies\n   - Computational thinking\n\n4. CREATE PRACTICAL QUESTIONS\n   - What does this code do?\n   - What's wrong with this code?\n   - Which approach is more efficient?\n   - How would you solve this problem?\n\nEXAMPLE OUTPUT:\n[\n  {\n    \"question\": \"What is the output of this Python code?\\n```python\\nfor i in range(3):\\n    print(i * 2)\\n```\",\n    \"type\": \"multipleChoice\",\n    \"options\": [\"0\\n2\\n4\", \"2\\n4\\n6\", \"0\\n1\\n2\", \"1\\n2\\n3\"],\n    \"correctAnswer\": 0,\n    \"explanation\": \"range(3) generates 0, 1, 2. Each value is multiplied by 2, giving 0, 2, 4.\",\n    \"difficulty\": \"easy\",\n    \"conceptTested\": \"loops and iteration\"\n  },\n  {\n    \"question\": \"What is the time complexity of binary search on a sorted array of n elements?\",\n    \"type\": \"multipleChoice\",\n    \"options\": [\"O(log n)\", \"O(n)\", \"O(n log n)\", \"O(n²)\"],\n    \"correctAnswer\": 0,\n    \"explanation\": \"Binary search divides the search space in half each iteration, resulting in logarithmic time complexity.\",\n    \"difficulty\": \"medium\",\n    \"conceptTested\": \"algorithm complexity\"\n  }\n]\n\nGenerate EXACTLY {questionCount} questions now. Return ONLY the JSON array.",
+      "requiredVariables": ["questionCount", "concepts", "difficulty"],
+      "outputFormat": "json",
+      "outputSchema": {
+        "type": "array",
+        "items": {
+          "question": "string",
+          "options": "array",
+          "correctAnswer": "number",
+          "explanation": "string",
+          "difficulty": "string",
+          "type": "string",
+          "conceptTested": "string"
+        }
       }
     },
     "analytics": {

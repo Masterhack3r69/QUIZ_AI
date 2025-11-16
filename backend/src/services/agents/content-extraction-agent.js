@@ -58,9 +58,13 @@ class ContentExtractionAgent {
     }
 
     try {
+      // Get subject context if provided
+      const subjectContext = options.subjectContext || 'General educational content. Extract key concepts that can be tested.';
+      
       // Get formatted prompt from prompt manager
       const promptData = this.promptManager.getPrompt('content-extraction', {
-        content: truncatedContent
+        content: truncatedContent,
+        subjectContext: subjectContext
       });
 
       // Build full prompt

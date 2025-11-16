@@ -35,7 +35,7 @@
     "github": {
       "enabled": true,
       "endpoint": "https://models.github.ai/inference",
-      "model": "meta/Llama-4-Scout-17B-16E-Instruct"
+      "model": "openai/gpt-4o"
     },
     "ollama": {
       "enabled": true,
