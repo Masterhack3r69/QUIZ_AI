@@ -140,12 +140,37 @@ export default function RegisterPage() {
   };
 
   // Handle successful OTP verification
-  const handleVerified = () => {
-    // Display success message
-    toast.success('Account verified successfully! Please log in to continue.');
-    
-    // Redirect to login page for security
-    router.push('/login');
+  const handleVerified = (authData?: { token: string; user: any }) => {
+    if (authData && authData.token && authData.user) {
+      // Validate token structure (basic JWT format check)
+      const tokenParts = authData.token.split('.');
+      if (tokenParts.length !== 3) {
+        toast.error('Invalid authentication token received. Please try again.');
+        router.push('/login');
+        return;
+      }
+
+      // Validate user object has required fields
+      if (!authData.user._id || !authData.user.email) {
+        toast.error('Invalid user data received. Please try again.');
+        router.push('/login');
+        return;
+      }
+
+      // Store authentication data
+      setAuthToken(authData.token);
+      setStoredUser(authData.user);
+      
+      // Display success message
+      toast.success('Account verified successfully! Redirecting to dashboard...');
+      
+      // Force a page reload to ensure AuthContext picks up the new auth state
+      window.location.href = '/dashboard';
+    } else {
+      // Fallback: redirect to login if no auth data received
+      toast.success('Account verified successfully! Please log in to continue.');
+      router.push('/login');
+    }
   };
 
   // Handle back navigation from OTP screen

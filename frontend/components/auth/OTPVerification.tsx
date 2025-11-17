@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 
 interface OTPVerificationProps {
   email: string;
-  onVerified: () => void;
+  onVerified: (authData?: { token: string; user: any }) => void;
   onBack: () => void;
 }
 
@@ -111,8 +111,8 @@ export function OTPVerification({ email, onVerified, onBack }: OTPVerificationPr
         description: 'Your account has been verified successfully.',
       });
       
-      // Call onVerified to trigger redirect to login
-      onVerified();
+      // Call onVerified with the auth data (token and user)
+      onVerified(data);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Verification failed';
       
