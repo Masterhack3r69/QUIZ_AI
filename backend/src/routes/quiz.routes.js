@@ -365,6 +365,30 @@ router.post('/create', protect, upload.single('file'), async (req, res) => {
       }
     }
 
+    // Parse studentInfoRequirements if provided, otherwise use defaults
+    let studentInfoReqs = {
+      firstName: true,
+      middleName: false,
+      lastName: true,
+      suffix: false,
+      studentId: true,
+      course: false,
+      year: false,
+      section: false,
+      email: false
+    };
+    
+    if (req.body.studentInfoRequirements) {
+      try {
+        const parsed = typeof req.body.studentInfoRequirements === 'string' 
+          ? JSON.parse(req.body.studentInfoRequirements) 
+          : req.body.studentInfoRequirements;
+        studentInfoReqs = { ...studentInfoReqs, ...parsed };
+      } catch (e) {
+        console.error('Error parsing studentInfoRequirements:', e);
+      }
+    }
+
     const quiz = await Quiz.create({
       title,
       teacher: req.user._id,
@@ -386,7 +410,8 @@ router.post('/create', protect, upload.single('file'), async (req, res) => {
       sourceContent: {
         type: sourceInfo.type,
         content: content ? content.substring(0, 1000) : 'Pre-generated questions' // Store first 1000 chars or placeholder
-      }
+      },
+      studentInfoRequirements: studentInfoReqs
     });
 
     res.status(201).json(quiz);
@@ -515,6 +540,21 @@ router.post('/validate', async (req, res) => {
 
     if (!quiz) {
       return res.status(404).json({ message: 'Invalid quiz code' });
+    }
+    
+    // Ensure studentInfoRequirements has default values if not set
+    if (!quiz.studentInfoRequirements) {
+      quiz.studentInfoRequirements = {
+        firstName: true,
+        middleName: false,
+        lastName: true,
+        suffix: false,
+        studentId: true,
+        course: false,
+        year: false,
+        section: false,
+        email: false
+      };
     }
 
     const now = new Date();

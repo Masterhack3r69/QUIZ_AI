@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { joinQuizSchema, type JoinQuizFormData } from '@/lib/validations';
+import { z } from 'zod';
 import { apiClient, APIRequestError } from '@/lib/api';
 import PublicLayout from '@/components/layout/PublicLayout';
 import { Button } from '@/components/ui/button';
@@ -14,22 +14,29 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, GraduationCap } from 'lucide-react';
 
+const quizCodeSchema = z.object({
+  quizCode: z
+    .string()
+    .length(6, "Quiz code must be 6 characters")
+    .regex(/^[A-Z0-9]+$/, "Quiz code must contain only uppercase letters and numbers")
+    .transform((val) => val.toUpperCase()),
+});
+
+type QuizCodeFormData = z.infer<typeof quizCodeSchema>;
+
 export default function JoinPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const form = useForm<JoinQuizFormData>({
-    resolver: zodResolver(joinQuizSchema),
+  const form = useForm<QuizCodeFormData>({
+    resolver: zodResolver(quizCodeSchema),
     defaultValues: {
       quizCode: '',
-      studentName: '',
-      studentId: '',
-      school: '',
     },
   });
 
-  const onSubmit = async (data: JoinQuizFormData) => {
+  const onSubmit = async (data: QuizCodeFormData) => {
     setIsLoading(true);
     setError(null);
 
@@ -38,17 +45,9 @@ export default function JoinPage() {
       
       // Validate quiz code with API
       await apiClient.validateQuizCode(code);
-      
-      // Store student info in sessionStorage
-      sessionStorage.setItem('studentInfo', JSON.stringify({
-        firstName: data.studentName.split(' ')[0],
-        lastName: data.studentName.split(' ').slice(1).join(' ') || data.studentName,
-        studentId: data.studentId,
-        school: data.school,
-      }));
 
-      // Navigate to quiz lobby
-      router.push(`/quiz/${code}/start`);
+      // Navigate to student info verification page
+      router.push(`/join/verify?code=${code}`);
     } catch (err) {
       console.error('Error validating quiz code:', err);
       
@@ -131,76 +130,25 @@ export default function JoinPage() {
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="studentName" className="text-base">
-                    Your Name
-                  </Label>
-                  <Input
-                    id="studentName"
-                    type="text"
-                    placeholder="Enter your full name"
-                    {...form.register('studentName')}
-                    disabled={isLoading}
-                  />
-                  {form.formState.errors.studentName && (
-                    <p className="text-sm text-destructive">
-                      {form.formState.errors.studentName.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="studentId" className="text-base">
-                    Student ID <span className="text-muted-foreground">(Optional)</span>
-                  </Label>
-                  <Input
-                    id="studentId"
-                    type="text"
-                    placeholder="Enter your student ID"
-                    {...form.register('studentId')}
-                    disabled={isLoading}
-                  />
-                  {form.formState.errors.studentId && (
-                    <p className="text-sm text-destructive">
-                      {form.formState.errors.studentId.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="school" className="text-base">
-                    School
-                  </Label>
-                  <Input
-                    id="school"
-                    type="text"
-                    placeholder="Enter your school name"
-                    {...form.register('school')}
-                    disabled={isLoading}
-                  />
-                  {form.formState.errors.school && (
-                    <p className="text-sm text-destructive">
-                      {form.formState.errors.school.message}
-                    </p>
-                  )}
-                </div>
-
                 <Button
                   type="submit"
                   size="lg"
                   className="w-full"
                   disabled={isLoading}
                 >
-                  {isLoading ? 'Validating...' : 'Join Quiz'}
+                  {isLoading ? 'Validating...' : 'Continue'}
                 </Button>
               </form>
 
-              <div className="mt-6 text-center">
+              <div className="mt-6 text-center space-y-2">
                 <p className="text-sm text-muted-foreground">
                   Don't have a quiz code?{' '}
                   <span className="text-blue-600 font-medium">
                     Ask your teacher for the access code
                   </span>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  You'll provide your information on the next step
                 </p>
               </div>
             </CardContent>

@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, PlusCircle, FileText, Settings, LogOut, GalleryVerticalEnd, LayoutGrid } from "lucide-react"
+import { Home, PlusCircle, FileText, Settings, LogOut, GalleryVerticalEnd, LayoutGrid, ChevronDown } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import {
   Sidebar,
@@ -11,12 +11,21 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { ThemeToggle } from "@/components/theme-toggle"
 import {
@@ -47,10 +56,18 @@ const navItems = [
   //   label: "Templates",
   //   icon: FileText,
   // },
+]
+
+const settingsItems = [
   {
     href: "/dashboard/settings",
-    label: "Settings",
+    label: "Profile",
     icon: Settings,
+  },
+  {
+    href: "/dashboard/settings/requirements",
+    label: "Requirements",
+    icon: FileText,
   },
 ]
 
@@ -113,6 +130,44 @@ export function DashboardSidebar({ ...props }: React.ComponentProps<typeof Sideb
                   </SidebarMenuItem>
                 )
               })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Settings</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <Collapsible defaultOpen className="group/collapsible">
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton>
+                      <Settings />
+                      <span>Settings</span>
+                      <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      {settingsItems.map((item) => {
+                        const Icon = item.icon
+                        const active = isActive(item.href)
+                        
+                        return (
+                          <SidebarMenuSubItem key={item.href}>
+                            <SidebarMenuSubButton asChild isActive={active}>
+                              <Link href={item.href}>
+                                <Icon />
+                                <span>{item.label}</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        )
+                      })}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
