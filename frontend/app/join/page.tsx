@@ -93,9 +93,6 @@ export default function JoinPage() {
           className="w-full max-w-md relative z-10"
         >
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center p-3 bg-white rounded-2xl shadow-sm mb-4 border border-blue-100 dark:bg-gray-800 dark:border-gray-700">
-              <Sparkles className="w-8 h-8 text-blue-500" />
-            </div>
             <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">
               Ready to Quiz?
             </h1>

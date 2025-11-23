@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { FileQuestion, Filter } from 'lucide-react';
+import { FileQuestion, Filter, LayoutGrid, List, ExternalLink, Trash2, Copy, MoreVertical } from 'lucide-react';
 import { apiClient, APIRequestError } from '@/lib/api';
 import { useToast } from '@/contexts/ToastContext';
 import { Button } from '@/components/ui/button';
@@ -10,17 +10,35 @@ import { QuizCard } from '@/components/quiz/QuizCard';
 import { CardLoadingSkeleton } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorAlert } from '@/components/shared/ErrorAlert';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import type { Quiz } from '@/types';
 
 type FilterStatus = 'all' | 'active' | 'expired' | 'scheduled' | 'draft';
+type ViewMode = 'grid' | 'table';
 
 export default function AllQuizzesPage() {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const router = useRouter();
-  const { showError } = useToast();
+  const { showError, showSuccess } = useToast();
 
   useEffect(() => {
     loadQuizzes();
@@ -87,6 +105,45 @@ export default function AllQuizzesPage() {
     { label: 'Draft', value: 'draft' },
   ];
 
+  const handleCopyLink = (quizId: string) => {
+    const link = `${window.location.origin}/join?code=${quizId}`;
+    navigator.clipboard.writeText(link);
+    showSuccess('Quiz link copied to clipboard!');
+  };
+
+  const handleDeleteQuiz = async (quizId: string) => {
+    if (!confirm('Are you sure you want to delete this quiz?')) return;
+    
+    try {
+      await apiClient.deleteQuiz(quizId);
+      showSuccess('Quiz deleted successfully');
+      loadQuizzes();
+    } catch (err) {
+      showError('Failed to delete quiz');
+    }
+  };
+
+  const getStatusBadge = (status: Quiz['status']) => {
+    const variants: Record<Quiz['status'], { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
+      active: { variant: 'default', label: 'Active' },
+      expired: { variant: 'secondary', label: 'Expired' },
+      scheduled: { variant: 'outline', label: 'Scheduled' },
+      draft: { variant: 'secondary', label: 'Draft' },
+      full: { variant: 'destructive', label: 'Full' },
+    };
+    
+    const config = variants[status] || variants.active;
+    return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
+
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
   return (
     <div className="flex flex-1 flex-col gap-6">
       {/* Page Header */}
@@ -97,12 +154,32 @@ export default function AllQuizzesPage() {
             Browse and manage all your quizzes
           </p>
         </div>
-        <Button
-          onClick={() => router.push('/dashboard/create')}
-          aria-label="Create new quiz"
-        >
-          Create Quiz
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center border rounded-lg p-1">
+            <Button
+              variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('grid')}
+              className="h-8 px-3"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'table' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('table')}
+              className="h-8 px-3"
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
+          <Button
+            onClick={() => router.push('/dashboard/create')}
+            aria-label="Create new quiz"
+          >
+            Create Quiz
+          </Button>
+        </div>
       </div>
 
       {/* Error State */}
@@ -158,19 +235,112 @@ export default function AllQuizzesPage() {
             Showing {filteredQuizzes.length} {filteredQuizzes.length === 1 ? 'quiz' : 'quizzes'}
           </div>
 
-          {/* Quiz Grid */}
+          {/* Quiz Grid/Table View */}
           {filteredQuizzes.length > 0 ? (
             <section aria-label="Your quizzes">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredQuizzes.map((quiz) => (
-                  <QuizCard
-                    key={quiz._id}
-                    quiz={quiz}
-                    submissionCount={getSubmissionCount(quiz)}
-                    onDelete={() => loadQuizzes()}
-                  />
-                ))}
-              </div>
+              {viewMode === 'grid' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredQuizzes.map((quiz) => (
+                    <QuizCard
+                      key={quiz._id}
+                      quiz={quiz}
+                      submissionCount={getSubmissionCount(quiz)}
+                      onDelete={() => loadQuizzes()}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="border rounded-lg">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Title</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Duration</TableHead>
+                        <TableHead>Submissions</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead>Expires</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredQuizzes.map((quiz) => {
+                        const status = getQuizStatus(quiz);
+                        return (
+                          <TableRow key={quiz._id} className="hover:bg-muted/50">
+                            <TableCell className="font-medium max-w-[300px]">
+                              <div className="flex flex-col gap-1">
+                                <span className="truncate">{quiz.title}</span>
+                                {quiz.subjects && quiz.subjects.length > 0 && (
+                                  <span className="text-xs text-muted-foreground truncate">
+                                    {quiz.subjects.join(', ')}
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>{getStatusBadge(status)}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {quiz.duration} min
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-col gap-1">
+                                <span>{getSubmissionCount(quiz)}</span>
+                                {quiz.maxStudents && (
+                                  <span className="text-xs text-muted-foreground">
+                                    / {quiz.maxStudents} max
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {formatDate(quiz.createdAt)}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {formatDate(quiz.expiresAt)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => router.push(`/dashboard/quiz/${quiz._id}`)}
+                                >
+                                  <ExternalLink className="h-4 w-4" />
+                                </Button>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm">
+                                      <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => handleCopyLink(quiz._id)}>
+                                      <Copy className="mr-2 h-4 w-4" />
+                                      Copy Link
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => router.push(`/dashboard/quiz/${quiz._id}`)}>
+                                      <ExternalLink className="mr-2 h-4 w-4" />
+                                      View Details
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      onClick={() => handleDeleteQuiz(quiz._id)}
+                                      className="text-destructive"
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </section>
           ) : (
             <div className="text-center py-12">
