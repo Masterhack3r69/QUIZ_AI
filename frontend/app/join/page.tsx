@@ -8,11 +8,12 @@ import { z } from 'zod';
 import { apiClient, APIRequestError } from '@/lib/api';
 import PublicLayout from '@/components/layout/PublicLayout';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, GraduationCap } from 'lucide-react';
+import { AlertCircle, Sparkles, ArrowRight, BookOpen } from 'lucide-react';
+import { motion } from 'motion/react';
 
 const quizCodeSchema = z.object({
   quizCode: z
@@ -79,52 +80,72 @@ export default function JoinPage() {
 
   return (
     <PublicLayout>
-      <main className="min-h-[calc(100vh-4rem)] py-12 px-4">
-        <div className="max-w-md mx-auto">
-          <Card className="shadow-lg">
-            <CardHeader className="text-center space-y-4">
-              <div className="flex justify-center">
-                <div className="rounded-full bg-blue-100 p-4">
-                  <GraduationCap className="w-12 h-12 text-blue-600" />
-                </div>
-              </div>
-              <div>
-                <CardTitle className="text-3xl font-bold">Join Quiz</CardTitle>
-                <CardDescription className="text-base mt-2">
-                  Enter your quiz code and information to get started
-                </CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent>
+      <main className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center p-4 bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-950">
+        
+        {/* Decorative Elements */}
+        <div className="absolute top-20 left-10 w-32 h-32 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-pulse-soft hidden md:block"></div>
+        <div className="absolute bottom-20 right-10 w-32 h-32 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-pulse-soft hidden md:block" style={{ animationDelay: '1s' }}></div>
+
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="w-full max-w-md relative z-10"
+        >
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center p-3 bg-white rounded-2xl shadow-sm mb-4 border border-blue-100 dark:bg-gray-800 dark:border-gray-700">
+              <Sparkles className="w-8 h-8 text-blue-500" />
+            </div>
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">
+              Ready to Quiz?
+            </h1>
+            <p className="text-lg text-gray-600 dark:text-gray-300">
+              Enter your code to join the session
+            </p>
+          </div>
+
+          <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm dark:bg-gray-900/80 ring-1 ring-gray-200 dark:ring-gray-800">
+            <CardContent className="pt-8 pb-8 px-6 sm:px-8">
               {error && (
-                <Alert variant="destructive" className="mb-6">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Error</AlertTitle>
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mb-6"
+                >
+                  <Alert variant="destructive" className="border-red-200 bg-red-50 text-red-800 dark:bg-red-900/20 dark:border-red-900 dark:text-red-300">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Oops!</AlertTitle>
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                </motion.div>
               )}
 
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="quizCode" className="text-base font-semibold">
-                    Quiz Code
+                <div className="space-y-3">
+                  <Label htmlFor="quizCode" className="text-sm font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider ml-1">
+                    Quiz Access Code
                   </Label>
-                  <Input
-                    id="quizCode"
-                    type="text"
-                    placeholder="ABC123"
-                    maxLength={6}
-                    className="text-2xl font-bold text-center uppercase tracking-widest h-14"
-                    {...form.register('quizCode')}
-                    onChange={(e) => {
-                      const value = e.target.value.toUpperCase();
-                      form.setValue('quizCode', value);
-                    }}
-                    disabled={isLoading}
-                    autoFocus
-                  />
+                  <div className="relative group">
+                    <Input
+                      id="quizCode"
+                      type="text"
+                      placeholder="ABC123"
+                      maxLength={6}
+                      className="text-3xl font-bold text-center uppercase tracking-[0.2em] h-16 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-300 bg-white dark:bg-gray-950 dark:border-gray-700 placeholder:text-gray-300 dark:placeholder:text-gray-700 shadow-sm group-hover:border-blue-300 dark:group-hover:border-blue-800"
+                      {...form.register('quizCode')}
+                      onChange={(e) => {
+                        const value = e.target.value.toUpperCase();
+                        form.setValue('quizCode', value);
+                      }}
+                      disabled={isLoading}
+                      autoFocus
+                      autoComplete="off"
+                    />
+                  </div>
                   {form.formState.errors.quizCode && (
-                    <p className="text-sm text-destructive">
+                    <p className="text-sm text-red-500 font-medium flex items-center gap-1 ml-1 animate-fade-in">
+                      <AlertCircle className="w-3 h-3" />
                       {form.formState.errors.quizCode.message}
                     </p>
                   )}
@@ -133,53 +154,31 @@ export default function JoinPage() {
                 <Button
                   type="submit"
                   size="lg"
-                  className="w-full"
+                  className="w-full h-14 text-lg font-semibold rounded-xl shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all duration-300 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 border-0"
                   disabled={isLoading}
                 >
-                  {isLoading ? 'Validating...' : 'Continue'}
+                  {isLoading ? (
+                    <span className="flex items-center gap-2">
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Checking Code...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      Join Session <ArrowRight className="w-5 h-5" />
+                    </span>
+                  )}
                 </Button>
               </form>
 
-              <div className="mt-6 text-center space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  Don't have a quiz code?{' '}
-                  <span className="text-blue-600 font-medium">
-                    Ask your teacher for the access code
-                  </span>
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  You'll provide your information on the next step
+              <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-800 text-center">
+                <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center justify-center gap-2">
+                  <BookOpen className="w-4 h-4" />
+                  <span>Ask your teacher for the code</span>
                 </p>
               </div>
             </CardContent>
           </Card>
-
-          {/* <Card className="mt-6 bg-blue-50 border-blue-200">
-            <CardHeader>
-              <CardTitle className="text-lg">Before you start:</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2 text-sm text-gray-700">
-                <li className="flex items-start">
-                  <span className="text-blue-600 mr-2">•</span>
-                  Make sure you have a stable internet connection
-                </li>
-                <li className="flex items-start">
-                  <span className="text-blue-600 mr-2">•</span>
-                  The quiz will have a countdown timer
-                </li>
-                <li className="flex items-start">
-                  <span className="text-blue-600 mr-2">•</span>
-                  Your quiz will auto-submit when time expires
-                </li>
-                <li className="flex items-start">
-                  <span className="text-blue-600 mr-2">•</span>
-                  You cannot pause or restart once you begin
-                </li>
-              </ul>
-            </CardContent>
-          </Card> */}
-        </div>
+        </motion.div>
       </main>
     </PublicLayout>
   );

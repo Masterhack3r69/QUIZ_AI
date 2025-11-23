@@ -93,44 +93,37 @@ class AgenticPipeline {
       // Validate inputs
       this.validateInputs(content, options);
 
-      // Step 0: Subject Detection (if enabled)
+      // Step 1: Comprehensive Analysis (Subject Detection + Content Extraction)
+      this.logger.logStepStart(1, 'Comprehensive Analysis', 'Analyzing content for subject and concepts...');
+      
       let subjectDetection = null;
       let recommendedPrompt = 'question-generation';
-      
-      if (this.config.enableSubjectDetection) {
-        this.logger.logStepStart(0, 'Subject Detection', 'Analyzing content to identify academic subject...');
-        
-        subjectDetection = await this.subjectDetector.detectSubject(content, {
-          useAI: options.useAIDetection !== false
-        });
-        
-        recommendedPrompt = subjectDetection.recommendedPrompt;
-        
-        this.logger.logSubjectDetection(subjectDetection);
-        this.logger.logStepComplete({
-          subject: subjectDetection.primarySubject,
-          confidence: subjectDetection.confidence,
-          prompt: recommendedPrompt
-        });
-      }
+      let concepts = null;
 
-      // Step 1: Extract concepts from content
-      this.logger.logStepStart(1, 'Content Extraction', 'Extracting key concepts, facts, and learning objectives...');
-      
-      // Add subject context if detected
-      if (subjectDetection) {
-        options.subjectContext = this.subjectDetector.getSubjectContext(subjectDetection);
-        this.logger.logInfo(`Using subject context: ${options.subjectContext.substring(0, 80)}...`);
+      try {
+        // Use the new optimized comprehensive analysis
+        const analysisResult = await this.contentExtractionAgent.comprehensiveAnalysis(content, {
+          forceProvider: options.forceProvider
+        });
+
+        subjectDetection = analysisResult.subjectDetection;
+        concepts = analysisResult.extractedConcepts;
+        
+        if (subjectDetection) {
+          recommendedPrompt = subjectDetection.recommendedPrompt || 'question-generation';
+          this.logger.logSubjectDetection(subjectDetection);
+        }
+
+        this.logger.logContentExtraction(concepts);
+        this.logger.logStepComplete({
+          subject: subjectDetection?.primarySubject,
+          prompt: recommendedPrompt,
+          concepts: concepts.keyConcepts?.length || 0
+        });
+      } catch (error) {
+        console.error('[AgenticPipeline] Comprehensive analysis failed', error);
+        throw new Error(`Failed to analyze content: ${error.message}`);
       }
-      
-      const concepts = await this.extractConcepts(content, options);
-      
-      this.logger.logContentExtraction(concepts);
-      this.logger.logStepComplete({
-        mainTopics: concepts.mainTopics?.length || 0,
-        keyConcepts: concepts.keyConcepts?.length || 0,
-        criticalFacts: concepts.criticalFacts?.length || 0
-      });
 
       // Step 2: Generate questions from concepts
       this.logger.logStepStart(2, 'Question Generation', 'Generating questions using specialized prompt...');
@@ -370,7 +363,7 @@ class AgenticPipeline {
     try {
       const validationResults = await this.qualityValidationAgent.validateBatch(questions, {
         forceProvider: options.forceProvider,
-        concurrency: options.concurrency || 2 // Limit to 2 concurrent requests to avoid rate limits
+        concurrency: options.concurrency || 5 // Increased concurrency for faster processing
       });
 
       const lowQualityCount = validationResults.filter(
@@ -446,7 +439,7 @@ class AgenticPipeline {
         lowQualityQuestions,
         {
           forceProvider: options.forceProvider,
-          concurrency: options.concurrency || 2 // Limit to 2 concurrent requests to avoid rate limits
+          concurrency: options.concurrency || 5 // Increased concurrency for faster processing
         }
       );
 

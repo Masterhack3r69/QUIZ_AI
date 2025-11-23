@@ -29,13 +29,19 @@
       "fallback": ["openrouter", "gemini", "ollama"],
       "maxRetries": 2,
       "timeout": 120000
+    },
+    "comprehensive-content-analysis": {
+      "primary": "github",
+      "fallback": ["openrouter", "gemini", "ollama"],
+      "maxRetries": 2,
+      "timeout": 180000
     }
   },
   "providers": {
     "github": {
       "enabled": true,
       "endpoint": "https://models.github.ai/inference",
-      "model": "openai/gpt-4o"
+      "model": "gpt-4o"
     },
     "ollama": {
       "enabled": true,
@@ -53,7 +59,7 @@
     },
     "gemini": {
       "enabled": true,
-      "model": "gemini-2.0-flash-exp"
+      "model": "gemini-3-pro-preview"
     }
   }
 }

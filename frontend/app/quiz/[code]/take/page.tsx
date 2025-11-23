@@ -3,16 +3,16 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/contexts/ToastContext';
 import Timer from '@/components/quiz/Timer';
 import { QuestionCard } from '@/components/quiz/QuestionCard';
-import { Clock, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
+import { Clock, ChevronLeft, ChevronRight, AlertCircle, CheckCircle2, HelpCircle } from 'lucide-react';
 import type { Question, QuestionType } from '@/types';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface QuizSessionData {
   quizId: string;
@@ -77,9 +77,9 @@ const getQuestionTypeIcon = (questionType: QuestionType): string => {
     case 'multipleChoice':
       return '◉';
     case 'trueFalse':
-      return '✓✗';
+      return '✓';
     case 'fillInBlank':
-      return '___';
+      return '✎';
     case 'matching':
       return '⇄';
     default:
@@ -91,7 +91,7 @@ export default function QuizTakePage() {
   const params = useParams();
   const router = useRouter();
   const accessCode = params.code as string;
-  const { showError, showWarning, showSuccess } = useToast();
+  const { showError, showWarning } = useToast();
 
   const [quizSession, setQuizSession] = useState<QuizSessionData | null>(null);
   const [studentInfo, setStudentInfo] = useState<StudentInfo | null>(null);
@@ -306,12 +306,12 @@ export default function QuizTakePage() {
 
   if (!quizSession || !studentInfo) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <Card className="max-w-md w-full">
-          <CardContent className="pt-6">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+        <Card className="max-w-md w-full border-0 shadow-xl bg-white/80 backdrop-blur-sm dark:bg-gray-900/80">
+          <CardContent className="pt-12 pb-12">
             <div className="flex flex-col items-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
-              <p className="text-muted-foreground">Loading quiz...</p>
+              <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent mb-6"></div>
+              <p className="text-lg font-medium text-gray-600 dark:text-gray-300">Loading your quiz...</p>
             </div>
           </CardContent>
         </Card>
@@ -327,126 +327,139 @@ export default function QuizTakePage() {
   const answeredCount = quizSession.questions.filter(q => isQuestionAnswered(q)).length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col font-sans">
       {/* Fixed Header */}
-      <header className="sticky top-0 z-50 bg-white border-b shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 py-4">
+      <header className="sticky top-0 z-50 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 shadow-sm">
+        <div className="max-w-5xl mx-auto px-4 py-3">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             {/* Quiz Title and Student Info */}
-            <div className="text-center md:text-left">
-              <h1 className="text-xl md:text-2xl font-bold text-gray-900">
+            <div className="text-center md:text-left flex-1 min-w-0">
+              <h1 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white truncate">
                 {quizSession.title}
               </h1>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                 {[studentInfo.firstName, studentInfo.middleName, studentInfo.lastName, studentInfo.suffix].filter(Boolean).join(' ')}
-                {studentInfo.studentId && ` (${studentInfo.studentId})`}
+                {studentInfo.studentId && ` • ${studentInfo.studentId}`}
               </p>
             </div>
             
             {/* Timer */}
-            <Timer
-              duration={durationInSeconds}
-              onExpire={handleTimerExpire}
-              isActive={!isSubmitting}
-            />
+            <div className="flex-shrink-0">
+              <Timer
+                duration={durationInSeconds}
+                onExpire={handleTimerExpire}
+                isActive={!isSubmitting}
+              />
+            </div>
           </div>
 
           {/* Progress Indicator */}
           <div className="mt-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm text-muted-foreground mb-2">
-              <div className="flex items-center gap-2 justify-center sm:justify-start">
-                <span className="font-medium">
-                  Question {currentQuestionIndex + 1} of {quizSession.questions.length}
-                </span>
-                <Badge variant="secondary" className="text-xs">
-                  {getQuestionTypeIcon(currentQuestion.type)} {getQuestionTypeLabel(currentQuestion.type)}
+            <div className="flex items-center justify-between text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
+              <span className="flex items-center gap-1.5">
+                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800 px-2 py-0.5 rounded-full">
+                  Q{currentQuestionIndex + 1}
                 </Badge>
-              </div>
-              <span className="text-center sm:text-right">
-                {answeredCount} / {quizSession.questions.length} answered
+                <span className="hidden sm:inline text-gray-400">|</span>
+                <span className="uppercase tracking-wide text-[10px] sm:text-xs">
+                  {getQuestionTypeLabel(currentQuestion.type)}
+                </span>
+              </span>
+              <span>
+                {answeredCount} of {quizSession.questions.length} Answered
               </span>
             </div>
-            <Progress value={progressPercentage} className="h-2" />
+            <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+              <motion.div 
+                className="h-full bg-gradient-to-r from-blue-500 to-indigo-500"
+                initial={{ width: 0 }}
+                animate={{ width: `${progressPercentage}%` }}
+                transition={{ duration: 0.5, ease: "easeInOut" }}
+              />
+            </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 py-6 px-4">
-        <div className="max-w-4xl mx-auto space-y-6">
+      <main className="flex-1 py-8 px-4 overflow-y-auto">
+        <div className="max-w-4xl mx-auto space-y-8">
           {/* Question Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg md:text-xl">
-                Question {currentQuestionIndex + 1}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentQuestionIndex}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Card className="border-0 shadow-xl bg-white dark:bg-gray-900 ring-1 ring-gray-200 dark:ring-gray-800 overflow-hidden">
+                <CardHeader className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 pb-6">
+                  <CardTitle className="text-xl md:text-2xl font-bold leading-relaxed text-gray-800 dark:text-gray-100 flex gap-4">
+                    <span className="flex-shrink-0 text-blue-500/20 select-none text-4xl font-black -mt-1">
+                      {currentQuestionIndex + 1}
+                    </span>
+                    <span>
+                      Question Text Placeholder
+                      {/* Note: The QuestionCard component handles rendering the actual question text. 
+                          We are wrapping it here for layout. */}
+                    </span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6 md:p-8">
+                  <QuestionCard
+                    question={currentQuestion}
+                    selectedAnswer={selectedAnswer}
+                    onSelectAnswer={handleSelectAnswer}
+                    questionNumber={currentQuestionIndex + 1}
+                    totalQuestions={quizSession.questions.length}
+                  />
+                </CardContent>
+              </Card>
+            </motion.div>
+          </AnimatePresence>
+
+          {/* Question Navigation Grid */}
+          <Card className="border-0 shadow-sm bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4" />
+                Question Navigator
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <QuestionCard
-                question={currentQuestion}
-                selectedAnswer={selectedAnswer}
-                onSelectAnswer={handleSelectAnswer}
-                questionNumber={currentQuestionIndex + 1}
-                totalQuestions={quizSession.questions.length}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Question Navigation Grid */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Question Navigator</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-4 xs:grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-2">
+              <div className="grid grid-cols-5 xs:grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-2">
                 {quizSession.questions.map((q, index) => {
                   const isAnswered = isQuestionAnswered(q);
                   const isCurrent = index === currentQuestionIndex;
                   
                   return (
-                    <button
+                    <motion.button
                       key={q._id}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
                       onClick={() => setCurrentQuestionIndex(index)}
                       disabled={isSubmitting}
                       title={`Question ${index + 1}: ${getQuestionTypeLabel(q.type)}${isAnswered ? ' (answered)' : ''}`}
                       className={`
-                        aspect-square rounded-lg font-semibold text-sm relative
-                        transition-all duration-200 min-h-[44px] min-w-[44px]
-                        focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
+                        aspect-square rounded-xl font-bold text-sm relative
+                        transition-all duration-200 flex items-center justify-center
                         ${isCurrent
-                          ? 'bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2'
+                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30 ring-2 ring-blue-600 ring-offset-2 dark:ring-offset-gray-900'
                           : isAnswered
-                          ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400'
-                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                          ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 border-2 border-transparent'
+                          : 'bg-gray-100 text-gray-400 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-500 border-2 border-transparent'
                         }
                         ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
                       `}
-                      aria-label={`Go to question ${index + 1}: ${getQuestionTypeLabel(q.type)}${isAnswered ? ' (answered)' : ''}`}
-                      aria-current={isCurrent ? 'step' : undefined}
                     >
-                      <span className="block">{index + 1}</span>
-                      <span className="absolute -top-1 -right-1 text-xs opacity-60">
-                        {getQuestionTypeIcon(q.type)}
-                      </span>
-                    </button>
+                      {index + 1}
+                      {isAnswered && !isCurrent && (
+                        <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                      )}
+                    </motion.button>
                   );
                 })}
-              </div>
-              
-              {/* Legend */}
-              <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground pt-2 border-t">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-primary rounded"></div>
-                  <span>Current</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-green-100 border border-green-300 rounded dark:bg-green-900/30"></div>
-                  <span>Answered</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-muted border border-border rounded"></div>
-                  <span>Unanswered</span>
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -454,16 +467,16 @@ export default function QuizTakePage() {
       </main>
 
       {/* Fixed Footer with Navigation */}
-      <footer className="sticky bottom-0 z-50 bg-white border-t shadow-lg dark:bg-gray-950 dark:border-gray-800">
-        <div className="max-w-4xl mx-auto px-4 py-3 sm:py-4">
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+      <footer className="sticky bottom-0 z-50 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <div className="flex flex-col sm:flex-row gap-3">
             {/* Previous Button */}
             <Button
               variant="outline"
               size="lg"
               onClick={handlePrevious}
               disabled={currentQuestionIndex === 0 || isSubmitting}
-              className="flex-1 min-h-[48px] touch-manipulation"
+              className="flex-1 h-12 text-base font-medium rounded-xl border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               <ChevronLeft className="mr-2 h-5 w-5" />
               Previous
@@ -475,7 +488,7 @@ export default function QuizTakePage() {
                 size="lg"
                 onClick={handleNext}
                 disabled={isSubmitting}
-                className="flex-1 min-h-[48px] touch-manipulation"
+                className="flex-1 h-12 text-base font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 transition-all hover:shadow-blue-500/30"
               >
                 Next
                 <ChevronRight className="ml-2 h-5 w-5" />
@@ -485,18 +498,31 @@ export default function QuizTakePage() {
                 size="lg"
                 onClick={handleManualSubmit}
                 disabled={!allAnswered || isSubmitting}
-                className="flex-1 min-h-[48px] touch-manipulation"
+                className={`
+                  flex-1 h-12 text-base font-bold rounded-xl shadow-lg transition-all
+                  ${allAnswered 
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/20 hover:shadow-emerald-500/30' 
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-600'
+                  }
+                `}
               >
-                {isSubmitting ? 'Submitting...' : 'Submit Quiz'}
+                {isSubmitting ? (
+                  <span className="flex items-center gap-2">
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Submitting...
+                  </span>
+                ) : (
+                  'Submit Quiz'
+                )}
               </Button>
             )}
           </div>
 
           {/* Submit button hint */}
           {!allAnswered && currentQuestionIndex === quizSession.questions.length - 1 && (
-            <div className="flex items-center justify-center gap-2 mt-2 sm:mt-3 text-xs sm:text-sm text-amber-600 dark:text-amber-500">
+            <div className="flex items-center justify-center gap-2 mt-3 text-sm text-amber-600 dark:text-amber-500 font-medium animate-pulse">
               <AlertCircle className="h-4 w-4 flex-shrink-0" />
-              <span className="text-center">Please answer all questions to enable submission</span>
+              <span>Please answer all questions to submit</span>
             </div>
           )}
         </div>
@@ -504,18 +530,18 @@ export default function QuizTakePage() {
 
       {/* Auto-Submit Alert Dialog */}
       <AlertDialog open={showAutoSubmitDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-amber-600" />
+            <AlertDialogTitle className="flex items-center gap-2 text-xl">
+              <Clock className="h-6 w-6 text-amber-600" />
               Time's Up!
             </AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription className="text-base">
               The quiz time has expired. Your answers are being submitted automatically.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction disabled>
+            <AlertDialogAction disabled className="w-full sm:w-auto rounded-xl">
               Submitting...
             </AlertDialogAction>
           </AlertDialogFooter>

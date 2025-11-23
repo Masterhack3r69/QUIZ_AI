@@ -46,6 +46,17 @@ export function QuestionCard({
   const renderMultipleChoice = () => {
     if (question.type !== 'multipleChoice') return null;
 
+    // Safety check: ensure options array exists
+    if (!question.options || !Array.isArray(question.options)) {
+      return (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-800">
+            Error: This question is missing answer options. Please contact your teacher.
+          </p>
+        </div>
+      );
+    }
+
     const getOptionStyles = (index: number) => {
       const baseStyles = 'w-full text-left p-3 sm:p-4 rounded-lg border-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 touch-manipulation min-h-[56px]';
       
@@ -231,6 +242,22 @@ export function QuestionCard({
   const renderMatching = () => {
     if (question.type !== 'matching') return null;
 
+    // Type narrowing: at this point, TypeScript knows question is MatchingQuestion
+    const matchingQuestion = question;
+
+    // Safety checks: ensure all required arrays exist
+    if (!matchingQuestion.leftColumn || !Array.isArray(matchingQuestion.leftColumn) ||
+        !matchingQuestion.rightColumn || !Array.isArray(matchingQuestion.rightColumn) ||
+        !matchingQuestion.correctPairs || !Array.isArray(matchingQuestion.correctPairs)) {
+      return (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-800">
+            Error: This matching question is missing required data. Please contact your teacher.
+          </p>
+        </div>
+      );
+    }
+
     const handlePairChange = (leftIndex: number, rightIndex: number) => {
       const newPairs = matchingPairs.filter(p => p.left !== leftIndex);
       if (rightIndex !== -1) {
@@ -246,16 +273,16 @@ export function QuestionCard({
     };
 
     const isPairCorrect = (leftIndex: number, rightIndex: number) => {
-      return question.correctPairs.some(cp => cp.left === leftIndex && cp.right === rightIndex);
+      return matchingQuestion.correctPairs.some(cp => cp.left === leftIndex && cp.right === rightIndex);
     };
 
-    const allPaired = matchingPairs.length === question.leftColumn.length;
+    const allPaired = matchingPairs.length === matchingQuestion.leftColumn.length;
 
     return (
       <div className="space-y-4">
         <p className="text-sm text-gray-600">Match each item on the left with the correct item on the right:</p>
         <div className="space-y-3">
-          {question.leftColumn.map((leftItem, leftIndex) => {
+          {matchingQuestion.leftColumn.map((leftItem, leftIndex) => {
             const selectedRight = getSelectedRight(leftIndex);
             const isCorrect = showCorrectAnswer && selectedRight !== -1 && isPairCorrect(leftIndex, selectedRight);
             const isIncorrect = showCorrectAnswer && selectedRight !== -1 && !isPairCorrect(leftIndex, selectedRight);
@@ -279,7 +306,7 @@ export function QuestionCard({
                     aria-label={`Match for ${leftItem}`}
                   >
                     <option value={-1}>Select a match...</option>
-                    {question.rightColumn.map((rightItem, rightIndex) => (
+                    {matchingQuestion.rightColumn.map((rightItem, rightIndex) => (
                       <option key={rightIndex} value={rightIndex}>
                         {rightItem}
                       </option>
@@ -312,9 +339,9 @@ export function QuestionCard({
           <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm font-semibold text-blue-900 mb-2">Correct pairs:</p>
             <ul className="text-sm text-blue-800 space-y-1">
-              {question.correctPairs.map((pair, idx) => (
+              {matchingQuestion.correctPairs.map((pair, idx) => (
                 <li key={idx}>
-                  {question.leftColumn[pair.left]} → {question.rightColumn[pair.right]}
+                  {matchingQuestion.leftColumn[pair.left]} → {matchingQuestion.rightColumn[pair.right]}
                 </li>
               ))}
             </ul>

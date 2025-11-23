@@ -120,6 +120,73 @@ class ContentExtractionAgent {
   }
 
   /**
+   * Perform comprehensive analysis (Subject Detection + Content Extraction)
+   * 
+   * @param {string} content - The educational content to analyze
+   * @param {Object} options - Additional options
+   * @returns {Promise<Object>} Combined analysis result
+   */
+  async comprehensiveAnalysis(content, options = {}) {
+    // Validate input
+    if (!content || typeof content !== 'string') {
+      throw new Error('Content must be a non-empty string');
+    }
+
+    const truncatedContent = this.truncateContent(content);
+
+    try {
+      // Get formatted prompt
+      const promptData = this.promptManager.getPrompt('comprehensive-content-analysis', {
+        content: truncatedContent
+      });
+
+      const fullPrompt = `${promptData.systemPrompt}\n\n${promptData.userPrompt}`;
+
+      // Execute via task router
+      const result = await this.taskRouter.executeTask(
+        'comprehensive-content-analysis',
+        fullPrompt,
+        {
+          forceProvider: options.forceProvider,
+          temperature: options.temperature || 0.2,
+          jsonMode: true,
+          maxTokens: 3000
+        }
+      );
+
+      // Parse response
+      const analysis = this.parseResponse(result.text);
+
+      // Validate extracted concepts part
+      if (analysis.extractedConcepts) {
+        this.validateExtractedConcepts(analysis.extractedConcepts);
+      }
+
+      console.log(`[ContentExtractionAgent] Comprehensive analysis complete`, {
+        subject: analysis.subjectDetection?.primarySubject,
+        concepts: analysis.extractedConcepts?.keyConcepts?.length,
+        provider: result.provider
+      });
+
+      return {
+        ...analysis,
+        metadata: {
+          contentLength: truncatedContent.length,
+          provider: result.provider,
+          executionTime: result.executionTime,
+          analyzedAt: new Date().toISOString()
+        }
+      };
+
+    } catch (error) {
+      console.error(`[ContentExtractionAgent] Comprehensive analysis failed`, {
+        error: error.message
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Truncate content to maximum length
    * Tries to truncate at sentence boundaries for better context
    * 
@@ -208,20 +275,20 @@ class ContentExtractionAgent {
       throw new ValidationError('Extracted concepts must be an object');
     }
 
-    // Validate mainTopics (3-5 items)
+    // Validate mainTopics (2-5 items)
     if (!Array.isArray(concepts.mainTopics)) {
       errors.push('mainTopics must be an array');
-    } else if (concepts.mainTopics.length < 3) {
-      errors.push(`mainTopics must have at least 3 items (found ${concepts.mainTopics.length})`);
+    } else if (concepts.mainTopics.length < 2) {
+      errors.push(`mainTopics must have at least 2 items (found ${concepts.mainTopics.length})`);
     } else if (concepts.mainTopics.length > 5) {
       warnings.push(`mainTopics should have at most 5 items (found ${concepts.mainTopics.length})`);
     }
 
-    // Validate keyConcepts (5-10 items with required fields)
+    // Validate keyConcepts (3-10 items with required fields)
     if (!Array.isArray(concepts.keyConcepts)) {
       errors.push('keyConcepts must be an array');
-    } else if (concepts.keyConcepts.length < 5) {
-      errors.push(`keyConcepts must have at least 5 items (found ${concepts.keyConcepts.length})`);
+    } else if (concepts.keyConcepts.length < 3) {
+      errors.push(`keyConcepts must have at least 3 items (found ${concepts.keyConcepts.length})`);
     } else if (concepts.keyConcepts.length > 10) {
       warnings.push(`keyConcepts should have at most 10 items (found ${concepts.keyConcepts.length})`);
     } else {
@@ -244,20 +311,20 @@ class ContentExtractionAgent {
       });
     }
 
-    // Validate criticalFacts (5-10 items)
+    // Validate criticalFacts (3-10 items)
     if (!Array.isArray(concepts.criticalFacts)) {
       errors.push('criticalFacts must be an array');
-    } else if (concepts.criticalFacts.length < 5) {
-      errors.push(`criticalFacts must have at least 5 items (found ${concepts.criticalFacts.length})`);
+    } else if (concepts.criticalFacts.length < 3) {
+      errors.push(`criticalFacts must have at least 3 items (found ${concepts.criticalFacts.length})`);
     } else if (concepts.criticalFacts.length > 10) {
       warnings.push(`criticalFacts should have at most 10 items (found ${concepts.criticalFacts.length})`);
     }
 
-    // Validate learningObjectives (3-5 items)
+    // Validate learningObjectives (2-5 items)
     if (!Array.isArray(concepts.learningObjectives)) {
       errors.push('learningObjectives must be an array');
-    } else if (concepts.learningObjectives.length < 3) {
-      errors.push(`learningObjectives must have at least 3 items (found ${concepts.learningObjectives.length})`);
+    } else if (concepts.learningObjectives.length < 2) {
+      errors.push(`learningObjectives must have at least 2 items (found ${concepts.learningObjectives.length})`);
     } else if (concepts.learningObjectives.length > 5) {
       warnings.push(`learningObjectives should have at most 5 items (found ${concepts.learningObjectives.length})`);
     }
