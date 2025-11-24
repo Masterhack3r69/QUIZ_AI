@@ -7,8 +7,8 @@ import Link from "next/link";
 
 const Navbar = () => {
   return (
-    <nav className="h-16 bg-background border-b">
-      <div className="h-full flex items-center justify-between max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <nav className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
+      <div className="h-16 flex items-center justify-between max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-12">
           <Logo />
 
@@ -18,10 +18,10 @@ const Navbar = () => {
 
         <div className="flex items-center gap-3">
           <ThemeToggle />
-          <Button variant="outline" className="hidden sm:inline-flex" asChild>
-            <Link href="/login">Teacher Login</Link>
+          <Button variant="ghost" className="hidden sm:inline-flex font-medium" asChild>
+            <Link href="/login">Log In</Link>
           </Button>
-          <Button asChild>
+          <Button asChild className="shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all">
             <Link href="/join">Join Quiz</Link>
           </Button>
 
