@@ -19,6 +19,7 @@ export const metadata: Metadata = {
 
 import { ThemeProvider } from "@/components/theme-provider"
 import { BackToTop } from "@/components/back-to-top"
+import { AuthProvider } from "@/context/AuthContext"
 
 export default function RootLayout({
   children,
@@ -26,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
@@ -36,8 +37,10 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
-          <BackToTop />
+          <AuthProvider>
+            {children}
+            <BackToTop />
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
