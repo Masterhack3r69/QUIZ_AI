@@ -19,7 +19,10 @@ export const metadata: Metadata = {
 
 import { ThemeProvider } from "@/components/theme-provider"
 import { BackToTop } from "@/components/back-to-top"
+import Providers from "@/components/providers"
 import { AuthProvider } from "@/context/AuthContext"
+
+import { Toaster } from "sonner"
 
 export default function RootLayout({
   children,
@@ -37,10 +40,13 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AuthProvider>
-            {children}
-            <BackToTop />
-          </AuthProvider>
+          <Providers>
+            <AuthProvider>
+              {children}
+              <BackToTop />
+              <Toaster position="top-center" richColors />
+            </AuthProvider>
+          </Providers>
         </ThemeProvider>
       </body>
     </html>
