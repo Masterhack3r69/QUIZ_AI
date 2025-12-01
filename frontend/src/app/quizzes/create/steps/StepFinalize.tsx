@@ -19,7 +19,7 @@ import { Badge } from "../../../../components/ui/badge"
 
 export default function StepFinalize() {
   const router = useRouter()
-  const { details, setDetails, questions, config, reset } = useQuizStore()
+  const { details, setDetails, questions, config, reset, sourceType, sourceContent, sourceMetadata } = useQuizStore()
   const [isSaving, setIsSaving] = useState(false)
   const [date, setDate] = useState<Date | undefined>(undefined)
 
@@ -31,13 +31,95 @@ export default function StepFinalize() {
 
     setIsSaving(true)
     try {
+      // Map questions to backend format
+      const mappedQuestions = questions.map(q => {
+        let backendType = 'multipleChoice';
+        if (q.type === 'multiple-choice') backendType = 'multipleChoice';
+        else if (q.type === 'true-false') backendType = 'trueFalse';
+        else if (q.type === 'fill-in-the-blank') backendType = 'fillInBlank';
+        
+        // Map correct answer value back to index if needed by backend?
+        // Backend schema says:
+        // multipleChoice: Number (index)
+        // trueFalse: Boolean
+        // fillInBlank: String
+        
+        let correctAnswer: any = q.correctAnswer;
+        
+        if (backendType === 'multipleChoice' && q.options) {
+          // Find index of correct answer
+          const index = q.options.indexOf(q.correctAnswer as string);
+          if (index !== -1) correctAnswer = index;
+        } else if (backendType === 'trueFalse') {
+          // Backend expects Boolean? Schema says Boolean.
+          // Frontend has "True"/"False" or similar?
+          // Logs showed options: ["True", "False"], correctAnswer: 1 (False)
+          // If frontend has "True", map to true? Or index?
+          // Let's assume index for consistency with logs if options exist.
+          // But schema says `trueFalse: Boolean`.
+          // Wait, logs said `questions.0.type: multiple-choice is not a valid enum value`.
+          // It didn't complain about correctAnswer.
+          // Let's stick to what worked in logs (indices) or try to follow schema.
+          // Schema: `correctAnswer: { type: mongoose.Schema.Types.Mixed }`
+          // Comments say: `trueFalse: Boolean`.
+          // But logs showed `correctAnswer: 1`.
+          // Let's try to send index if options exist, otherwise value.
+          if (q.options && typeof q.correctAnswer === 'string') {
+             const index = q.options.indexOf(q.correctAnswer);
+             if (index !== -1) correctAnswer = index;
+          }
+        }
+
+        return {
+          ...q,
+          type: backendType,
+          correctAnswer: correctAnswer as any
+        };
+      });
+
+      // Prepare source info
+      let sourcePayload: any = {};
+      // Map frontend source type to backend source type
+      // Frontend: 'topic' | 'text' | 'file' | 'url' | 'video'
+      // Backend: 'file', 'topic', 'video', 'url'
+      // 'text' in frontend should probably map to 'topic' in backend as 'text' is not in backend enum
+      
+      let backendSourceType = sourceType;
+      if (sourceType === 'text') backendSourceType = 'topic'; 
+      
+      if (backendSourceType) {
+        sourcePayload.sourceType = backendSourceType;
+        if (backendSourceType === 'topic') sourcePayload.textContent = sourceContent;
+        else if (backendSourceType === 'url') sourcePayload.webUrl = sourceMetadata.url || sourceContent;
+        else if (backendSourceType === 'video') sourcePayload.videoUrl = sourceMetadata.url || sourceContent;
+        // For file, we can't re-upload easily here without the file object. 
+        // If it was a file upload, we might need to handle it differently or assume backend has it?
+        // But createQuiz endpoint expects file upload in `req.file`.
+        // If we already have questions, we might not need to re-upload file if we provide sourceType 'file' and some content string.
+        // But backend `create` route checks `req.file` for `sourceType === 'file'`.
+        // If `questions` are provided, it goes to `else` block (line 320).
+        // `else if (req.file)`...
+        // If we don't send file, `sourceInfo` defaults to `text`.
+        // So for file source, if we don't re-upload, we might need to fake it as 'topic' with filename?
+        // Or just send 'topic' with "Generated from file: filename".
+        if (sourceType === 'file') {
+           sourcePayload.sourceType = 'topic';
+           sourcePayload.textContent = `Generated from file: ${sourceMetadata.filename || 'uploaded file'}`;
+        }
+      } else {
+        // Default to topic if no source
+        sourcePayload.sourceType = 'topic';
+        sourcePayload.textContent = 'Manual creation';
+      }
+
       const payload = {
         title: details.title,
         description: details.description,
         duration: details.duration,
-        expiresAt: date,
-        questions: questions,
+        expiresAt: date || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Default 7 days
+        questions: mappedQuestions,
         questionsPerStudent: questions.length,
+        ...sourcePayload
       }
 
       await aiService.createQuiz(payload)

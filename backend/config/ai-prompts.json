@@ -57,23 +57,26 @@
     "quality-validation": {
       "name": "Quality Validation Agent",
       "role": "expert educational assessment quality reviewer",
-      "systemPrompt": "You are an expert educational assessment quality reviewer. Your job is to evaluate multiple-choice questions for quality and educational effectiveness."
-,
-      "template": "TASK: Evaluate the following question and provide a detailed quality assessment.\n\nQUESTION TO EVALUATE:\n{question}\n\nEVALUATION CRITERIA:\n\n1. CLARITY (0-25 points)\n   - Is the question clear and unambiguous?\n   - Can it be understood on first reading?\n   - Is the language appropriate for the target audience?\n   - Are there any confusing or misleading words?\n\n2. CORRECTNESS (0-25 points)\n   - Is there ONE clearly correct answer?\n   - Is the correct answer definitively right?\n   - Are all distractors definitively wrong?\n   - Is the explanation accurate?\n\n3. DISTRACTOR QUALITY (0-25 points)\n   - Are distractors plausible and tempting?\n   - Do they reflect common misconceptions?\n   - Are they similar in length and style to the correct answer?\n   - Do they test understanding rather than just guessing?\n\n4. EDUCATIONAL VALUE (0-25 points)\n   - Does it test important knowledge?\n   - Does it assess understanding, not just memorization?\n   - Is the difficulty level appropriate?\n   - Does it help identify student misconceptions?\n\nCHECK FOR THESE ISSUES:\n\n❌ **Critical Issues** (Automatic fail - score < 50)\n- Multiple correct answers possible\n- Correct answer is wrong\n- Question is ambiguous or unclear\n- Distractors are obviously wrong\n- Question contains errors\n\n⚠️ **Major Issues** (Score 50-70)\n- Correct answer is obviously longer/different\n- Uses \"always\" or \"never\" in correct answer\n- Distractors are not plausible\n- Tests trivial information\n- Poor grammar or spelling\n\n⚡ **Minor Issues** (Score 70-85)\n- Could be worded more clearly\n- One distractor is weak\n- Slightly unbalanced option lengths\n- Could test deeper understanding\n\n✅ **Excellent** (Score 85-100)\n- Clear, unambiguous question\n- One definitively correct answer\n- Three plausible, educational distractors\n- Tests important understanding\n- Appropriate difficulty\n- Well-written and professional\n\nOUTPUT FORMAT (JSON):\n{\n  \"score\": 85,\n  \"grade\": \"excellent|good|fair|poor\",\n  \"clarity\": {\n    \"score\": 22,\n    \"issues\": [\"List any clarity issues\"],\n    \"suggestions\": [\"How to improve\"]\n  },\n  \"correctness\": {\n    \"score\": 25,\n    \"issues\": [],\n    \"suggestions\": []\n  },\n  \"distractorQuality\": {\n    \"score\": 20,\n    \"issues\": [\"Distractor C is too obviously wrong\"],\n    \"suggestions\": [\"Make distractor C more plausible by...\"]\n  },\n  \"educationalValue\": {\n    \"score\": 18,\n    \"issues\": [\"Tests memorization rather than understanding\"],\n    \"suggestions\": [\"Rephrase to test application of concept\"]\n  },\n  \"overallIssues\": [\n    \"Main issues with the question\"\n  ],\n  \"strengths\": [\n    \"What the question does well\"\n  ],\n  \"recommendations\": [\n    \"Specific actions to improve the question\"\n  ],\n  \"passesQuality\": true,\n  \"requiresImprovement\": false\n}\n\nReturn ONLY valid JSON, no additional text.",
-      "requiredVariables": ["question"],
+      "systemPrompt": "You are an expert educational assessment quality reviewer. Your job is to evaluate multiple-choice questions for quality and educational effectiveness.",
+      "template": "TASK: Evaluate the following questions and provide a detailed quality assessment for EACH question.\n\nQUESTIONS TO EVALUATE:\n{questions}\n\nEVALUATION CRITERIA (Apply to each question):\n\n1. CLARITY (0-25 points)\n   - Is the question clear and unambiguous?\n   - Can it be understood on first reading?\n   - Is the language appropriate for the target audience?\n   - Are there any confusing or misleading words?\n\n2. CORRECTNESS (0-25 points)\n   - Is there ONE clearly correct answer?\n   - Is the correct answer definitively right?\n   - Are all distractors definitively wrong?\n   - Is the explanation accurate?\n\n3. DISTRACTOR QUALITY (0-25 points)\n   - Are distractors plausible and tempting?\n   - Do they reflect common misconceptions?\n   - Are they similar in length and style to the correct answer?\n   - Do they test understanding rather than just guessing?\n\n4. EDUCATIONAL VALUE (0-25 points)\n   - Does it test important knowledge?\n   - Does it assess understanding, not just memorization?\n   - Is the difficulty level appropriate?\n   - Does it help identify student misconceptions?\n\nCHECK FOR THESE ISSUES:\n\n❌ **Critical Issues** (Automatic fail - score < 50)\n- Multiple correct answers possible\n- Correct answer is wrong\n- Question is ambiguous or unclear\n- Distractors are obviously wrong\n- Question contains errors\n\n⚠️ **Major Issues** (Score 50-70)\n- Correct answer is obviously longer/different\n- Uses \"always\" or \"never\" in correct answer\n- Distractors are not plausible\n- Tests trivial information\n- Poor grammar or spelling\n\n⚡ **Minor Issues** (Score 70-85)\n- Could be worded more clearly\n- One distractor is weak\n- Slightly unbalanced option lengths\n- Could test deeper understanding\n\n✅ **Excellent** (Score 85-100)\n- Clear, unambiguous question\n- One definitively correct answer\n- Three plausible, educational distractors\n- Tests important understanding\n- Appropriate difficulty\n- Well-written and professional\n\nOUTPUT FORMAT (JSON Array):\n[\n  {\n    \"questionIndex\": 0,\n    \"score\": 85,\n    \"grade\": \"excellent|good|fair|poor\",\n    \"clarity\": {\n      \"score\": 22,\n      \"issues\": [\"List any clarity issues\"],\n      \"suggestions\": [\"How to improve\"]\n    },\n    \"correctness\": {\n      \"score\": 25,\n      \"issues\": [],\n      \"suggestions\": []\n    },\n    \"distractorQuality\": {\n      \"score\": 20,\n      \"issues\": [\"Distractor C is too obviously wrong\"],\n      \"suggestions\": [\"Make distractor C more plausible by...\"]\n    },\n    \"educationalValue\": {\n      \"score\": 18,\n      \"issues\": [\"Tests memorization rather than understanding\"],\n      \"suggestions\": [\"Rephrase to test application of concept\"]\n    },\n    \"overallIssues\": [\n      \"Main issues with the question\"\n    ],\n    \"strengths\": [\n      \"What the question does well\"\n    ],\n    \"recommendations\": [\n      \"Specific actions to improve the question\"\n    ],\n    \"passesQuality\": true,\n    \"requiresImprovement\": false\n  }\n]\n\nReturn ONLY a valid JSON array containing an object for EACH question. No additional text.",
+      "requiredVariables": ["questions"],
       "outputFormat": "json",
       "outputSchema": {
-        "score": "number",
-        "grade": "string",
-        "clarity": "object",
-        "correctness": "object",
-        "distractorQuality": "object",
-        "educationalValue": "object",
-        "overallIssues": "array",
-        "strengths": "array",
-        "recommendations": "array",
-        "passesQuality": "boolean",
-        "requiresImprovement": "boolean"
+        "type": "array",
+        "items": {
+          "questionIndex": "number",
+          "score": "number",
+          "grade": "string",
+          "clarity": "object",
+          "correctness": "object",
+          "distractorQuality": "object",
+          "educationalValue": "object",
+          "overallIssues": "array",
+          "strengths": "array",
+          "recommendations": "array",
+          "passesQuality": "boolean",
+          "requiresImprovement": "boolean"
+        }
       }
     },
     "question-improvement": {

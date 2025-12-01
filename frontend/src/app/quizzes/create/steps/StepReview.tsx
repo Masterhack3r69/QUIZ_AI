@@ -51,10 +51,32 @@ export default function StepReview({ onNext }: StepReviewProps) {
         difficulty: config.difficulty
       })
       
-      const formattedQuestions = result.questions.map((q: any, index: number) => ({
-        ...q,
-        id: q.id || `q-${Date.now()}-${index}`,
-      }))
+      const formattedQuestions = result.questions.map((q: any, index: number) => {
+        // Map backend type to frontend type
+        let type = q.type;
+        if (q.type === 'multipleChoice') type = 'multiple-choice';
+        else if (q.type === 'trueFalse') type = 'true-false';
+        else if (q.type === 'fillInBlank') type = 'fill-in-the-blank';
+
+        // Map correct answer index to value if needed
+        let correctAnswer = q.correctAnswer;
+        if (typeof q.correctAnswer === 'number' && q.options && Array.isArray(q.options)) {
+          correctAnswer = q.options[q.correctAnswer];
+        } else if (type === 'true-false' && typeof q.correctAnswer === 'number') {
+           if (q.options && Array.isArray(q.options)) {
+             correctAnswer = q.options[q.correctAnswer];
+           }
+        }
+
+        return {
+          ...q,
+          id: q.id || `q-${Date.now()}-${index}`,
+          text: q.question || q.text, // Handle both 'question' and 'text'
+          type: type,
+          correctAnswer: correctAnswer,
+          points: q.points || 1
+        };
+      })
 
       setQuestions(formattedQuestions)
       toast.success(`Generated ${formattedQuestions.length} questions!`)

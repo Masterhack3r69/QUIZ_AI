@@ -144,40 +144,68 @@ class QualityValidationAgent {
       return [];
     }
 
-    const concurrency = options.concurrency || 2; // Default to 2 to avoid rate limits
-
     console.log(`[QualityValidationAgent] Starting batch validation`, {
-      totalQuestions: questions.length,
-      concurrency
+      totalQuestions: questions.length
     });
 
     try {
-      // Process questions in batches to limit concurrency
-      const results = [];
-      
-      for (let i = 0; i < questions.length; i += concurrency) {
-        const batch = questions.slice(i, i + concurrency);
-        
-        console.log(`[QualityValidationAgent] Processing batch ${Math.floor(i / concurrency) + 1}`, {
-          batchSize: batch.length,
-          progress: `${i + batch.length}/${questions.length}`
-        });
+      // Format questions for batch prompt
+      const formattedQuestions = this.formatQuestionsForBatchPrompt(questions);
 
-        // Validate batch in parallel
-        const batchResults = await Promise.all(
-          batch.map(question => this.validateQuestion(question, options))
-        );
+      // Get formatted prompt from prompt manager
+      const promptData = this.promptManager.getPrompt('quality-validation', {
+        questions: formattedQuestions
+      });
 
-        results.push(...batchResults);
-        
-        // Add small delay between batches to avoid rate limits
-        if (i + concurrency < questions.length) {
-          await new Promise(resolve => setTimeout(resolve, 500)); // 500ms delay
+      // Build full prompt
+      const fullPrompt = `${promptData.systemPrompt}\n\n${promptData.userPrompt}`;
+
+      // Execute via task router
+      const result = await this.taskRouter.executeTask(
+        'quality-validation',
+        fullPrompt,
+        {
+          forceProvider: options.forceProvider,
+          temperature: options.temperature || 0.3,
+          jsonMode: true,
+          maxTokens: 4000 // Increased token limit for batch response
         }
+      );
+
+      // Parse JSON response
+      const validationResults = this.parseResponse(result.text);
+
+      if (!Array.isArray(validationResults)) {
+        throw new Error('Validation response must be an array');
       }
 
+      // Process results and map back to original questions
+      // We assume the AI returns results in the same order or with indices
+      const processedResults = questions.map((question, index) => {
+        // Try to find result by index if provided, otherwise assume order matches
+        const validationResult = validationResults.find(r => r.questionIndex === index) || validationResults[index];
+        
+        if (!validationResult) {
+          this.log('warn', `No validation result found for question index ${index}`, {
+            questionText: question.question.substring(0, 50)
+          });
+          // Return a fallback result or throw
+          return {
+            score: 0,
+            grade: 'poor',
+            passesQuality: false,
+            requiresImprovement: true,
+            overallIssues: ['Validation failed or missing'],
+            questionId: question.id || null,
+            questionText: question.question
+          };
+        }
+
+        return this.processValidationResult(validationResult, question);
+      });
+
       // Aggregate results
-      const aggregated = this.aggregateResults(results, questions);
+      const aggregated = this.aggregateResults(processedResults, questions);
 
       console.log(`[QualityValidationAgent] Batch validation complete`, {
         totalQuestions: questions.length,
@@ -186,7 +214,7 @@ class QualityValidationAgent {
         passRate: aggregated.passRate
       });
 
-      return results;
+      return processedResults;
 
     } catch (error) {
       console.error(`[QualityValidationAgent] Batch validation failed`, {
@@ -195,6 +223,21 @@ class QualityValidationAgent {
       });
       throw error;
     }
+  }
+
+  /**
+   * Format multiple questions for batch prompt
+   * 
+   * @param {Array} questions - Questions to format
+   * @returns {string} Formatted questions text
+   */
+  formatQuestionsForBatchPrompt(questions) {
+    return questions.map((question, index) => {
+      const parts = [];
+      parts.push(`--- QUESTION ${index + 1} (Index: ${index}) ---`);
+      parts.push(this.formatQuestionForPrompt(question));
+      return parts.join('\n');
+    }).join('\n\n');
   }
 
   /**
@@ -315,6 +358,12 @@ class QualityValidationAgent {
         throw new Error('Response must be a JSON string or object');
       }
 
+      // Handle array response (batch validation)
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+
+      // Handle single object response (legacy/single validation)
       // Validate required fields
       if (typeof parsed.score !== 'number') {
         throw new Error('Response must include a numeric "score" field');
