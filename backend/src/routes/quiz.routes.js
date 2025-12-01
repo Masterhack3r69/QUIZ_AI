@@ -48,10 +48,10 @@ router.post('/test-create', upload.single('file'), async (req, res) => {
           : questionDistribution;
         
         distribution = {
-          multipleChoice: parseInt(parsed.multipleChoice) || 0,
-          trueFalse: parseInt(parsed.trueFalse) || 0,
-          fillInBlank: parseInt(parsed.fillInBlank) || 0,
-          matching: parseInt(parsed.matching) || 0
+          multipleChoice: parseInt(parsed.multipleChoice || parsed['multiple-choice']) || 0,
+          trueFalse: parseInt(parsed.trueFalse || parsed['true-false']) || 0,
+          fillInBlank: parseInt(parsed.fillInBlank || parsed['fill-in-the-blank']) || 0,
+          matching: parseInt(parsed.matching || parsed['matching']) || 0
         };
       } catch (e) {
         console.error('Error parsing questionDistribution:', e);
@@ -181,10 +181,10 @@ router.post('/generate-questions', protect, async (req, res) => {
     let distribution = null;
     if (questionDistribution) {
       distribution = {
-        multipleChoice: parseInt(questionDistribution.multipleChoice) || 0,
-        trueFalse: parseInt(questionDistribution.trueFalse) || 0,
-        fillInBlank: parseInt(questionDistribution.fillInBlank) || 0,
-        matching: parseInt(questionDistribution.matching) || 0
+        multipleChoice: parseInt(questionDistribution.multipleChoice || questionDistribution['multiple-choice']) || 0,
+        trueFalse: parseInt(questionDistribution.trueFalse || questionDistribution['true-false']) || 0,
+        fillInBlank: parseInt(questionDistribution.fillInBlank || questionDistribution['fill-in-the-blank']) || 0,
+        matching: parseInt(questionDistribution.matching || questionDistribution['matching']) || 0
       };
     }
     
@@ -287,10 +287,10 @@ router.post('/create', protect, upload.single('file'), async (req, res) => {
             : questionDistribution;
           
           distribution = {
-            multipleChoice: parseInt(parsed.multipleChoice) || 0,
-            trueFalse: parseInt(parsed.trueFalse) || 0,
-            fillInBlank: parseInt(parsed.fillInBlank) || 0,
-            matching: parseInt(parsed.matching) || 0
+            multipleChoice: parseInt(parsed.multipleChoice || parsed['multiple-choice']) || 0,
+            trueFalse: parseInt(parsed.trueFalse || parsed['true-false']) || 0,
+            fillInBlank: parseInt(parsed.fillInBlank || parsed['fill-in-the-blank']) || 0,
+            matching: parseInt(parsed.matching || parsed['matching']) || 0
           };
         } catch (e) {
           console.error('Error parsing questionDistribution:', e);
@@ -343,10 +343,10 @@ router.post('/create', protect, upload.single('file'), async (req, res) => {
           : questionDistribution;
         
         distribution = {
-          multipleChoice: parseInt(parsed.multipleChoice) || 0,
-          trueFalse: parseInt(parsed.trueFalse) || 0,
-          fillInBlank: parseInt(parsed.fillInBlank) || 0,
-          matching: parseInt(parsed.matching) || 0
+          multipleChoice: parseInt(parsed.multipleChoice || parsed['multiple-choice']) || 0,
+          trueFalse: parseInt(parsed.trueFalse || parsed['true-false']) || 0,
+          fillInBlank: parseInt(parsed.fillInBlank || parsed['fill-in-the-blank']) || 0,
+          matching: parseInt(parsed.matching || parsed['matching']) || 0
         };
       } catch (e) {
         console.error('Error parsing questionDistribution:', e);

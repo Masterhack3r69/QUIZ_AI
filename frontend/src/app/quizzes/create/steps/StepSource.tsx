@@ -6,19 +6,22 @@ import { aiService } from "@/services/ai.service"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Label } from "@/components/ui/label"
-import { FileText, Link as LinkIcon, Type, Video, Loader2, CheckCircle2 } from "lucide-react"
+import { FileText, Link as LinkIcon, Type, Video, Loader2, CheckCircle2, UploadCloud, Youtube, Globe, BookOpen } from "lucide-react"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
+import { motion } from "framer-motion"
 
 interface StepSourceProps {
   onNext: () => void
 }
 
+type SourceType = 'topic' | 'text' | 'url' | 'video' | 'file'
+
 export default function StepSource({ onNext }: StepSourceProps) {
   const { setSource, sourceType, sourceMetadata } = useQuizStore()
   const [isLoading, setIsLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState<SourceType>((sourceType === 'file' ? 'text' : sourceType) || 'topic')
   
   // Local state for inputs
   const [topic, setTopic] = useState("")
@@ -26,11 +29,12 @@ export default function StepSource({ onNext }: StepSourceProps) {
   const [url, setUrl] = useState("")
   const [videoUrl, setVideoUrl] = useState("")
 
-  const handleProcess = async (type: 'topic' | 'text' | 'url' | 'video') => {
+  const handleProcess = async () => {
     setIsLoading(true)
     try {
       let result;
       let contentToStore = "";
+      const type = activeTab;
 
       if (type === 'topic') {
         if (!topic) throw new Error("Please enter a topic")
@@ -38,7 +42,6 @@ export default function StepSource({ onNext }: StepSourceProps) {
         contentToStore = result.content
       } else if (type === 'text') {
         if (!text) throw new Error("Please enter some text")
-        // Direct text doesn't always need backend processing unless we want to clean it
         contentToStore = text
         result = { content: text, contentLength: text.length }
       } else if (type === 'url') {
@@ -57,8 +60,6 @@ export default function StepSource({ onNext }: StepSourceProps) {
       })
       
       toast.success("Content processed successfully!")
-      // Optional: Auto-advance or let user click next
-      // onNext() 
     } catch (error: any) {
       console.error(error)
       toast.error(error.response?.data?.message || error.message || "Failed to process content")
@@ -67,122 +68,213 @@ export default function StepSource({ onNext }: StepSourceProps) {
     }
   }
 
+  const sourceOptions = [
+    {
+      id: 'topic',
+      label: 'Topic',
+      icon: BookOpen,
+      description: 'Generate from a subject or topic',
+      color: 'text-blue-500',
+      bg: 'bg-blue-50 dark:bg-blue-900/20',
+      border: 'hover:border-blue-500'
+    },
+    {
+      id: 'text',
+      label: 'Raw Text',
+      icon: FileText,
+      description: 'Paste your own notes or content',
+      color: 'text-orange-500',
+      bg: 'bg-orange-50 dark:bg-orange-900/20',
+      border: 'hover:border-orange-500'
+    },
+    {
+      id: 'url',
+      label: 'Website',
+      icon: Globe,
+      description: 'Extract content from a webpage',
+      color: 'text-green-500',
+      bg: 'bg-green-50 dark:bg-green-900/20',
+      border: 'hover:border-green-500'
+    },
+    {
+      id: 'video',
+      label: 'YouTube',
+      icon: Youtube,
+      description: 'Create quiz from a video',
+      color: 'text-red-500',
+      bg: 'bg-red-50 dark:bg-red-900/20',
+      border: 'hover:border-red-500'
+    }
+  ]
+
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="text-center space-y-2 mb-8">
-        <h2 className="text-2xl font-bold">Choose Your Source Material</h2>
-        <p className="text-muted-foreground">Select how you want to generate your quiz questions.</p>
+    <div className="space-y-8">
+      <div className="text-center space-y-2 max-w-2xl mx-auto">
+        <h2 className="text-2xl font-bold">Choose Source Material</h2>
+        <p className="text-muted-foreground">
+          Select the type of content you want to use to generate your quiz questions.
+        </p>
       </div>
 
-      <Tabs defaultValue="topic" className="w-full max-w-3xl mx-auto">
-        <TabsList className="grid w-full grid-cols-4 h-auto p-1 bg-muted/50">
-          <TabsTrigger value="topic" className="py-3 flex flex-col gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-sm">
-            <Type className="h-5 w-5" />
-            <span className="text-xs font-medium">Topic</span>
-          </TabsTrigger>
-          <TabsTrigger value="text" className="py-3 flex flex-col gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-sm">
-            <FileText className="h-5 w-5" />
-            <span className="text-xs font-medium">Raw Text</span>
-          </TabsTrigger>
-          <TabsTrigger value="url" className="py-3 flex flex-col gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-sm">
-            <LinkIcon className="h-5 w-5" />
-            <span className="text-xs font-medium">Website URL</span>
-          </TabsTrigger>
-          <TabsTrigger value="video" className="py-3 flex flex-col gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-sm">
-            <Video className="h-5 w-5" />
-            <span className="text-xs font-medium">YouTube</span>
-          </TabsTrigger>
-        </TabsList>
+      {/* Source Selection Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {sourceOptions.map((option) => {
+          const Icon = option.icon
+          const isActive = activeTab === option.id
+          
+          return (
+            <div
+              key={option.id}
+              onClick={() => setActiveTab(option.id as SourceType)}
+              className={cn(
+                "relative cursor-pointer rounded-xl border-2 p-4 transition-all duration-200 hover:shadow-md",
+                isActive 
+                  ? `border-indigo-600 bg-indigo-50/50 dark:bg-indigo-900/10 ring-1 ring-indigo-600` 
+                  : "border-muted hover:border-indigo-300 dark:hover:border-indigo-700 bg-card"
+              )}
+            >
+              <div className={cn("mb-3 w-10 h-10 rounded-lg flex items-center justify-center", option.bg, option.color)}>
+                <Icon className="h-6 w-6" />
+              </div>
+              <h3 className="font-semibold">{option.label}</h3>
+              <p className="text-xs text-muted-foreground mt-1">{option.description}</p>
+              
+              {isActive && (
+                <div className="absolute top-3 right-3 text-indigo-600">
+                  <CheckCircle2 className="h-5 w-5" />
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
 
-        <div className="mt-8">
-          <TabsContent value="topic" className="space-y-4">
+      {/* Input Area */}
+      <motion.div 
+        key={activeTab}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="max-w-2xl mx-auto mt-8 p-6 rounded-xl border bg-card/50"
+      >
+        {activeTab === 'topic' && (
+          <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Enter a Topic</Label>
+              <Label className="text-base">Enter a Topic</Label>
               <Input 
                 placeholder="e.g., Photosynthesis, The Civil War, Quantum Physics" 
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
                 className="h-12 text-lg"
               />
-              <p className="text-xs text-muted-foreground">The AI will generate content based on this topic.</p>
+              <p className="text-sm text-muted-foreground">
+                The AI will use its knowledge base to generate relevant questions.
+              </p>
             </div>
-            <Button onClick={() => handleProcess('topic')} disabled={isLoading || !topic} className="w-full" size="lg">
-              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-              Process Topic
-            </Button>
-          </TabsContent>
+          </div>
+        )}
 
-          <TabsContent value="text" className="space-y-4">
+        {activeTab === 'text' && (
+          <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Paste Text Content</Label>
+              <Label className="text-base">Paste Text Content</Label>
               <Textarea 
                 placeholder="Paste your lecture notes, article, or book excerpt here..." 
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                className="min-h-[200px] resize-y"
+                className="min-h-[200px] resize-y text-base"
               />
             </div>
-            <Button onClick={() => handleProcess('text')} disabled={isLoading || !text} className="w-full" size="lg">
-              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
-              Use Text
-            </Button>
-          </TabsContent>
+          </div>
+        )}
 
-          <TabsContent value="url" className="space-y-4">
+        {activeTab === 'url' && (
+          <div className="space-y-4">
              <div className="space-y-2">
-              <Label>Website URL</Label>
-              <Input 
-                placeholder="https://en.wikipedia.org/wiki/..." 
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                className="h-12"
-              />
-              <p className="text-xs text-muted-foreground">We'll scrape the text from this page to generate questions.</p>
+              <Label className="text-base">Website URL</Label>
+              <div className="relative">
+                <Globe className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
+                <Input 
+                  placeholder="https://en.wikipedia.org/wiki/..." 
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  className="h-12 pl-10"
+                />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                We'll scrape the text from this page to generate questions.
+              </p>
             </div>
-            <Button onClick={() => handleProcess('url')} disabled={isLoading || !url} className="w-full" size="lg">
-              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LinkIcon className="mr-2 h-4 w-4" />}
-              Process URL
-            </Button>
-          </TabsContent>
+          </div>
+        )}
 
-          <TabsContent value="video" className="space-y-4">
+        {activeTab === 'video' && (
+          <div className="space-y-4">
              <div className="space-y-2">
-              <Label>YouTube Video URL</Label>
-              <Input 
-                placeholder="https://www.youtube.com/watch?v=..." 
-                value={videoUrl}
-                onChange={(e) => setVideoUrl(e.target.value)}
-                className="h-12"
-              />
-              <p className="text-xs text-muted-foreground">We'll extract the transcript from the video.</p>
+              <Label className="text-base">YouTube Video URL</Label>
+              <div className="relative">
+                <Youtube className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
+                <Input 
+                  placeholder="https://www.youtube.com/watch?v=..." 
+                  value={videoUrl}
+                  onChange={(e) => setVideoUrl(e.target.value)}
+                  className="h-12 pl-10"
+                />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                We'll extract the transcript from the video.
+              </p>
             </div>
-            <Button onClick={() => handleProcess('video')} disabled={isLoading || !videoUrl} className="w-full" size="lg">
-              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Video className="mr-2 h-4 w-4" />}
-              Process Video
-            </Button>
-          </TabsContent>
+          </div>
+        )}
+
+        <div className="pt-6 mt-2">
+          <Button 
+            onClick={handleProcess} 
+            disabled={isLoading || (activeTab === 'topic' && !topic) || (activeTab === 'text' && !text) || (activeTab === 'url' && !url) || (activeTab === 'video' && !videoUrl)} 
+            className="w-full h-12 text-base font-medium" 
+            size="lg"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Processing Content...
+              </>
+            ) : (
+              <>
+                <Wand2 className="mr-2 h-5 w-5" />
+                Process {sourceOptions.find(o => o.id === activeTab)?.label}
+              </>
+            )}
+          </Button>
         </div>
-      </Tabs>
+      </motion.div>
 
       {/* Success Indicator */}
       {sourceType && !isLoading && (
-        <div className="mt-8 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-lg flex items-center gap-3 animate-in fade-in zoom-in duration-300">
-          <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-green-600 dark:text-green-400">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="max-w-2xl mx-auto p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-lg flex items-center gap-4"
+        >
+          <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-green-600 dark:text-green-400 shrink-0">
             <CheckCircle2 className="h-6 w-6" />
           </div>
-          <div>
-            <h4 className="font-semibold text-green-800 dark:text-green-300">Content Ready!</h4>
-            <p className="text-sm text-green-700 dark:text-green-400">
+          <div className="flex-1">
+            <h4 className="font-semibold text-green-800 dark:text-green-300 text-lg">Content Ready!</h4>
+            <p className="text-green-700 dark:text-green-400">
               Source processed successfully. You can now proceed to configuration.
             </p>
           </div>
-        </div>
+          <Button variant="outline" className="border-green-200 hover:bg-green-100 hover:text-green-700 dark:border-green-800 dark:hover:bg-green-900/50" onClick={onNext}>
+            Next Step
+          </Button>
+        </motion.div>
       )}
     </div>
   )
 }
 
-// Icon helper
 function Wand2(props: any) {
   return (
     <svg

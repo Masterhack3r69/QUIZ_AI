@@ -1,38 +1,38 @@
 {
   "tasks": {
     "content-extraction": {
-      "primary": "github",
-      "fallback": ["openrouter", "gemini", "ollama"],
+      "primary": "gemini",
+      "fallback": ["openrouter", "github", "ollama"],
       "maxRetries": 2,
       "timeout": 120000
     },
     "question-generation": {
-      "primary": "github",
-      "fallback": ["openrouter", "gemini", "ollama"],
+      "primary": "gemini",
+      "fallback": ["openrouter", "github", "ollama"],
       "maxRetries": 2,
       "timeout": 180000
     },
     "quality-validation": {
-      "primary": "github",
-      "fallback": ["openrouter", "gemini", "ollama"],
+      "primary": "gemini",
+      "fallback": ["openrouter", "github", "ollama"],
       "maxRetries": 2,
       "timeout": 120000
     },
     "question-improvement": {
-      "primary": "github",
-      "fallback": ["openrouter", "gemini", "ollama"],
+      "primary": "gemini",
+      "fallback": ["openrouter", "github", "ollama"],
       "maxRetries": 2,
       "timeout": 120000
     },
     "analytics": {
-      "primary": "github",
-      "fallback": ["openrouter", "gemini", "ollama"],
+      "primary": "gemini",
+      "fallback": ["openrouter", "github", "ollama"],
       "maxRetries": 2,
       "timeout": 120000
     },
     "comprehensive-content-analysis": {
-      "primary": "github",
-      "fallback": ["openrouter", "gemini", "ollama"],
+      "primary": "gemini",
+      "fallback": ["openrouter", "github", "ollama"],
       "maxRetries": 2,
       "timeout": 180000
     }
@@ -41,7 +41,7 @@
     "github": {
       "enabled": true,
       "endpoint": "https://models.github.ai/inference",
-      "model": "gpt-4o"
+      "model": "microsoft/Phi-4-mini-reasoning"
     },
     "ollama": {
       "enabled": true,
@@ -59,7 +59,7 @@
     },
     "gemini": {
       "enabled": true,
-      "model": "gemini-3-pro-preview"
+      "model": "gemini-2.5-flash"
     }
   }
 }
