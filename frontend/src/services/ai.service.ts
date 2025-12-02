@@ -16,6 +16,17 @@ export const aiService = {
     return response.data;
   },
 
+  processFile: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post('/quiz/process-file', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
   generateQuestions: async (payload: {
     content: string;
     questionDistribution: Record<string, number>;

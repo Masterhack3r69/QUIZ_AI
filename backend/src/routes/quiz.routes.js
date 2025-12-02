@@ -168,6 +168,27 @@ router.post('/process-topic', protect, async (req, res) => {
   }
 });
 
+// Process uploaded file
+router.post('/process-file', protect, upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    const content = await extractContent(req.file);
+    
+    res.json({ 
+      content,
+      contentLength: content.length,
+      filename: req.file.originalname,
+      message: 'File content extracted successfully'
+    });
+  } catch (error) {
+    console.error('Process file error:', error);
+    res.status(400).json({ message: error.message });
+  }
+});
+
 // Generate questions from content (unified endpoint)
 router.post('/generate-questions', protect, async (req, res) => {
   try {

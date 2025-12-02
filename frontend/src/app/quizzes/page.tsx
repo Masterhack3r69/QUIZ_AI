@@ -1,7 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/context/AuthContext"
+import { Navbar } from "@/components/navbar"
 import { useQuery } from "@tanstack/react-query"
 import { quizService } from "@/services/quiz.service"
 import { Button } from "@/components/ui/button"
@@ -24,6 +26,7 @@ import Link from "next/link"
 
 export default function QuizzesPage() {
   const router = useRouter()
+  const { user, isLoading: isAuthLoading, isAuthenticated } = useAuth()
   const [searchQuery, setSearchQuery] = useState("")
   const [filterStatus, setFilterStatus] = useState<string | null>(null)
 
@@ -38,16 +41,26 @@ export default function QuizzesPage() {
     return matchesSearch && matchesStatus
   })
 
-  if (isLoading) {
+  useEffect(() => {
+    if (!isAuthLoading && !isAuthenticated) {
+      router.push("/login")
+    }
+  }, [isAuthLoading, isAuthenticated, router])
+
+  if (isLoading || isAuthLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
 
+  if (!user) return null
+
   return (
-    <div className="container mx-auto px-4 py-8 space-y-8">
+    <div className="min-h-screen bg-gray-50/50 dark:bg-gray-950">
+      <Navbar />
+      <main className="container mx-auto px-4 py-8 space-y-8">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -163,6 +176,7 @@ export default function QuizzesPage() {
           ))}
         </div>
       )}
+      </main>
     </div>
   )
 }

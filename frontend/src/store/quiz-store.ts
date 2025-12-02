@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type QuestionType = 'multiple-choice' | 'true-false' | 'fill-in-the-blank' | 'short-answer';
+export type QuestionType = 'multiple-choice' | 'true-false' | 'fill-in-the-blank' | 'matching';
 export type Difficulty = 'easy' | 'medium' | 'hard' | 'mixed';
 
 export interface Question {
@@ -8,9 +8,13 @@ export interface Question {
   text: string;
   type: QuestionType;
   options?: string[];
-  correctAnswer: string | string[];
+  correctAnswer: string | string[] | boolean | number; // Updated to support boolean/number
   explanation?: string;
   points: number;
+  // For matching questions
+  leftColumn?: string[];
+  rightColumn?: string[];
+  correctPairs?: { left: number; right: number }[];
 }
 
 export interface QuizState {
@@ -65,7 +69,7 @@ export const useQuizStore = create<QuizState>((set) => ({
       'multiple-choice': 10,
       'true-false': 0,
       'fill-in-the-blank': 0,
-      'short-answer': 0,
+      'matching': 0,
     },
   },
 
@@ -117,7 +121,7 @@ export const useQuizStore = create<QuizState>((set) => ({
         'multiple-choice': 10,
         'true-false': 0,
         'fill-in-the-blank': 0,
-        'short-answer': 0,
+        'matching': 0,
       },
     },
     questions: [],

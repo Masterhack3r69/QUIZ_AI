@@ -10,8 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Label } from "@/components/ui/label"
 import { Badge } from "../../../../components/ui/badge"
-import { Loader2, Trash2, Plus, RefreshCw, Save, Check, Edit2, AlertCircle } from "lucide-react"
+import { Loader2, Trash2, Plus, RefreshCw, Save, Check, Edit2, AlertCircle, X } from "lucide-react"
 import { toast } from "sonner"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { cn } from "@/lib/utils"
 import { motion } from "framer-motion"
 
@@ -207,6 +208,74 @@ export default function StepReview({ onNext }: StepReviewProps) {
                                 updateQuestion(q.id, updates);
                               }}
                               className="border-none shadow-none focus-visible:ring-0 bg-transparent h-auto py-1 px-0" 
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {q.type === 'true-false' && (
+                    <div className="space-y-3">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Correct Answer</Label>
+                      <RadioGroup 
+                        value={String(q.correctAnswer)} 
+                        onValueChange={(val) => updateQuestion(q.id, { correctAnswer: val === 'true' })}
+                        className="flex gap-4"
+                      >
+                        <div className="flex items-center space-x-2 border p-3 rounded-lg flex-1 hover:bg-accent/50 transition-colors">
+                          <RadioGroupItem value="true" id={`t-${q.id}`} />
+                          <Label htmlFor={`t-${q.id}`} className="cursor-pointer flex-1">True</Label>
+                        </div>
+                        <div className="flex items-center space-x-2 border p-3 rounded-lg flex-1 hover:bg-accent/50 transition-colors">
+                          <RadioGroupItem value="false" id={`f-${q.id}`} />
+                          <Label htmlFor={`f-${q.id}`} className="cursor-pointer flex-1">False</Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+                  )}
+
+                  {q.type === 'fill-in-the-blank' && (
+                    <div className="space-y-3">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Correct Answer</Label>
+                      <Input 
+                        value={q.correctAnswer as string} 
+                        onChange={(e) => updateQuestion(q.id, { correctAnswer: e.target.value })}
+                        placeholder="Enter the correct answer..."
+                        className="text-base"
+                      />
+                    </div>
+                  )}
+
+
+
+                  {q.type === 'matching' && q.correctPairs && q.leftColumn && q.rightColumn && (
+                    <div className="space-y-3">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Matching Pairs</Label>
+                      <div className="grid gap-3">
+                        <div className="grid grid-cols-2 gap-4 px-1">
+                          <Label className="text-xs text-muted-foreground">Left Item</Label>
+                          <Label className="text-xs text-muted-foreground">Right Match</Label>
+                        </div>
+                        {q.correctPairs.map((pair, idx) => (
+                          <div key={idx} className="grid grid-cols-2 gap-4 items-center">
+                            <Input
+                              value={q.leftColumn![pair.left]}
+                              onChange={(e) => {
+                                const newLeft = [...q.leftColumn!];
+                                newLeft[pair.left] = e.target.value;
+                                updateQuestion(q.id, { leftColumn: newLeft });
+                              }}
+                              placeholder="Left item"
+                            />
+                            <Input
+                              value={q.rightColumn![pair.right]}
+                              onChange={(e) => {
+                                const newRight = [...q.rightColumn!];
+                                newRight[pair.right] = e.target.value;
+                                updateQuestion(q.id, { rightColumn: newRight });
+                              }}
+                              placeholder="Right match"
                             />
                           </div>
                         ))}
