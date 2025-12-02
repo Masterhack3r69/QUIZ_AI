@@ -1,302 +1,400 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useCallback } from "react"
 import { useQuizStore } from "@/store/quiz-store"
-import { aiService } from "@/services/ai.service"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { FileText, Link as LinkIcon, Type, Video, Loader2, CheckCircle2, UploadCloud, Youtube, Globe, BookOpen } from "lucide-react"
+import { 
+  FileText, 
+  CheckCircle2, 
+  Youtube, 
+  Globe, 
+  BookOpen,
+  Sparkles,
+  Upload,
+  File,
+  X
+} from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
-import { motion } from "framer-motion"
-
-interface StepSourceProps {
-  onNext: () => void
-}
+import { motion, AnimatePresence } from "framer-motion"
 
 type SourceType = 'topic' | 'text' | 'url' | 'video' | 'file'
 
-export default function StepSource({ onNext }: StepSourceProps) {
-  const { setSource, sourceType, sourceMetadata } = useQuizStore()
-  const [isLoading, setIsLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState<SourceType>((sourceType === 'file' ? 'text' : sourceType) || 'topic')
+const sourceOptions = [
+  {
+    id: 'topic' as SourceType,
+    label: 'Topic',
+    icon: BookOpen,
+    description: 'Generate from any subject',
+    bgLight: 'bg-blue-50 dark:bg-blue-950/30',
+    borderActive: 'border-blue-500 ring-blue-500/20',
+    iconBg: 'bg-gradient-to-br from-blue-500 to-cyan-500'
+  },
+  {
+    id: 'text' as SourceType,
+    label: 'Text',
+    icon: FileText,
+    description: 'Paste notes or content',
+    bgLight: 'bg-orange-50 dark:bg-orange-950/30',
+    borderActive: 'border-orange-500 ring-orange-500/20',
+    iconBg: 'bg-gradient-to-br from-orange-500 to-amber-500'
+  },
+  {
+    id: 'file' as SourceType,
+    label: 'File',
+    icon: Upload,
+    description: 'Upload PDF or TXT',
+    bgLight: 'bg-violet-50 dark:bg-violet-950/30',
+    borderActive: 'border-violet-500 ring-violet-500/20',
+    iconBg: 'bg-gradient-to-br from-violet-500 to-purple-500'
+  },
+  {
+    id: 'url' as SourceType,
+    label: 'Website',
+    icon: Globe,
+    description: 'Extract from webpage',
+    bgLight: 'bg-emerald-50 dark:bg-emerald-950/30',
+    borderActive: 'border-emerald-500 ring-emerald-500/20',
+    iconBg: 'bg-gradient-to-br from-emerald-500 to-green-500'
+  },
+  {
+    id: 'video' as SourceType,
+    label: 'YouTube',
+    icon: Youtube,
+    description: 'Quiz from video',
+    bgLight: 'bg-red-50 dark:bg-red-950/30',
+    borderActive: 'border-red-500 ring-red-500/20',
+    iconBg: 'bg-gradient-to-br from-red-500 to-rose-500'
+  }
+]
+
+export default function StepSource() {
+  const { setSource, sourceType: storedSourceType } = useQuizStore()
+  const [activeTab, setActiveTab] = useState<SourceType>(storedSourceType || 'topic')
+  const fileInputRef = useRef<HTMLInputElement>(null)
   
-  // Local state for inputs
   const [topic, setTopic] = useState("")
   const [text, setText] = useState("")
   const [url, setUrl] = useState("")
   const [videoUrl, setVideoUrl] = useState("")
+  const [file, setFile] = useState<File | null>(null)
 
-  const handleProcess = async () => {
-    setIsLoading(true)
-    try {
-      let result;
-      let contentToStore = "";
-      const type = activeTab;
-
-      if (type === 'topic') {
-        if (!topic) throw new Error("Please enter a topic")
-        result = await aiService.processTopic(topic)
-        contentToStore = result.content
-      } else if (type === 'text') {
-        if (!text) throw new Error("Please enter some text")
-        contentToStore = text
-        result = { content: text, contentLength: text.length }
-      } else if (type === 'url') {
-        if (!url) throw new Error("Please enter a URL")
-        result = await aiService.processUrl(url)
-        contentToStore = result.content
-      } else if (type === 'video') {
-        if (!videoUrl) throw new Error("Please enter a YouTube URL")
-        result = await aiService.processVideo(videoUrl)
-        contentToStore = result.content
-      }
-
-      setSource(type, contentToStore, { 
-        processedContent: contentToStore,
-        originalInput: type === 'topic' ? topic : type === 'url' ? url : type === 'video' ? videoUrl : 'Raw Text'
-      })
-      
-      toast.success("Content processed successfully!")
-    } catch (error: any) {
-      console.error(error)
-      toast.error(error.response?.data?.message || error.message || "Failed to process content")
-    } finally {
-      setIsLoading(false)
+  // Auto-save to store when input changes
+  const handleTopicChange = (value: string) => {
+    setTopic(value)
+    if (value.trim()) {
+      setSource('topic', value, { originalInput: value })
     }
   }
 
-  const sourceOptions = [
-    {
-      id: 'topic',
-      label: 'Topic',
-      icon: BookOpen,
-      description: 'Generate from a subject or topic',
-      color: 'text-blue-500',
-      bg: 'bg-blue-50 dark:bg-blue-900/20',
-      border: 'hover:border-blue-500'
-    },
-    {
-      id: 'text',
-      label: 'Raw Text',
-      icon: FileText,
-      description: 'Paste your own notes or content',
-      color: 'text-orange-500',
-      bg: 'bg-orange-50 dark:bg-orange-900/20',
-      border: 'hover:border-orange-500'
-    },
-    {
-      id: 'url',
-      label: 'Website',
-      icon: Globe,
-      description: 'Extract content from a webpage',
-      color: 'text-green-500',
-      bg: 'bg-green-50 dark:bg-green-900/20',
-      border: 'hover:border-green-500'
-    },
-    {
-      id: 'video',
-      label: 'YouTube',
-      icon: Youtube,
-      description: 'Create quiz from a video',
-      color: 'text-red-500',
-      bg: 'bg-red-50 dark:bg-red-900/20',
-      border: 'hover:border-red-500'
+  const handleTextChange = (value: string) => {
+    setText(value)
+    if (value.trim()) {
+      setSource('text', value, { processedContent: value, originalInput: 'Raw Text' })
     }
-  ]
+  }
+
+  const handleUrlChange = (value: string) => {
+    setUrl(value)
+    if (value.trim()) {
+      setSource('url', value, { url: value, originalInput: value })
+    }
+  }
+
+  const handleVideoUrlChange = (value: string) => {
+    setVideoUrl(value)
+    if (value.trim()) {
+      setSource('video', value, { url: value, originalInput: value })
+    }
+  }
+
+  const handleFileSelect = useCallback(async (selectedFile: File) => {
+    const allowedTypes = ['application/pdf', 'text/plain', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+    
+    if (!allowedTypes.includes(selectedFile.type) && !selectedFile.name.endsWith('.txt')) {
+      toast.error("Please upload a PDF, TXT, or Word document")
+      return
+    }
+
+    if (selectedFile.size > 10 * 1024 * 1024) {
+      toast.error("File size must be less than 10MB")
+      return
+    }
+
+    setFile(selectedFile)
+    
+    // For text files, read content directly
+    if (selectedFile.type === 'text/plain' || selectedFile.name.endsWith('.txt')) {
+      const content = await selectedFile.text()
+      setSource('file', content, { 
+        filename: selectedFile.name, 
+        processedContent: content,
+        originalInput: selectedFile.name 
+      })
+    } else {
+      // For PDF/Word, store the file reference - will be processed on next step
+      setSource('file', selectedFile.name, { 
+        filename: selectedFile.name,
+        file: selectedFile,
+        originalInput: selectedFile.name 
+      })
+    }
+    
+    toast.success(`File "${selectedFile.name}" selected`)
+  }, [setSource])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    const droppedFile = e.dataTransfer.files[0]
+    if (droppedFile) {
+      handleFileSelect(droppedFile)
+    }
+  }, [handleFileSelect])
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+  }
+
+  const removeFile = () => {
+    setFile(null)
+    setSource(null, null, {})
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  const activeOption = sourceOptions.find(o => o.id === activeTab)
 
   return (
-    <div className="space-y-8">
-      <div className="text-center space-y-2 max-w-2xl mx-auto">
-        <h2 className="text-2xl font-bold">Choose Source Material</h2>
-        <p className="text-muted-foreground">
-          Select the type of content you want to use to generate your quiz questions.
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="text-center space-y-2">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 text-xs font-medium mb-2">
+          <Sparkles className="h-3 w-3" />
+          Step 1 of 4
+        </div>
+        <h2 className="text-xl sm:text-2xl font-bold text-foreground">Choose Your Source</h2>
+        <p className="text-muted-foreground text-sm max-w-md mx-auto">
+          Select how you want to generate quiz questions
         </p>
       </div>
 
-      {/* Source Selection Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Source Selection Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {sourceOptions.map((option) => {
           const Icon = option.icon
           const isActive = activeTab === option.id
           
           return (
-            <div
+            <motion.button
               key={option.id}
-              onClick={() => setActiveTab(option.id as SourceType)}
+              onClick={() => setActiveTab(option.id)}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               className={cn(
-                "relative cursor-pointer rounded-xl border-2 p-4 transition-all duration-200 hover:shadow-md",
+                "relative flex flex-col items-center gap-2 p-3 sm:p-4 rounded-xl border-2 transition-all duration-200 text-left group shadow-sm",
                 isActive 
-                  ? `border-indigo-600 bg-indigo-50/50 dark:bg-indigo-900/10 ring-1 ring-indigo-600` 
-                  : "border-muted hover:border-indigo-300 dark:hover:border-indigo-700 bg-card"
+                  ? `${option.borderActive} ${option.bgLight} ring-4` 
+                  : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800/50 hover:shadow-md"
               )}
             >
-              <div className={cn("mb-3 w-10 h-10 rounded-lg flex items-center justify-center", option.bg, option.color)}>
-                <Icon className="h-6 w-6" />
+              <div className={cn(
+                "w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center transition-all shadow-lg",
+                isActive ? option.iconBg : "bg-slate-100 dark:bg-slate-700 group-hover:scale-105"
+              )}>
+                <Icon className={cn(
+                  "h-5 w-5 sm:h-6 sm:w-6 transition-colors",
+                  isActive ? "text-white" : "text-slate-500 dark:text-slate-400"
+                )} />
               </div>
-              <h3 className="font-semibold">{option.label}</h3>
-              <p className="text-xs text-muted-foreground mt-1">{option.description}</p>
+              <div className="text-center">
+                <h3 className={cn(
+                  "font-semibold text-xs sm:text-sm transition-colors",
+                  isActive ? "text-foreground" : "text-slate-700 dark:text-slate-300"
+                )}>{option.label}</h3>
+                <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5 hidden sm:block">
+                  {option.description}
+                </p>
+              </div>
               
               {isActive && (
-                <div className="absolute top-3 right-3 text-indigo-600">
-                  <CheckCircle2 className="h-5 w-5" />
-                </div>
+                <motion.div 
+                  layoutId="activeIndicator"
+                  className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-white dark:bg-slate-900 shadow-md flex items-center justify-center"
+                >
+                  <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4 text-indigo-500" />
+                </motion.div>
               )}
-            </div>
+            </motion.button>
           )
         })}
       </div>
 
       {/* Input Area */}
-      <motion.div 
-        key={activeTab}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="max-w-2xl mx-auto mt-8 p-6 rounded-xl border bg-card/50"
-      >
-        {activeTab === 'topic' && (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-base">Enter a Topic</Label>
-              <Input 
-                placeholder="e.g., Photosynthesis, The Civil War, Quantum Physics" 
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                className="h-12 text-lg"
-              />
-              <p className="text-sm text-muted-foreground">
-                The AI will use its knowledge base to generate relevant questions.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'text' && (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-base">Paste Text Content</Label>
-              <Textarea 
-                placeholder="Paste your lecture notes, article, or book excerpt here..." 
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                className="min-h-[200px] resize-y text-base"
-              />
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'url' && (
-          <div className="space-y-4">
-             <div className="space-y-2">
-              <Label className="text-base">Website URL</Label>
-              <div className="relative">
-                <Globe className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
-                <Input 
-                  placeholder="https://en.wikipedia.org/wiki/..." 
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  className="h-12 pl-10"
-                />
-              </div>
-              <p className="text-sm text-muted-foreground">
-                We'll scrape the text from this page to generate questions.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'video' && (
-          <div className="space-y-4">
-             <div className="space-y-2">
-              <Label className="text-base">YouTube Video URL</Label>
-              <div className="relative">
-                <Youtube className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
-                <Input 
-                  placeholder="https://www.youtube.com/watch?v=..." 
-                  value={videoUrl}
-                  onChange={(e) => setVideoUrl(e.target.value)}
-                  className="h-12 pl-10"
-                />
-              </div>
-              <p className="text-sm text-muted-foreground">
-                We'll extract the transcript from the video.
-              </p>
-            </div>
-          </div>
-        )}
-
-        <div className="pt-6 mt-2">
-          <Button 
-            onClick={handleProcess} 
-            disabled={isLoading || (activeTab === 'topic' && !topic) || (activeTab === 'text' && !text) || (activeTab === 'url' && !url) || (activeTab === 'video' && !videoUrl)} 
-            className="w-full h-12 text-base font-medium" 
-            size="lg"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Processing Content...
-              </>
-            ) : (
-              <>
-                <Wand2 className="mr-2 h-5 w-5" />
-                Process {sourceOptions.find(o => o.id === activeTab)?.label}
-              </>
-            )}
-          </Button>
-        </div>
-      </motion.div>
-
-      {/* Success Indicator */}
-      {sourceType && !isLoading && (
+      <AnimatePresence mode="wait">
         <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="max-w-2xl mx-auto p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-lg flex items-center gap-4"
+          key={activeTab}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.2 }}
+          className={cn(
+            "rounded-xl border-2 border-dashed p-5 sm:p-6 transition-colors",
+            activeOption?.bgLight,
+            "border-slate-300 dark:border-slate-700"
+          )}
         >
-          <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-green-600 dark:text-green-400 shrink-0">
-            <CheckCircle2 className="h-6 w-6" />
-          </div>
-          <div className="flex-1">
-            <h4 className="font-semibold text-green-800 dark:text-green-300 text-lg">Content Ready!</h4>
-            <p className="text-green-700 dark:text-green-400">
-              Source processed successfully. You can now proceed to configuration.
-            </p>
-          </div>
-          <Button variant="outline" className="border-green-200 hover:bg-green-100 hover:text-green-700 dark:border-green-800 dark:hover:bg-green-900/50" onClick={onNext}>
-            Next Step
-          </Button>
-        </motion.div>
-      )}
-    </div>
-  )
-}
+          {activeTab === 'topic' && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", activeOption?.iconBg)}>
+                  <BookOpen className="h-4 w-4 text-white" />
+                </div>
+                <div>
+                  <Label className="text-sm font-semibold">Enter a Topic</Label>
+                  <p className="text-xs text-muted-foreground">AI will generate questions from its knowledge</p>
+                </div>
+              </div>
+              <Input 
+                placeholder="e.g., Photosynthesis, World War II, Machine Learning" 
+                value={topic}
+                onChange={(e) => handleTopicChange(e.target.value)}
+                className="h-12 text-base bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl"
+              />
+            </div>
+          )}
 
-function Wand2(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z" />
-      <path d="m14 7 3 3" />
-      <path d="M5 6v4" />
-      <path d="M19 14v4" />
-      <path d="M10 2v2" />
-      <path d="M7 8H3" />
-      <path d="M21 16h-4" />
-      <path d="M11 3H9" />
-    </svg>
+          {activeTab === 'text' && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", activeOption?.iconBg)}>
+                  <FileText className="h-4 w-4 text-white" />
+                </div>
+                <div>
+                  <Label className="text-sm font-semibold">Paste Your Content</Label>
+                  <p className="text-xs text-muted-foreground">Lecture notes, articles, or any text</p>
+                </div>
+              </div>
+              <Textarea 
+                placeholder="Paste your content here..." 
+                value={text}
+                onChange={(e) => handleTextChange(e.target.value)}
+                className="min-h-[180px] resize-y text-base bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl"
+              />
+              {text && (
+                <p className="text-xs text-muted-foreground text-right">
+                  {text.length.toLocaleString()} characters
+                </p>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'file' && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", activeOption?.iconBg)}>
+                  <Upload className="h-4 w-4 text-white" />
+                </div>
+                <div>
+                  <Label className="text-sm font-semibold">Upload a File</Label>
+                  <p className="text-xs text-muted-foreground">PDF, TXT, or Word documents (max 10MB)</p>
+                </div>
+              </div>
+              
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.txt,.doc,.docx"
+                onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
+                className="hidden"
+              />
+
+              {!file ? (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-8 text-center cursor-pointer hover:border-violet-400 dark:hover:border-violet-500 hover:bg-violet-50/50 dark:hover:bg-violet-950/20 transition-colors"
+                >
+                  <Upload className="h-10 w-10 text-slate-400 mx-auto mb-3" />
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                    Click to upload or drag and drop
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    PDF, TXT, DOC, DOCX
+                  </p>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <div className="w-10 h-10 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
+                    <File className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{file.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {(file.size / 1024).toFixed(1)} KB
+                    </p>
+                  </div>
+                  <button
+                    onClick={removeFile}
+                    className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                  >
+                    <X className="h-4 w-4 text-slate-500" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'url' && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", activeOption?.iconBg)}>
+                  <Globe className="h-4 w-4 text-white" />
+                </div>
+                <div>
+                  <Label className="text-sm font-semibold">Website URL</Label>
+                  <p className="text-xs text-muted-foreground">Content will be extracted when you continue</p>
+                </div>
+              </div>
+              <div className="relative">
+                <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input 
+                  placeholder="https://example.com/article" 
+                  value={url}
+                  onChange={(e) => handleUrlChange(e.target.value)}
+                  className="h-12 pl-12 text-base bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl"
+                />
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'video' && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", activeOption?.iconBg)}>
+                  <Youtube className="h-4 w-4 text-white" />
+                </div>
+                <div>
+                  <Label className="text-sm font-semibold">YouTube Video URL</Label>
+                  <p className="text-xs text-muted-foreground">Transcript will be extracted when you continue</p>
+                </div>
+              </div>
+              <div className="relative">
+                <Youtube className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input 
+                  placeholder="https://youtube.com/watch?v=..." 
+                  value={videoUrl}
+                  onChange={(e) => handleVideoUrlChange(e.target.value)}
+                  className="h-12 pl-12 text-base bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl"
+                />
+              </div>
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
+    </div>
   )
 }

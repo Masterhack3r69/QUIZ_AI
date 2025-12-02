@@ -8,14 +8,36 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Loader2, Save, Calendar as CalendarIcon, FileText, BarChart, Clock, Hash, CheckCircle2, Rocket } from "lucide-react"
+import { 
+  Loader2, 
+  Calendar as CalendarIcon, 
+  FileText, 
+  BarChart, 
+  Clock, 
+  Hash, 
+  Rocket,
+  Sparkles,
+  CheckCircle2,
+  ListChecks,
+  ToggleLeft,
+  PenLine,
+  Link2,
+  Trophy
+} from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
-import { Badge } from "../../../../components/ui/badge"
+import { Badge } from "@/components/ui/badge"
+import { motion } from "framer-motion"
+
+const typeIcons: Record<string, any> = {
+  'multiple-choice': ListChecks,
+  'true-false': ToggleLeft,
+  'fill-in-the-blank': PenLine,
+  'matching': Link2
+}
 
 export default function StepFinalize() {
   const router = useRouter()
@@ -31,7 +53,6 @@ export default function StepFinalize() {
 
     setIsSaving(true)
     try {
-      // Map questions to backend format
       const mappedQuestions = questions.map(q => {
         let backendType = 'multipleChoice';
         if (q.type === 'multiple-choice') backendType = 'multipleChoice';
@@ -99,119 +120,215 @@ export default function StepFinalize() {
     }
   }
 
+  const totalPoints = questions.reduce((acc, q) => acc + (q.points || 1), 0)
+  const estimatedTime = Math.ceil(questions.length * 1.5)
+
+  const questionsByType = questions.reduce((acc, q) => {
+    acc[q.type] = (acc[q.type] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
+
   return (
-    <div className="flex flex-col lg:flex-row gap-6 h-full animate-in fade-in slide-in-from-right-8 duration-500">
-      {/* Left Column: Details */}
-      <div className="w-full lg:w-1/2 space-y-4">
-        <Card className="border shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <FileText className="h-4 w-4 text-indigo-500" />
-              Quiz Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="title">Title</Label>
-              <Input
-                id="title"
-                placeholder="e.g., Advanced Photosynthesis Quiz"
-                value={details.title}
-                onChange={(e) => setDetails({ title: e.target.value })}
-                className="h-10"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Description (Optional)</Label>
-              <Textarea
-                id="description"
-                placeholder="Briefly describe what this quiz covers..."
-                value={details.description}
-                onChange={(e) => setDetails({ description: e.target.value })}
-                className="min-h-[100px] resize-none"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Due Date (Optional)</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant={"outline"}
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !date && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? format(date, "PPP") : <span>Pick a date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={setDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </CardContent>
-        </Card>
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="text-center space-y-2">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 text-xs font-medium mb-2">
+          <Sparkles className="h-3 w-3" />
+          Final Step
+        </div>
+        <h2 className="text-xl sm:text-2xl font-bold text-foreground">Publish Your Quiz</h2>
+        <p className="text-muted-foreground text-sm max-w-md mx-auto">
+          Add final details and publish your quiz
+        </p>
       </div>
 
-      {/* Right Column: Summary */}
-      <div className="w-full lg:w-1/2 flex flex-col gap-4">
-        <Card className="border shadow-sm flex-1">
-          <CardHeader className="pb-3 border-b bg-muted/20">
-            <CardTitle className="text-base flex items-center gap-2">
-              <BarChart className="h-4 w-4 text-indigo-500" />
-              Summary
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6 grid grid-cols-2 gap-6">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground flex items-center gap-2">
-                <Hash className="h-3 w-3" /> Questions
-              </p>
-              <p className="text-2xl font-bold">{questions.length}</p>
+      <div className="grid lg:grid-cols-5 gap-6">
+        {/* Left Column - Details Form */}
+        <div className="lg:col-span-3 space-y-6">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-5 sm:p-6 shadow-sm">
+            <div className="flex items-center gap-2 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+                <FileText className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold">Quiz Details</h3>
+                <p className="text-xs text-muted-foreground">Give your quiz a name and description</p>
+              </div>
             </div>
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground flex items-center gap-2">
-                <Clock className="h-3 w-3" /> Est. Time
-              </p>
-              <p className="text-2xl font-bold">{Math.ceil(questions.length * 1.5)} min</p>
+
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="title" className="text-sm font-medium">
+                  Title <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="title"
+                  placeholder="e.g., Advanced Photosynthesis Quiz"
+                  value={details.title}
+                  onChange={(e) => setDetails({ title: e.target.value })}
+                  className="h-12 text-base rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description" className="text-sm font-medium">
+                  Description <span className="text-muted-foreground text-xs">(optional)</span>
+                </Label>
+                <Textarea
+                  id="description"
+                  placeholder="Briefly describe what this quiz covers..."
+                  value={details.description}
+                  onChange={(e) => setDetails({ description: e.target.value })}
+                  className="min-h-[100px] resize-none rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">
+                  Due Date <span className="text-muted-foreground text-xs">(optional)</span>
+                </Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full h-12 justify-start text-left font-normal rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700",
+                        !date && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-3 h-5 w-5" />
+                      {date ? format(date, "PPP") : "Select a due date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={date}
+                      onSelect={setDate}
+                      initialFocus
+                      disabled={(date) => date < new Date()}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Difficulty</p>
-              <Badge variant="outline" className="capitalize">{config.difficulty}</Badge>
+          </div>
+        </div>
+
+        {/* Right Column - Summary */}
+        <div className="lg:col-span-2">
+          <div className="sticky top-6 space-y-4">
+            {/* Stats Card */}
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 overflow-hidden shadow-sm">
+              <div className="p-4 border-b border-slate-200 dark:border-slate-700/50 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30">
+                <div className="flex items-center gap-2">
+                  <BarChart className="h-4 w-4 text-indigo-500" />
+                  <h3 className="font-semibold text-sm">Quiz Summary</h3>
+                </div>
+              </div>
+              
+              <div className="p-4">
+                {/* Main Stats */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <motion.div 
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="text-center p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border border-blue-100 dark:border-blue-900/50"
+                  >
+                    <Hash className="h-5 w-5 text-blue-500 mx-auto mb-1" />
+                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{questions.length}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Questions</p>
+                  </motion.div>
+                  
+                  <motion.div 
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.1 }}
+                    className="text-center p-4 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border border-amber-100 dark:border-amber-900/50"
+                  >
+                    <Trophy className="h-5 w-5 text-amber-500 mx-auto mb-1" />
+                    <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{totalPoints}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Points</p>
+                  </motion.div>
+                </div>
+
+                {/* Additional Info */}
+                <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <Clock className="h-4 w-4" />
+                      Est. Time
+                    </span>
+                    <span className="font-medium">{estimatedTime} min</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Difficulty</span>
+                    <Badge variant="outline" className="capitalize">{config.difficulty}</Badge>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Source</span>
+                    <Badge variant="outline" className="capitalize">{sourceType}</Badge>
+                  </div>
+                </div>
+
+                {/* Question Types */}
+                <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-700/50">
+                  <p className="text-xs text-muted-foreground mb-2">Question Types</p>
+                  <div className="space-y-1.5">
+                    {Object.entries(questionsByType).map(([type, count]) => {
+                      const Icon = typeIcons[type] || ListChecks
+                      return (
+                        <div key={type} className="flex items-center justify-between text-xs">
+                          <span className="flex items-center gap-1.5 text-muted-foreground capitalize">
+                            <Icon className="h-3 w-3" />
+                            {type.replace(/-/g, ' ')}
+                          </span>
+                          <span className="font-medium">{count}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Source</p>
-              <Badge variant="outline" className="capitalize">{sourceType}</Badge>
-            </div>
-          </CardContent>
-          <div className="p-4 border-t bg-muted/20 mt-auto">
+
+            {/* Publish Button */}
             <Button 
               onClick={handleSave} 
-              disabled={isSaving}
-              className="w-full bg-green-600 hover:bg-green-700 text-white" 
+              disabled={isSaving || !details.title}
+              className={cn(
+                "w-full h-14 text-base font-semibold rounded-xl transition-all",
+                "bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600",
+                "text-white shadow-lg shadow-emerald-500/25 border-0"
+              )}
               size="lg"
             >
               {isSaving ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                   Publishing...
                 </>
               ) : (
                 <>
-                  <Rocket className="mr-2 h-4 w-4" />
+                  <Rocket className="mr-2 h-5 w-5" />
                   Publish Quiz
                 </>
               )}
             </Button>
+
+            {/* Ready Indicator */}
+            {details.title && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2 justify-center text-emerald-600 dark:text-emerald-400 text-sm"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                <span>Ready to publish</span>
+              </motion.div>
+            )}
           </div>
-        </Card>
+        </div>
       </div>
     </div>
   )
