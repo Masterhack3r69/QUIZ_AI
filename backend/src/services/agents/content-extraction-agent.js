@@ -85,8 +85,8 @@ class ContentExtractionAgent {
       // Parse JSON response
       const extractedConcepts = this.parseResponse(result.text);
 
-      // Validate extracted concepts
-      this.validateExtractedConcepts(extractedConcepts);
+      // Validate extracted concepts (pass content length for adaptive validation)
+      this.validateExtractedConcepts(extractedConcepts, truncatedContent.length);
 
       // Log success
       console.log(`[ContentExtractionAgent] Successfully extracted concepts`, {
@@ -157,9 +157,9 @@ class ContentExtractionAgent {
       // Parse response
       const analysis = this.parseResponse(result.text);
 
-      // Validate extracted concepts part
+      // Validate extracted concepts part (pass content length for adaptive validation)
       if (analysis.extractedConcepts) {
-        this.validateExtractedConcepts(analysis.extractedConcepts);
+        this.validateExtractedConcepts(analysis.extractedConcepts, truncatedContent.length);
       }
 
       console.log(`[ContentExtractionAgent] Comprehensive analysis complete`, {
@@ -257,16 +257,16 @@ class ContentExtractionAgent {
   /**
    * Validate extracted concepts meet requirements
    * 
-   * Requirements:
-   * - mainTopics: 3-5 items
-   * - keyConcepts: 5-10 items with required fields
-   * - criticalFacts: 5-10 items
-   * - learningObjectives: 3-5 items
+   * Requirements scale based on content length:
+   * - Short content (<200 chars): minimum 1 item per category
+   * - Medium content (200-1000 chars): minimum 2 items per category  
+   * - Long content (>1000 chars): full requirements (2-3+ items)
    * 
    * @param {Object} concepts - Extracted concepts to validate
+   * @param {number} [contentLength] - Original content length for adaptive validation
    * @throws {ValidationError} If validation fails
    */
-  validateExtractedConcepts(concepts) {
+  validateExtractedConcepts(concepts, contentLength = null) {
     const errors = [];
     const warnings = [];
 
@@ -275,20 +275,50 @@ class ContentExtractionAgent {
       throw new ValidationError('Extracted concepts must be an object');
     }
 
-    // Validate mainTopics (2-5 items)
+    // Determine minimum requirements based on content length
+    // Short content can't reasonably produce many concepts
+    let minTopics = 2;
+    let minConcepts = 3;
+    let minFacts = 3;
+    let minObjectives = 2;
+
+    if (contentLength !== null) {
+      if (contentLength < 200) {
+        // Very short content - be lenient
+        minTopics = 1;
+        minConcepts = 1;
+        minFacts = 1;
+        minObjectives = 1;
+      } else if (contentLength < 500) {
+        // Short content
+        minTopics = 1;
+        minConcepts = 2;
+        minFacts = 2;
+        minObjectives = 1;
+      } else if (contentLength < 1000) {
+        // Medium content
+        minTopics = 2;
+        minConcepts = 2;
+        minFacts = 2;
+        minObjectives = 2;
+      }
+      // Long content uses default full requirements
+    }
+
+    // Validate mainTopics
     if (!Array.isArray(concepts.mainTopics)) {
       errors.push('mainTopics must be an array');
-    } else if (concepts.mainTopics.length < 2) {
-      errors.push(`mainTopics must have at least 2 items (found ${concepts.mainTopics.length})`);
+    } else if (concepts.mainTopics.length < minTopics) {
+      errors.push(`mainTopics must have at least ${minTopics} item(s) (found ${concepts.mainTopics.length})`);
     } else if (concepts.mainTopics.length > 5) {
       warnings.push(`mainTopics should have at most 5 items (found ${concepts.mainTopics.length})`);
     }
 
-    // Validate keyConcepts (3-10 items with required fields)
+    // Validate keyConcepts
     if (!Array.isArray(concepts.keyConcepts)) {
       errors.push('keyConcepts must be an array');
-    } else if (concepts.keyConcepts.length < 3) {
-      errors.push(`keyConcepts must have at least 3 items (found ${concepts.keyConcepts.length})`);
+    } else if (concepts.keyConcepts.length < minConcepts) {
+      errors.push(`keyConcepts must have at least ${minConcepts} item(s) (found ${concepts.keyConcepts.length})`);
     } else if (concepts.keyConcepts.length > 10) {
       warnings.push(`keyConcepts should have at most 10 items (found ${concepts.keyConcepts.length})`);
     } else {
@@ -311,20 +341,20 @@ class ContentExtractionAgent {
       });
     }
 
-    // Validate criticalFacts (3-10 items)
+    // Validate criticalFacts
     if (!Array.isArray(concepts.criticalFacts)) {
       errors.push('criticalFacts must be an array');
-    } else if (concepts.criticalFacts.length < 3) {
-      errors.push(`criticalFacts must have at least 3 items (found ${concepts.criticalFacts.length})`);
+    } else if (concepts.criticalFacts.length < minFacts) {
+      errors.push(`criticalFacts must have at least ${minFacts} item(s) (found ${concepts.criticalFacts.length})`);
     } else if (concepts.criticalFacts.length > 10) {
       warnings.push(`criticalFacts should have at most 10 items (found ${concepts.criticalFacts.length})`);
     }
 
-    // Validate learningObjectives (2-5 items)
+    // Validate learningObjectives
     if (!Array.isArray(concepts.learningObjectives)) {
       errors.push('learningObjectives must be an array');
-    } else if (concepts.learningObjectives.length < 2) {
-      errors.push(`learningObjectives must have at least 2 items (found ${concepts.learningObjectives.length})`);
+    } else if (concepts.learningObjectives.length < minObjectives) {
+      errors.push(`learningObjectives must have at least ${minObjectives} item(s) (found ${concepts.learningObjectives.length})`);
     } else if (concepts.learningObjectives.length > 5) {
       warnings.push(`learningObjectives should have at most 5 items (found ${concepts.learningObjectives.length})`);
     }

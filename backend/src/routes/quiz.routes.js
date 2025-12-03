@@ -410,13 +410,27 @@ router.post('/create', protect, upload.single('file'), async (req, res) => {
       }
     }
 
+    // Calculate duration with fallback (1.5 min per question, minimum 5 minutes)
+    let quizDuration = parseInt(duration);
+    if (isNaN(quizDuration) || quizDuration <= 0) {
+      quizDuration = Math.max(5, Math.ceil(questions.length * 1.5));
+    }
+
+    // Validate sourceInfo.type - must be one of: file, topic, video, url
+    const validSourceTypes = ['file', 'topic', 'video', 'url'];
+    let validatedSourceType = sourceInfo.type;
+    if (!validSourceTypes.includes(validatedSourceType)) {
+      // Map 'text' to 'topic', otherwise default to 'topic'
+      validatedSourceType = validatedSourceType === 'text' ? 'topic' : 'topic';
+    }
+
     const quiz = await Quiz.create({
       title,
       teacher: req.user._id,
       accessCode,
       questions,
       questionsPerStudent: parseInt(questionsPerStudent) || 10,
-      duration: parseInt(duration),
+      duration: quizDuration,
       startDate: req.body.startDate ? new Date(req.body.startDate) : undefined,
       expiresAt: new Date(expiresAt),
       maxStudents: req.body.maxStudents ? parseInt(req.body.maxStudents) : undefined,
@@ -429,7 +443,7 @@ router.post('/create', protect, upload.single('file'), async (req, res) => {
         matching: questions.filter(q => q.type === 'matching').length
       },
       sourceContent: {
-        type: sourceInfo.type,
+        type: validatedSourceType,
         content: content ? content.substring(0, 1000) : 'Pre-generated questions' // Store first 1000 chars or placeholder
       },
       studentInfoRequirements: studentInfoReqs

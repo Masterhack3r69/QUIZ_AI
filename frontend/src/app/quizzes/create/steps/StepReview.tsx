@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useQuizStore, Question } from "@/store/quiz-store"
+import { useEffect, useState, useRef } from "react"
+import { useQuizStore } from "@/store/quiz-store"
 import { aiService } from "@/services/ai.service"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,7 +22,12 @@ import {
   ListChecks,
   ToggleLeft,
   PenLine,
-  Link2
+  Link2,
+  Brain,
+  FileSearch,
+  Wand2,
+  ShieldCheck,
+  Zap
 } from "lucide-react"
 import { toast } from "sonner"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -43,6 +48,14 @@ const typeColors: Record<string, string> = {
   'matching': 'from-pink-500 to-rose-500'
 }
 
+// AI Pipeline steps
+const PIPELINE_STEPS = [
+  { id: 1, name: 'Analyzing Content', description: 'Detecting subject and extracting key concepts', icon: FileSearch },
+  { id: 2, name: 'Generating Questions', description: 'Creating questions from extracted concepts', icon: Wand2 },
+  { id: 3, name: 'Validating Quality', description: 'Checking question quality and accuracy', icon: ShieldCheck },
+  { id: 4, name: 'Optimizing Results', description: 'Improving and finalizing questions', icon: Zap },
+]
+
 export default function StepReview() {
   const { 
     questions, 
@@ -57,6 +70,8 @@ export default function StepReview() {
 
   const [localLoading, setLocalLoading] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [currentPipelineStep, setCurrentPipelineStep] = useState(0)
+  const stepIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     if (questions.length === 0 && sourceContent && !localLoading) {
@@ -64,8 +79,30 @@ export default function StepReview() {
     }
   }, [])
 
+  // Cleanup interval on unmount
+  useEffect(() => {
+    return () => {
+      if (stepIntervalRef.current) {
+        clearInterval(stepIntervalRef.current)
+      }
+    }
+  }, [])
+
   const generateQuestions = async () => {
     setLocalLoading(true)
+    setCurrentPipelineStep(1)
+    
+    // Simulate step progression (since we can't get real-time updates from the API)
+    // Each step takes roughly 5-8 seconds in the actual pipeline
+    stepIntervalRef.current = setInterval(() => {
+      setCurrentPipelineStep(prev => {
+        if (prev < PIPELINE_STEPS.length) {
+          return prev + 1
+        }
+        return prev
+      })
+    }, 4000)
+
     try {
       const result = await aiService.generateQuestions({
         content: sourceMetadata.processedContent || (sourceContent as string),
@@ -73,6 +110,11 @@ export default function StepReview() {
         totalQuestions: config.questionCount,
         difficulty: config.difficulty
       })
+      
+      // Clear the interval when done
+      if (stepIntervalRef.current) {
+        clearInterval(stepIntervalRef.current)
+      }
       
       const formattedQuestions = result.questions.map((q: any, index: number) => {
         let type = q.type;
@@ -104,24 +146,120 @@ export default function StepReview() {
     } catch (error: any) {
       console.error(error)
       toast.error("Failed to generate questions. Please try again.")
+      if (stepIntervalRef.current) {
+        clearInterval(stepIntervalRef.current)
+      }
     } finally {
       setLocalLoading(false)
+      setCurrentPipelineStep(0)
     }
   }
 
   if (localLoading) {
+    const currentStep = PIPELINE_STEPS[currentPipelineStep - 1] || PIPELINE_STEPS[0]
+    const CurrentIcon = currentStep.icon
+
     return (
-      <div className="flex flex-col items-center justify-center py-16 space-y-6 min-h-[400px]">
+      <div className="flex flex-col items-center justify-center py-8 space-y-8 min-h-[400px]">
+        {/* Main loading indicator */}
         <div className="relative">
           <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-500 blur-2xl opacity-30 rounded-full animate-pulse" />
           <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-xl shadow-indigo-500/25">
             <Loader2 className="h-10 w-10 animate-spin text-white" />
           </div>
         </div>
-        <div className="text-center space-y-2 max-w-sm">
-          <h3 className="text-xl font-bold">Generating Questions...</h3>
+
+        {/* Title */}
+        <div className="text-center space-y-1">
+          <h3 className="text-xl font-bold">Generating Questions</h3>
           <p className="text-muted-foreground text-sm">
-            AI is creating {config.questionCount} {config.difficulty} questions
+            Creating {config.questionCount} {config.difficulty} questions
+          </p>
+        </div>
+
+        {/* Pipeline Steps */}
+        <div className="w-full max-w-md space-y-3">
+          {PIPELINE_STEPS.map((step, index) => {
+            const StepIcon = step.icon
+            const isActive = currentPipelineStep === step.id
+            const isCompleted = currentPipelineStep > step.id
+            const isPending = currentPipelineStep < step.id
+
+            return (
+              <motion.div
+                key={step.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className={cn(
+                  "flex items-center gap-4 p-3 rounded-xl border transition-all duration-300",
+                  isActive && "bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800 shadow-sm",
+                  isCompleted && "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800",
+                  isPending && "bg-slate-50 dark:bg-slate-800/30 border-slate-200 dark:border-slate-700 opacity-50"
+                )}
+              >
+                {/* Step indicator */}
+                <div className={cn(
+                  "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all",
+                  isActive && "bg-gradient-to-br from-indigo-500 to-purple-500 shadow-lg shadow-indigo-500/25",
+                  isCompleted && "bg-emerald-500",
+                  isPending && "bg-slate-200 dark:bg-slate-700"
+                )}>
+                  {isCompleted ? (
+                    <Check className="h-5 w-5 text-white" />
+                  ) : isActive ? (
+                    <Loader2 className="h-5 w-5 text-white animate-spin" />
+                  ) : (
+                    <StepIcon className={cn("h-5 w-5", isPending ? "text-slate-400" : "text-white")} />
+                  )}
+                </div>
+
+                {/* Step info */}
+                <div className="flex-1 min-w-0">
+                  <p className={cn(
+                    "font-medium text-sm",
+                    isActive && "text-indigo-700 dark:text-indigo-300",
+                    isCompleted && "text-emerald-700 dark:text-emerald-300",
+                    isPending && "text-slate-500 dark:text-slate-400"
+                  )}>
+                    {step.name}
+                  </p>
+                  <p className={cn(
+                    "text-xs truncate",
+                    isActive ? "text-indigo-600/70 dark:text-indigo-400/70" : "text-muted-foreground"
+                  )}>
+                    {step.description}
+                  </p>
+                </div>
+
+                {/* Status badge */}
+                {isCompleted && (
+                  <Badge variant="outline" className="bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800 text-[10px]">
+                    Done
+                  </Badge>
+                )}
+                {isActive && (
+                  <Badge variant="outline" className="bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800 text-[10px]">
+                    In Progress
+                  </Badge>
+                )}
+              </motion.div>
+            )
+          })}
+        </div>
+
+        {/* Progress bar */}
+        <div className="w-full max-w-md">
+          <div className="h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+            <motion.div
+              className="h-full bg-gradient-to-r from-indigo-500 to-purple-500"
+              initial={{ width: "0%" }}
+              animate={{ width: `${(currentPipelineStep / PIPELINE_STEPS.length) * 100}%` }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground text-center mt-2">
+            Step {currentPipelineStep} of {PIPELINE_STEPS.length}
           </p>
         </div>
       </div>
@@ -335,11 +473,7 @@ export default function StepReview() {
               </div>
             </div>
 
-            {questions.length > 0 && (
-              <Button onClick={onNext} className="w-full h-11 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 border-0 shadow-lg shadow-indigo-500/25">
-                Continue to Publish
-              </Button>
-            )}
+
           </div>
         </div>
       </div>

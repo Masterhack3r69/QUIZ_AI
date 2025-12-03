@@ -43,11 +43,29 @@ export default function StepFinalize() {
   const router = useRouter()
   const { details, setDetails, questions, config, reset, sourceType, sourceContent, sourceMetadata } = useQuizStore()
   const [isSaving, setIsSaving] = useState(false)
-  const [date, setDate] = useState<Date | undefined>(undefined)
+  const [dueDate, setDueDate] = useState<Date | undefined>(undefined)
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined)
+  const [duration, setDuration] = useState<number>(Math.max(5, Math.ceil(questions.length * 1.5)))
 
   const handleSave = async () => {
     if (!details.title) {
       toast.error("Please enter a quiz title")
+      return
+    }
+
+    if (!dueDate) {
+      toast.error("Please select a due date")
+      return
+    }
+
+    if (!duration || duration < 1) {
+      toast.error("Please enter a valid duration")
+      return
+    }
+
+    // Validate start date is before due date if provided
+    if (startDate && dueDate && startDate >= dueDate) {
+      toast.error("Start date must be before due date")
       return
     }
 
@@ -79,34 +97,35 @@ export default function StepFinalize() {
         };
       });
 
-      let sourcePayload: any = {};
+      // Map sourceType - 'text' should be 'topic' for backend
       let backendSourceType = sourceType;
-      if (sourceType === 'text') backendSourceType = 'topic'; 
-      
-      if (backendSourceType) {
-        sourcePayload.sourceType = backendSourceType;
-        if (backendSourceType === 'topic') sourcePayload.textContent = sourceContent;
-        else if (backendSourceType === 'url') sourcePayload.webUrl = sourceMetadata.url || sourceContent;
-        else if (backendSourceType === 'video') sourcePayload.videoUrl = sourceMetadata.url || sourceContent;
-      }
+      if (sourceType === 'text') backendSourceType = 'topic';
 
-      const payload = {
+      const payload: any = {
         title: details.title,
         description: details.description,
         questions: mappedQuestions,
-        config: {
-          difficulty: config.difficulty,
-          questionCount: config.questionCount,
-          questionDistribution: {
-            multipleChoice: config.distribution['multiple-choice'],
-            trueFalse: config.distribution['true-false'],
-            fillInBlank: config.distribution['fill-in-the-blank'],
-            matching: config.distribution['matching']
-          }
+        questionsPerStudent: mappedQuestions.length,
+        duration: duration,
+        questionDistribution: {
+          multipleChoice: config.distribution['multiple-choice'] || 0,
+          trueFalse: config.distribution['true-false'] || 0,
+          fillInBlank: config.distribution['fill-in-the-blank'] || 0,
+          matching: config.distribution['matching'] || 0
         },
-        source: sourcePayload,
-        expiresAt: date ? date.toISOString() : undefined
+        expiresAt: dueDate!.toISOString(),
+        startDate: startDate ? startDate.toISOString() : undefined,
+        sourceType: backendSourceType
       };
+
+      // Add source-specific fields
+      if (backendSourceType === 'topic') {
+        payload.textContent = sourceContent;
+      } else if (backendSourceType === 'url') {
+        payload.webUrl = sourceMetadata?.url || sourceContent;
+      } else if (backendSourceType === 'video') {
+        payload.videoUrl = sourceMetadata?.url || sourceContent;
+      }
 
       await aiService.createQuiz(payload)
       toast.success("Quiz created successfully!")
@@ -121,7 +140,6 @@ export default function StepFinalize() {
   }
 
   const totalPoints = questions.reduce((acc, q) => acc + (q.points || 1), 0)
-  const estimatedTime = Math.ceil(questions.length * 1.5)
 
   const questionsByType = questions.reduce((acc, q) => {
     acc[q.type] = (acc[q.type] || 0) + 1
@@ -184,32 +202,88 @@ export default function StepFinalize() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium">
-                  Due Date <span className="text-muted-foreground text-xs">(optional)</span>
+                <Label htmlFor="duration" className="text-sm font-medium">
+                  Duration (minutes) <span className="text-red-500">*</span>
                 </Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full h-12 justify-start text-left font-normal rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700",
-                        !date && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-3 h-5 w-5" />
-                      {date ? format(date, "PPP") : "Select a due date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={date}
-                      onSelect={setDate}
-                      initialFocus
-                      disabled={(date) => date < new Date()}
-                    />
-                  </PopoverContent>
-                </Popover>
+                <div className="relative">
+                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    id="duration"
+                    type="number"
+                    min={1}
+                    placeholder="e.g., 30"
+                    value={duration}
+                    onChange={(e) => setDuration(parseInt(e.target.value) || 0)}
+                    className="h-12 pl-11 text-base rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">How long students have to complete the quiz</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">
+                    Start Date <span className="text-muted-foreground text-xs">(optional)</span>
+                  </Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full h-12 justify-start text-left font-normal rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700",
+                          !startDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-3 h-5 w-5" />
+                        {startDate ? format(startDate, "PPP") : "Select start date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={startDate}
+                        onSelect={setStartDate}
+                        initialFocus
+                        disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">
+                    Due Date <span className="text-red-500">*</span>
+                  </Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full h-12 justify-start text-left font-normal rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700",
+                          !dueDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-3 h-5 w-5" />
+                        {dueDate ? format(dueDate, "PPP") : "Select due date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={dueDate}
+                        onSelect={setDueDate}
+                        initialFocus
+                        disabled={(date) => {
+                          const today = new Date(new Date().setHours(0, 0, 0, 0))
+                          if (startDate) {
+                            return date <= startDate
+                          }
+                          return date < today
+                        }}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
             </div>
           </div>
@@ -257,9 +331,9 @@ export default function StepFinalize() {
                   <div className="flex items-center justify-between text-sm">
                     <span className="flex items-center gap-2 text-muted-foreground">
                       <Clock className="h-4 w-4" />
-                      Est. Time
+                      Duration
                     </span>
-                    <span className="font-medium">{estimatedTime} min</span>
+                    <span className="font-medium">{duration} min</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Difficulty</span>
@@ -295,7 +369,7 @@ export default function StepFinalize() {
             {/* Publish Button */}
             <Button 
               onClick={handleSave} 
-              disabled={isSaving || !details.title}
+              disabled={isSaving || !details.title || !dueDate || !duration}
               className={cn(
                 "w-full h-14 text-base font-semibold rounded-xl transition-all",
                 "bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600",
@@ -317,7 +391,7 @@ export default function StepFinalize() {
             </Button>
 
             {/* Ready Indicator */}
-            {details.title && (
+            {details.title && dueDate && duration > 0 && (
               <motion.div 
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}

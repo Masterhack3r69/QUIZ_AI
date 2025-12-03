@@ -199,7 +199,7 @@ export default function CreateQuizPage() {
         </header>
 
         {/* Main Content */}
-        <div className="flex-1 pb-24 lg:pb-8">
+        <div className="flex-1">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentStep}
@@ -209,7 +209,7 @@ export default function CreateQuizPage() {
               transition={{ duration: 0.25, ease: "easeOut" }}
               className="h-full"
             >
-              <div className="bg-white dark:bg-slate-900/70 backdrop-blur-xl rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-lg shadow-slate-300/50 dark:shadow-slate-900/50 p-4 sm:p-6 lg:p-8 min-h-[500px]">
+              <div className="bg-white dark:bg-slate-900/70 backdrop-blur-xl rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-lg shadow-slate-300/50 dark:shadow-slate-900/50 p-4 sm:p-6 lg:p-8 min-h-[450px]">
                 {currentStep === 1 && <StepSource />}
                 {currentStep === 2 && <StepConfig />}
                 {currentStep === 3 && <StepReview />}
@@ -219,16 +219,16 @@ export default function CreateQuizPage() {
           </AnimatePresence>
         </div>
 
-        {/* Footer Navigation */}
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 dark:bg-slate-900/80 backdrop-blur-xl border-t border-slate-200 dark:border-slate-700/50 z-50 lg:static lg:bg-transparent lg:border-none lg:p-0 lg:mt-6">
-          <div className="container mx-auto max-w-7xl flex justify-between items-center gap-4">
+        {/* Footer Navigation - Inside the card area */}
+        <div className="mt-6 pb-6">
+          <div className="flex justify-between items-center gap-4">
             <Button 
               variant="outline" 
               onClick={handleBack} 
               size="lg"
-              className="min-w-[100px] sm:min-w-[120px] h-11 rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="h-12 px-6 rounded-xl border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm"
             >
-              <ArrowLeft className="h-4 w-4 mr-2 sm:mr-2" />
+              <ArrowLeft className="h-4 w-4 mr-2" />
               <span>{currentStep === 1 ? "Cancel" : "Back"}</span>
             </Button>
             
@@ -236,18 +236,18 @@ export default function CreateQuizPage() {
               <Button 
                 onClick={handleNext} 
                 size="lg" 
-                className="min-w-[120px] sm:min-w-[160px] h-11 gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white shadow-lg shadow-indigo-500/25 border-0"
+                className="h-12 px-8 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white shadow-lg shadow-indigo-500/30 border-0"
                 disabled={(currentStep === 3 && questions.length === 0) || isProcessing}
               >
                 {isProcessing ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
                     <span>Processing...</span>
                   </>
                 ) : (
                   <>
                     <span>{currentStep === 3 ? "Finalize" : "Continue"}</span>
-                    <ArrowRight className="h-4 w-4" />
+                    <ArrowRight className="h-4 w-4 ml-2" />
                   </>
                 )}
               </Button>
