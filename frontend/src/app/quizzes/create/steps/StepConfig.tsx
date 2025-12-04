@@ -95,31 +95,53 @@ const questionTypes = [
 export default function StepConfig() {
   const { config, setConfig } = useQuizStore()
 
+  // Priority order for auto-adjustment (first one with questions gets adjusted)
+  const adjustmentPriority = ['multiple-choice', 'true-false', 'fill-in-the-blank', 'matching']
+
   const handleDistributionChange = (type: string, value: number) => {
-    setConfig({
-      distribution: {
-        ...config.distribution,
-        [type]: value
+    const currentValue = config.distribution[type as keyof typeof config.distribution]
+    const diff = value - currentValue // positive = adding, negative = removing
+    
+    // Find a type to compensate (not the one being changed)
+    const newDistribution = { ...config.distribution, [type]: value }
+    
+    // Calculate how much we need to adjust
+    let remaining = -diff // if adding questions, we need to remove from others
+    
+    // Go through priority list and adjust
+    for (const adjustType of adjustmentPriority) {
+      if (adjustType === type || remaining === 0) continue
+      
+      const currentAdjustValue = newDistribution[adjustType as keyof typeof newDistribution]
+      
+      if (remaining < 0) {
+        // Need to remove questions from this type
+        const canRemove = Math.min(currentAdjustValue, Math.abs(remaining))
+        newDistribution[adjustType as keyof typeof newDistribution] = currentAdjustValue - canRemove
+        remaining += canRemove
+      } else {
+        // Need to add questions to this type (when user reduces a type)
+        newDistribution[adjustType as keyof typeof newDistribution] = currentAdjustValue + remaining
+        remaining = 0
       }
-    })
+    }
+    
+    setConfig({ distribution: newDistribution })
   }
 
   const totalQuestions = Object.values(config.distribution).reduce((a, b) => a + b, 0)
   const isTotalMatching = totalQuestions === config.questionCount
 
   const setQuestionCount = (count: number) => {
-    const types = Object.keys(config.distribution)
-    const base = Math.floor(count / types.length)
-    const remainder = count % types.length
-    
-    const newDist: any = {}
-    types.forEach((t, i) => {
-      newDist[t] = base + (i < remainder ? 1 : 0)
-    })
-
+    // When changing total, put all questions in multiple-choice, keep others at 0
     setConfig({ 
       questionCount: count,
-      distribution: newDist
+      distribution: {
+        'multiple-choice': count,
+        'true-false': 0,
+        'fill-in-the-blank': 0,
+        'matching': 0
+      }
     })
   }
 
