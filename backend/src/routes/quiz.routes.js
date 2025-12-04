@@ -25,7 +25,9 @@ router.post('/test-create', upload.single('file'), async (req, res) => {
       questionsPerStudent, 
       textContent,
       questionDistribution,
-      totalQuestions
+      totalQuestions,
+      targetLanguage,
+      difficulty
     } = req.body;
     
     let content = textContent || '';
@@ -67,13 +69,19 @@ router.post('/test-create', upload.single('file'), async (req, res) => {
     
     let questions;
     if (useAgenticPipeline && agenticPipeline) {
-      console.log('[Quiz Routes] Using agentic pipeline for question generation');
+      console.log('[Quiz Routes] Using agentic pipeline for question generation', {
+        targetLanguage: targetLanguage || 'English'
+      });
       questions = await generateQuestionsWithAgentic(
         agenticPipeline,
         content,
         distribution,
         total,
-        generateQuestions
+        generateQuestions,
+        {
+          targetLanguage: targetLanguage || 'English',
+          difficulty: difficulty || 'medium'
+        }
       );
     } else {
       console.log('[Quiz Routes] Using traditional question generation');
@@ -192,7 +200,7 @@ router.post('/process-file', protect, upload.single('file'), async (req, res) =>
 // Generate questions from content (unified endpoint)
 router.post('/generate-questions', protect, async (req, res) => {
   try {
-    const { content, questionDistribution, totalQuestions } = req.body;
+    const { content, questionDistribution, totalQuestions, targetLanguage, difficulty } = req.body;
     
     if (!content) {
       return res.status(400).json({ message: 'Content is required' });
@@ -215,15 +223,37 @@ router.post('/generate-questions', protect, async (req, res) => {
     const useAgenticPipeline = process.env.ENABLE_AGENTIC_PIPELINE === 'true';
     const agenticPipeline = req.app.locals.agenticPipeline;
     
+    // Determine target language - if not provided or 'Auto', detect from content
+    let resolvedLanguage = targetLanguage;
+    if (!targetLanguage || targetLanguage === 'Auto') {
+      // Simple language detection based on content characters
+      const tagalogIndicators = /\b(ang|ng|sa|na|ay|mga|at|ito|siya|niya|ko|mo|ka|ako|ikaw|kami|tayo|sila|namin|natin|nila|para|kung|dahil|kaya|pero|ngunit|kayâ|hábang|noong|nang)\b/gi;
+      const tagalogMatches = content.match(tagalogIndicators);
+      
+      if (tagalogMatches && tagalogMatches.length > 5) {
+        resolvedLanguage = 'Filipino';
+      } else {
+        resolvedLanguage = 'English';
+      }
+      
+      console.log('[Quiz Routes] Auto-detected language:', resolvedLanguage);
+    }
+    
     let questions;
     if (useAgenticPipeline && agenticPipeline) {
-      console.log('[Quiz Routes] Using agentic pipeline for question generation');
+      console.log('[Quiz Routes] Using agentic pipeline for question generation', {
+        targetLanguage: resolvedLanguage
+      });
       questions = await generateQuestionsWithAgentic(
         agenticPipeline,
         content,
         distribution,
         total,
-        generateQuestions
+        generateQuestions,
+        {
+          targetLanguage: resolvedLanguage,
+          difficulty: difficulty || 'medium'
+        }
       );
     } else {
       console.log('[Quiz Routes] Using traditional question generation');
@@ -233,6 +263,7 @@ router.post('/generate-questions', protect, async (req, res) => {
     res.json({ 
       questions,
       questionCount: questions.length,
+      targetLanguage: resolvedLanguage,
       message: 'Questions generated successfully'
     });
   } catch (error) {

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 export type QuestionType = 'multiple-choice' | 'true-false' | 'fill-in-the-blank' | 'matching';
 export type Difficulty = 'easy' | 'medium' | 'hard' | 'mixed';
+export type Language = 'English' | 'Filipino' | 'Spanish' | 'French' | 'German' | 'Japanese' | 'Korean' | 'Chinese' | 'Auto';
 
 export interface Question {
   id: string; // Temporary ID for frontend management
@@ -32,6 +33,7 @@ export interface QuizState {
     questionCount: number;
     difficulty: Difficulty;
     distribution: Record<QuestionType, number>; // e.g., { 'multiple-choice': 5, 'true-false': 5 }
+    targetLanguage: Language; // Language for generated questions
   };
 
   // Step 3: Generation & Review
@@ -71,6 +73,7 @@ export const useQuizStore = create<QuizState>((set) => ({
       'fill-in-the-blank': 0,
       'matching': 0,
     },
+    targetLanguage: 'Auto',
   },
 
   questions: [],
@@ -123,6 +126,7 @@ export const useQuizStore = create<QuizState>((set) => ({
         'fill-in-the-blank': 0,
         'matching': 0,
       },
+      targetLanguage: 'Auto',
     },
     questions: [],
     isGenerating: false,

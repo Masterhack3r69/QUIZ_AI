@@ -32,9 +32,10 @@ export const aiService = {
     questionDistribution: Record<string, number>;
     totalQuestions: number;
     difficulty: string;
+    targetLanguage?: string;
   }) => {
     const response = await api.post('/quiz/generate-questions', payload);
-    return response.data; // { questions, questionCount }
+    return response.data; // { questions, questionCount, targetLanguage }
   },
 
   createQuiz: async (payload: any) => {

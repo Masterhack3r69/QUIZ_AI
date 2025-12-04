@@ -241,6 +241,9 @@ export const validateQuestionDistribution = (questions, requestedDistribution) =
  * @param {Object} distribution - Question distribution
  * @param {number} totalQuestions - Total questions to generate
  * @param {Function} fallbackFn - Fallback function (traditional generateQuestions)
+ * @param {Object} options - Additional options
+ * @param {string} [options.targetLanguage] - Target language for question generation (default: 'English')
+ * @param {string} [options.difficulty] - Difficulty level (default: 'medium')
  * @returns {Promise<Array>} Generated questions
  */
 export const generateQuestionsWithAgentic = async (
@@ -248,7 +251,8 @@ export const generateQuestionsWithAgentic = async (
   content,
   distribution,
   totalQuestions,
-  fallbackFn
+  fallbackFn,
+  options = {}
 ) => {
   // Check if agentic pipeline is available
   if (!agenticPipeline) {
@@ -256,18 +260,23 @@ export const generateQuestionsWithAgentic = async (
     return await fallbackFn(content, distribution, totalQuestions);
   }
 
+  const targetLanguage = options.targetLanguage || 'English';
+  const difficulty = options.difficulty || 'medium';
+
   try {
     console.log('[AgenticCompatibility] Generating questions with agentic pipeline', {
       contentLength: content.length,
       distribution,
-      totalQuestions
+      totalQuestions,
+      targetLanguage
     });
 
     // Generate questions using agentic pipeline
     const agenticResult = await agenticPipeline.generateQuiz(content, {
       totalQuestions,
       distribution,
-      difficulty: 'medium'
+      difficulty,
+      targetLanguage
     });
 
     // Convert to existing format

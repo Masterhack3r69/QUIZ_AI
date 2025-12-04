@@ -1,10 +1,12 @@
 "use client"
 
-import { useQuizStore, Difficulty } from "@/store/quiz-store"
+import { useState } from "react"
+import { useQuizStore, Difficulty, Language } from "@/store/quiz-store"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { 
   Check, 
   BrainCircuit, 
@@ -15,7 +17,10 @@ import {
   ListChecks,
   ToggleLeft,
   PenLine,
-  Link2
+  Link2,
+  Globe,
+  ChevronsUpDown,
+  Search
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { motion } from "framer-motion"
@@ -92,11 +97,33 @@ const questionTypes = [
   }
 ]
 
+const languageOptions: { value: Language; label: string; flag: string }[] = [
+  { value: 'Auto', label: 'Auto-detect', flag: '🌐' },
+  { value: 'English', label: 'English', flag: '🇺🇸' },
+  { value: 'Filipino', label: 'Filipino', flag: '🇵🇭' },
+  { value: 'Spanish', label: 'Spanish', flag: '🇪🇸' },
+  { value: 'French', label: 'French', flag: '🇫🇷' },
+  { value: 'German', label: 'German', flag: '🇩🇪' },
+  { value: 'Japanese', label: 'Japanese', flag: '🇯🇵' },
+  { value: 'Korean', label: 'Korean', flag: '🇰🇷' },
+  { value: 'Chinese', label: 'Chinese', flag: '🇨🇳' },
+]
+
 export default function StepConfig() {
   const { config, setConfig } = useQuizStore()
+  const [languageOpen, setLanguageOpen] = useState(false)
+  const [languageSearch, setLanguageSearch] = useState("")
 
   // Priority order for auto-adjustment (first one with questions gets adjusted)
   const adjustmentPriority = ['multiple-choice', 'true-false', 'fill-in-the-blank', 'matching']
+  
+  // Filter languages based on search
+  const filteredLanguages = languageOptions.filter(lang => 
+    lang.label.toLowerCase().includes(languageSearch.toLowerCase())
+  )
+  
+  // Get current language display
+  const currentLanguage = languageOptions.find(l => l.value === config.targetLanguage)
 
   const handleDistributionChange = (type: string, value: number) => {
     const currentValue = config.distribution[type as keyof typeof config.distribution]
@@ -146,35 +173,30 @@ export default function StepConfig() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5">
       {/* Header */}
-      <div className="text-center space-y-2">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 text-xs font-medium mb-2">
+      <div className="text-center space-y-1">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 text-xs font-medium">
           <Sparkles className="h-3 w-3" />
           Step 2 of 4
         </div>
-        <h2 className="text-xl sm:text-2xl font-bold text-foreground">Configure Your Quiz</h2>
-        <p className="text-muted-foreground text-sm max-w-md mx-auto">
-          Set difficulty and question distribution
-        </p>
+        <h2 className="text-xl font-bold text-foreground">Configure Your Quiz</h2>
+        <p className="text-muted-foreground text-sm">Set difficulty and question distribution</p>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-2 gap-4">
         {/* Left Column */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Difficulty Selection */}
-          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
-                <BrainCircuit className="h-4 w-4 text-white" />
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-4 shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
+                <BrainCircuit className="h-3.5 w-3.5 text-white" />
               </div>
-              <div>
-                <h3 className="font-semibold text-sm">Difficulty Level</h3>
-                <p className="text-xs text-muted-foreground">Choose question complexity</p>
-              </div>
+              <h3 className="font-semibold text-sm">Difficulty Level</h3>
             </div>
             
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-4 gap-2">
               {difficultyOptions.map((option) => {
                 const Icon = option.icon
                 const isSelected = config.difficulty === option.value
@@ -186,30 +208,27 @@ export default function StepConfig() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     className={cn(
-                      "relative flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
+                      "relative flex flex-col items-center gap-1 p-2 rounded-lg border-2 transition-all",
                       isSelected 
-                        ? `${option.border} ${option.bg} ring-4` 
+                        ? `${option.border} ${option.bg} ring-2` 
                         : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
                     )}
                   >
                     <div className={cn(
-                      "w-10 h-10 rounded-lg flex items-center justify-center transition-all",
+                      "w-8 h-8 rounded-md flex items-center justify-center transition-all",
                       isSelected 
-                        ? `bg-gradient-to-br ${option.gradient} shadow-lg` 
+                        ? `bg-gradient-to-br ${option.gradient} shadow` 
                         : "bg-slate-100 dark:bg-slate-700"
                     )}>
                       <Icon className={cn(
-                        "h-5 w-5",
+                        "h-4 w-4",
                         isSelected ? "text-white" : "text-slate-500 dark:text-slate-400"
                       )} />
                     </div>
-                    <div className="text-center">
-                      <span className="font-semibold text-sm block">{option.label}</span>
-                      <span className="text-[10px] text-muted-foreground">{option.description}</span>
-                    </div>
+                    <span className="font-medium text-xs">{option.label}</span>
                     {isSelected && (
-                      <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-white dark:bg-slate-900 shadow flex items-center justify-center">
-                        <Check className="h-3 w-3 text-indigo-500" />
+                      <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-white dark:bg-slate-900 shadow flex items-center justify-center">
+                        <Check className="h-2.5 w-2.5 text-indigo-500" />
                       </div>
                     )}
                   </motion.button>
@@ -219,18 +238,15 @@ export default function StepConfig() {
           </div>
 
           {/* Question Count */}
-          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
-                  <Layers className="h-4 w-4 text-white" />
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                  <Layers className="h-3.5 w-3.5 text-white" />
                 </div>
-                <div>
-                  <h3 className="font-semibold text-sm">Total Questions</h3>
-                  <p className="text-xs text-muted-foreground">How many to generate</p>
-                </div>
+                <h3 className="font-semibold text-sm">Total Questions</h3>
               </div>
-              <div className="text-3xl font-bold bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">
+              <div className="text-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">
                 {config.questionCount}
               </div>
             </div>
@@ -241,10 +257,10 @@ export default function StepConfig() {
               max={50}
               min={1}
               step={1}
-              className="mb-4"
+              className="mb-3"
             />
             
-            <div className="flex gap-2">
+            <div className="flex gap-1.5">
               {[5, 10, 15, 20, 25].map((num) => (
                 <Button
                   key={num}
@@ -252,7 +268,7 @@ export default function StepConfig() {
                   size="sm"
                   onClick={() => setQuestionCount(num)}
                   className={cn(
-                    "flex-1 h-9 text-xs font-medium rounded-lg",
+                    "flex-1 h-8 text-xs font-medium rounded-md",
                     config.questionCount === num && "bg-gradient-to-r from-indigo-500 to-purple-500 border-0"
                   )}
                 >
@@ -261,29 +277,94 @@ export default function StepConfig() {
               ))}
             </div>
           </div>
+
+          {/* Language Selection */}
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-4 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center">
+                  <Globe className="h-3.5 w-3.5 text-white" />
+                </div>
+                <h3 className="font-semibold text-sm">Language</h3>
+              </div>
+              
+              <Popover open={languageOpen} onOpenChange={setLanguageOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={languageOpen}
+                    className="w-40 justify-between h-9 rounded-lg"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span>{currentLanguage?.flag}</span>
+                      <span className="text-sm">{currentLanguage?.label}</span>
+                    </span>
+                    <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-48 p-0" align="end">
+                  <div className="flex items-center border-b px-2">
+                    <Search className="mr-2 h-3.5 w-3.5 shrink-0 opacity-50" />
+                    <input
+                      placeholder="Search..."
+                      value={languageSearch}
+                      onChange={(e) => setLanguageSearch(e.target.value)}
+                      className="flex h-9 w-full bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
+                    />
+                  </div>
+                  <div className="max-h-[180px] overflow-y-auto p-1">
+                    {filteredLanguages.length === 0 ? (
+                      <div className="py-4 text-center text-xs text-muted-foreground">
+                        No language found.
+                      </div>
+                    ) : (
+                      filteredLanguages.map((lang) => (
+                        <button
+                          key={lang.value}
+                          onClick={() => {
+                            setConfig({ targetLanguage: lang.value })
+                            setLanguageOpen(false)
+                            setLanguageSearch("")
+                          }}
+                          className={cn(
+                            "relative flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                            config.targetLanguage === lang.value && "bg-accent"
+                          )}
+                        >
+                          <span>{lang.flag}</span>
+                          <span>{lang.label}</span>
+                          {config.targetLanguage === lang.value && (
+                            <Check className="ml-auto h-3.5 w-3.5 text-teal-500" />
+                          )}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
         </div>
 
         {/* Right Column - Distribution */}
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 overflow-hidden shadow-sm">
-          <div className="p-5 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80">
+          <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center">
-                  <BarChart3 className="h-4 w-4 text-white" />
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center">
+                  <BarChart3 className="h-3.5 w-3.5 text-white" />
                 </div>
-                <div>
-                  <h3 className="font-semibold text-sm">Question Types</h3>
-                  <p className="text-xs text-muted-foreground">Distribute across types</p>
-                </div>
+                <h3 className="font-semibold text-sm">Question Types</h3>
               </div>
               <div className={cn(
-                "px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-colors",
+                "px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 transition-colors",
                 isTotalMatching 
                   ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
                   : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
               )}>
                 {isTotalMatching ? <Check className="h-3 w-3" /> : <span>!</span>}
-                {totalQuestions} / {config.questionCount}
+                {totalQuestions}/{config.questionCount}
               </div>
             </div>
           </div>
@@ -294,25 +375,22 @@ export default function StepConfig() {
               const value = config.distribution[type.id as keyof typeof config.distribution]
               
               return (
-                <div key={type.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                  <div className="flex items-center gap-3 mb-3">
+                <div key={type.id} className="px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                  <div className="flex items-center gap-2 mb-2">
                     <div className={cn(
-                      "w-9 h-9 rounded-lg flex items-center justify-center bg-gradient-to-br shadow-sm",
+                      "w-7 h-7 rounded-md flex items-center justify-center bg-gradient-to-br shadow-sm",
                       type.gradient
                     )}>
-                      <Icon className="h-4 w-4 text-white" />
+                      <Icon className="h-3.5 w-3.5 text-white" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <Label className="text-sm font-medium block">{type.label}</Label>
-                      <p className="text-[10px] text-muted-foreground">{type.description}</p>
-                    </div>
+                    <Label className="text-sm font-medium flex-1">{type.label}</Label>
                     <Input 
                       type="number" 
                       min={0} 
                       max={config.questionCount}
                       value={value}
                       onChange={(e) => handleDistributionChange(type.id, parseInt(e.target.value) || 0)}
-                      className="w-16 h-9 text-center font-mono text-sm rounded-lg"
+                      className="w-14 h-8 text-center font-mono text-sm rounded-md"
                     />
                   </div>
                   <Slider
@@ -320,7 +398,6 @@ export default function StepConfig() {
                     onValueChange={(val) => handleDistributionChange(type.id, val[0])}
                     max={config.questionCount}
                     step={1}
-                    className="py-1"
                   />
                 </div>
               )

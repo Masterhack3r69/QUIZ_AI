@@ -73,6 +73,7 @@ class AgenticPipeline {
    * @param {Object} options.distribution - Question type distribution
    * @param {string} [options.difficulty] - Overall difficulty level
    * @param {string} [options.forceProvider] - Force specific AI provider
+   * @param {string} [options.targetLanguage] - Target language for question generation (default: 'English')
    * @returns {Promise<Object>} Generated quiz with questions and metadata
    * @throws {Error} If critical steps fail
    */
@@ -82,11 +83,15 @@ class AgenticPipeline {
     // Log header
     this.logger.logHeader('AI Quiz Generation Pipeline');
     
+    // Set default target language
+    const targetLanguage = options.targetLanguage || 'English';
+
     console.log('[AgenticPipeline] Starting quiz generation', {
       contentLength: content?.length || 0,
       totalQuestions: options.totalQuestions,
       distribution: options.distribution,
-      difficulty: options.difficulty
+      difficulty: options.difficulty,
+      targetLanguage: targetLanguage
     });
 
     try {
@@ -110,7 +115,25 @@ class AgenticPipeline {
         concepts = analysisResult.extractedConcepts;
         
         if (subjectDetection) {
-          recommendedPrompt = subjectDetection.recommendedPrompt || 'question-generation';
+          // Validate that the recommended prompt exists
+          const validPrompts = [
+            'question-generation',
+            'math-question-generation',
+            'science-question-generation',
+            'history-question-generation',
+            'language-question-generation',
+            'computer-science-question-generation'
+          ];
+          
+          const suggestedPrompt = subjectDetection.recommendedPrompt || 'question-generation';
+          
+          if (validPrompts.includes(suggestedPrompt)) {
+            recommendedPrompt = suggestedPrompt;
+          } else {
+            console.warn(`[AgenticPipeline] Invalid prompt "${suggestedPrompt}" suggested, falling back to "question-generation"`);
+            recommendedPrompt = 'question-generation';
+          }
+          
           this.logger.logSubjectDetection(subjectDetection);
         }
 
@@ -132,6 +155,7 @@ class AgenticPipeline {
       
       // Use recommended prompt if subject was detected
       options.recommendedPrompt = recommendedPrompt;
+      options.targetLanguage = targetLanguage;
       
       const rawQuestions = await this.generateQuestions(concepts, options);
       
@@ -218,6 +242,7 @@ class AgenticPipeline {
           distribution: this.countQuestionsByType(finalQuestions),
           concepts: concepts,
           subjectDetection: subjectDetection,
+          targetLanguage: targetLanguage,
           qualityMetrics: validationResults ? this.calculateQualityMetrics(validationResults) : null,
           improvementMetrics: improvedQuestions.length > 0 ? {
             questionsImproved: improvedQuestions.length,
@@ -332,7 +357,9 @@ class AgenticPipeline {
         options.totalQuestions,
         {
           difficulty: options.difficulty,
-          forceProvider: options.forceProvider
+          forceProvider: options.forceProvider,
+          targetLanguage: options.targetLanguage,
+          recommendedPrompt: options.recommendedPrompt
         }
       );
 

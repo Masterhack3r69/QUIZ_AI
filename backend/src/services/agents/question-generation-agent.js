@@ -39,6 +39,7 @@ class QuestionGenerationAgent {
    * @param {string} [options.difficulty] - Overall difficulty level (easy, medium, hard, mixed)
    * @param {string} [options.forceProvider] - Force a specific AI provider
    * @param {number} [options.temperature] - Sampling temperature (0-1)
+   * @param {string} [options.targetLanguage] - Target language for question generation (default: 'English')
    * @returns {Promise<Array>} Array of generated questions
    * @throws {ValidationError} If generated questions are invalid
    * @throws {Error} If generation fails
@@ -69,14 +70,19 @@ class QuestionGenerationAgent {
       // Format concepts for prompt
       const formattedConcepts = this.formatConceptsForPrompt(concepts);
 
-      // Determine difficulty
+      // Determine difficulty and target language
       const difficulty = options.difficulty || 'mixed';
+      const targetLanguage = options.targetLanguage || 'English';
+
+      // Determine which prompt to use (subject-specific or general)
+      const promptName = options.recommendedPrompt || 'question-generation';
 
       // Get formatted prompt from prompt manager
-      const promptData = this.promptManager.getPrompt('question-generation', {
+      const promptData = this.promptManager.getPrompt(promptName, {
         questionCount: totalQuestions,
         concepts: formattedConcepts,
-        difficulty: difficulty
+        difficulty: difficulty,
+        targetLanguage: targetLanguage
       });
 
       // Build full prompt with distribution requirements
@@ -86,6 +92,8 @@ class QuestionGenerationAgent {
       console.log(`[QuestionGenerationAgent] Generating ${totalQuestions} questions`, {
         distribution,
         difficulty,
+        targetLanguage,
+        promptName,
         conceptCount: concepts.keyConcepts?.length || 0
       });
 

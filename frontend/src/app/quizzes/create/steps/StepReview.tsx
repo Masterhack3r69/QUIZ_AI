@@ -104,11 +104,15 @@ export default function StepReview() {
     }, 4000)
 
     try {
+      // Determine target language - if 'Auto', let backend detect from content
+      const targetLanguage = config.targetLanguage === 'Auto' ? undefined : config.targetLanguage;
+      
       const result = await aiService.generateQuestions({
         content: sourceMetadata.processedContent || (sourceContent as string),
         questionDistribution: config.distribution,
         totalQuestions: config.questionCount,
-        difficulty: config.difficulty
+        difficulty: config.difficulty,
+        targetLanguage
       })
       
       // Clear the interval when done
