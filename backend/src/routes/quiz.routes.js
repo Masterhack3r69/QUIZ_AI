@@ -861,4 +861,41 @@ router.delete('/:quizId', protect, async (req, res) => {
   }
 });
 
+// Duplicate quiz
+router.post('/:quizId/duplicate', protect, async (req, res) => {
+  try {
+    const originalQuiz = await Quiz.findOne({ 
+      _id: req.params.quizId, 
+      teacher: req.user._id 
+    });
+
+    if (!originalQuiz) {
+      return res.status(404).json({ message: 'Quiz not found' });
+    }
+
+    const newAccessCode = generateAccessCode();
+    
+    const duplicatedQuiz = await Quiz.create({
+      title: `${originalQuiz.title} (Copy)`,
+      teacher: req.user._id,
+      accessCode: newAccessCode,
+      questions: originalQuiz.questions,
+      questionsPerStudent: originalQuiz.questionsPerStudent,
+      duration: originalQuiz.duration,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+      maxStudents: originalQuiz.maxStudents,
+      subjects: originalQuiz.subjects,
+      status: 'active',
+      questionDistribution: originalQuiz.questionDistribution,
+      sourceContent: originalQuiz.sourceContent,
+      studentInfoRequirements: originalQuiz.studentInfoRequirements
+    });
+
+    res.status(201).json(duplicatedQuiz);
+  } catch (error) {
+    console.error('Duplicate quiz error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;
