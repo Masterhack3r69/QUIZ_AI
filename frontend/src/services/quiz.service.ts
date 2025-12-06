@@ -31,6 +31,7 @@ export interface Question {
   question: string;
   options?: string[];
   correctAnswer?: number | boolean | string;
+  caseSensitive?: boolean;
   leftColumn?: string[];
   rightColumn?: string[];
   correctPairs?: { left: number; right: number }[];

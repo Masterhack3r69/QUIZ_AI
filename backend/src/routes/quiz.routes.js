@@ -773,7 +773,8 @@ router.post('/start', async (req, res) => {
     const shuffled = [...quiz.questions].sort(() => Math.random() - 0.5);
     const selectedQuestions = shuffled.slice(0, quiz.questionsPerStudent);
 
-    // Remove correct answers from response based on question type
+    // Shuffle options and track mappings for grading
+    // We'll store the shuffled correct answer index so grading works
     const questionsForStudent = selectedQuestions.map(q => {
       const baseQuestion = {
         _id: q._id,
@@ -784,15 +785,25 @@ router.post('/start', async (req, res) => {
       // Add type-specific fields (without correct answers)
       switch (q.type) {
         case 'multipleChoice':
-          // Randomize options order for multiple choice
-          const optionsWithIndex = q.options.map((opt, idx) => ({ opt, idx }));
-          const shuffledOptions = optionsWithIndex.sort(() => Math.random() - 0.5);
-          baseQuestion.options = shuffledOptions.map(item => item.opt);
-          // Store mapping for grading (not sent to client)
+          if (q.options && q.options.length > 0) {
+            // Create array with original indices
+            const optionsWithIndex = q.options.map((opt, idx) => ({ opt, originalIdx: idx }));
+            // Shuffle the options
+            const shuffledOptions = optionsWithIndex.sort(() => Math.random() - 0.5);
+            // Set shuffled options
+            baseQuestion.options = shuffledOptions.map(item => item.opt);
+            // Find where the correct answer ended up after shuffling
+            // correctAnswer is the original index, find its new position
+            const newCorrectIndex = shuffledOptions.findIndex(item => item.originalIdx === q.correctAnswer);
+            // Store the shuffled correct index (will be used for grading)
+            baseQuestion.shuffledCorrectIndex = newCorrectIndex;
+          } else {
+            baseQuestion.options = [];
+          }
           break;
         
         case 'trueFalse':
-          // No additional fields needed
+          // No shuffling needed for true/false
           break;
         
         case 'fillInBlank':
@@ -800,13 +811,21 @@ router.post('/start', async (req, res) => {
           break;
         
         case 'matching':
-          baseQuestion.leftColumn = q.leftColumn;
-          // Randomize right column
-          baseQuestion.rightColumn = [...q.rightColumn].sort(() => Math.random() - 0.5);
+          // For matching, shuffle right column and create mapping
+          if (q.rightColumn && q.rightColumn.length > 0) {
+            const rightWithIndex = q.rightColumn.map((item, idx) => ({ item, originalIdx: idx }));
+            const shuffledRight = rightWithIndex.sort(() => Math.random() - 0.5);
+            baseQuestion.leftColumn = q.leftColumn;
+            baseQuestion.rightColumn = shuffledRight.map(r => r.item);
+            // Create mapping: newIndex -> originalIndex
+            baseQuestion.rightColumnMapping = shuffledRight.map(r => r.originalIdx);
+          } else {
+            baseQuestion.leftColumn = q.leftColumn || [];
+            baseQuestion.rightColumn = [];
+          }
           break;
         
         default:
-          // Fallback to multiple choice format
           baseQuestion.options = q.options || [];
       }
       

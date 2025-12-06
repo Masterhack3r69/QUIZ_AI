@@ -159,7 +159,7 @@ export default function StepSource() {
 
   const removeFile = () => {
     setFile(null)
-    setSource(null, null, {})
+    setSource(null as any, '', {})
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }

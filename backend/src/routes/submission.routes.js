@@ -53,7 +53,7 @@ router.post('/submit', async (req, res) => {
       }
     }
 
-    // Grade answers using the Submission model's grading method
+    // Grade answers - handle shuffled options correctly
     let score = 0;
     const gradedAnswers = answers.map(answer => {
       const question = quiz.questions.id(answer.questionId);
@@ -62,8 +62,70 @@ router.post('/submit', async (req, res) => {
         return null;
       }
       
-      // Use the static grading method that handles all question types
-      const isCorrect = Submission.gradeAnswer(question, answer.selectedAnswer);
+      let isCorrect = false;
+      
+      // Grade based on question type with shuffle support
+      switch (question.type) {
+        case 'multipleChoice':
+          // If shuffledCorrectIndex is provided, use it for grading
+          // The student selected an index in the shuffled array
+          // shuffledCorrectIndex tells us where the correct answer is in the shuffled array
+          if (answer.shuffledCorrectIndex !== undefined) {
+            isCorrect = answer.selectedAnswer === answer.shuffledCorrectIndex;
+          } else {
+            // Fallback to original grading (no shuffle)
+            isCorrect = answer.selectedAnswer === question.correctAnswer;
+          }
+          break;
+        
+        case 'trueFalse':
+          isCorrect = answer.selectedAnswer === question.correctAnswer;
+          break;
+        
+        case 'fillInBlank':
+          if (typeof answer.selectedAnswer === 'string' && typeof question.correctAnswer === 'string') {
+            const studentAnswer = question.caseSensitive 
+              ? answer.selectedAnswer.trim() 
+              : answer.selectedAnswer.trim().toLowerCase();
+            const correctAnswer = question.caseSensitive 
+              ? question.correctAnswer.trim() 
+              : question.correctAnswer.trim().toLowerCase();
+            isCorrect = studentAnswer === correctAnswer;
+          }
+          break;
+        
+        case 'matching':
+          // For matching with shuffled right column
+          if (Array.isArray(answer.selectedAnswer) && Array.isArray(question.correctPairs)) {
+            const studentPairs = answer.selectedAnswer;
+            const rightMapping = answer.rightColumnMapping;
+            
+            if (rightMapping && Array.isArray(rightMapping)) {
+              // Convert student's shuffled indices back to original indices
+              const convertedPairs = studentPairs.map(pair => ({
+                left: pair.left,
+                right: rightMapping[pair.right] // Map shuffled index to original index
+              }));
+              
+              // Check if all pairs match
+              if (convertedPairs.length === question.correctPairs.length) {
+                isCorrect = convertedPairs.every(pair => 
+                  question.correctPairs.some(cp => 
+                    cp.left === pair.left && cp.right === pair.right
+                  )
+                );
+              }
+            } else {
+              // Fallback to original grading (no shuffle)
+              isCorrect = Submission.gradeAnswer(question, answer.selectedAnswer);
+            }
+          }
+          break;
+        
+        default:
+          isCorrect = Submission.gradeAnswer(question, answer.selectedAnswer);
+      }
+      
       if (isCorrect) score++;
       
       return {

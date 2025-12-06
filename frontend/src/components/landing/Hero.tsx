@@ -53,12 +53,16 @@ export function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.6 }}
           >
-            <Button size="lg" className="h-12 px-8 text-base shadow-lg shadow-primary/20 transition-all hover:shadow-xl hover:shadow-primary/30">
-              Start Creating <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="lg" className="h-12 px-8 text-base backdrop-blur-sm">
-              View Demo
-            </Button>
+            <a href="/register">
+              <Button size="lg" className="h-12 px-8 text-base shadow-lg shadow-primary/20 transition-all hover:shadow-xl hover:shadow-primary/30">
+                Start Creating <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </a>
+            <a href="/join">
+              <Button variant="outline" size="lg" className="h-12 px-8 text-base backdrop-blur-sm bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-950/50">
+                Join a Quiz
+              </Button>
+            </a>
           </motion.div>
         </div>
         

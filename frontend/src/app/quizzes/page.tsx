@@ -49,6 +49,7 @@ import {
 import { formatDistanceToNow, format } from "date-fns"
 import { toast } from "sonner"
 import api from "@/lib/api"
+import { CopyButton } from "@/components/ui/shadcn-io/copy-button"
 
 const statusConfig = {
   active: { label: "Active", color: "bg-green-500", bgColor: "bg-green-50 dark:bg-green-950/30", textColor: "text-green-700 dark:text-green-400" },
@@ -75,12 +76,6 @@ function QuizCard({ quiz, onDelete, onDuplicate, onEdit }: {
   const router = useRouter()
   const status = statusConfig[quiz.status] || statusConfig.active
 
-  const copyAccessCode = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    navigator.clipboard.writeText(quiz.accessCode)
-    toast.success("Access code copied!")
-  }
-
   return (
     <Card className="group relative overflow-hidden border hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-white dark:bg-gray-900">
       <div className={`absolute top-0 left-0 right-0 h-1 ${status.color}`} />
@@ -92,21 +87,22 @@ function QuizCard({ quiz, onDelete, onDuplicate, onEdit }: {
               {quiz.title}
             </CardTitle>
             
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button 
-                    onClick={copyAccessCode}
-                    className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-sm font-mono"
-                  >
-                    <KeyRound className="h-3.5 w-3.5 text-indigo-500" />
-                    <span className="font-semibold">{quiz.accessCode}</span>
-                    <Copy className="h-3 w-3 text-gray-400 ml-1" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>Click to copy</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            {/* Enhanced Access Code Display */}
+            <div className="mt-3 flex items-center gap-2">
+              <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/40 dark:to-purple-950/40 border border-indigo-100 dark:border-indigo-900">
+                <KeyRound className="h-4 w-4 text-indigo-500 shrink-0" />
+                <span className="font-mono text-base font-bold tracking-wider text-indigo-700 dark:text-indigo-300">
+                  {quiz.accessCode}
+                </span>
+              </div>
+              <CopyButton 
+                content={quiz.accessCode}
+                variant="outline"
+                size="default"
+                className="shrink-0 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/50"
+                onCopy={() => { toast.success("Access code copied!") }}
+              />
+            </div>
           </div>
           
           <DropdownMenu>
@@ -146,7 +142,7 @@ function QuizCard({ quiz, onDelete, onDuplicate, onEdit }: {
           </DropdownMenu>
         </div>
 
-        <Badge variant="secondary" className={`mt-2 w-fit ${status.bgColor} ${status.textColor} border-0`}>
+        <Badge variant="secondary" className={`mt-3 w-fit ${status.bgColor} ${status.textColor} border-0`}>
           <span className={`mr-1.5 h-1.5 w-1.5 rounded-full ${status.color}`} />
           {status.label}
         </Badge>
