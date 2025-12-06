@@ -10,11 +10,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { 
   Loader2, ArrowLeft, Users, Clock, Hash, KeyRound, BarChart3, TrendingDown, TrendingUp, 
   AlertTriangle, CheckCircle2, Brain, Sparkles, Target, Award, Timer, FileText, ListChecks,
-  ToggleLeft, TextCursorInput, CalendarDays, Eye, Pencil, ChevronRight, Lightbulb, 
-  AlertCircle, ThumbsUp, ThumbsDown, User, Percent
+  ToggleLeft, TextCursorInput, CalendarDays, Eye, Pencil, Lightbulb, 
+  AlertCircle, ThumbsUp, ThumbsDown, Percent
 } from "lucide-react"
 import { format, formatDistanceToNow } from "date-fns"
 import { CopyButton } from "@/components/ui/shadcn-io/copy-button"
@@ -61,49 +62,44 @@ function StatCard({ icon: Icon, label, value, subValue, gradient, iconColor }: {
   )
 }
 
-function QuestionAnalysisCard({ stat, index }: { stat: QuestionStat; index: number }) {
+function QuestionAnalysisRow({ stat, index }: { stat: QuestionStat; index: number }) {
   const accuracy = stat.accuracyRate
   const config = questionTypeConfig[stat.questionType as keyof typeof questionTypeConfig] || questionTypeConfig.multipleChoice
   const Icon = config.icon
   
   return (
-    <Card className={`relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-all duration-300 border-l-4 ${config.borderColor}`}>
-      <CardContent className="p-4">
-        <div className="flex items-start gap-4">
-          <div className="shrink-0">
-            <div className={`h-10 w-10 rounded-xl ${config.bgColor} flex items-center justify-center`}>
-              <span className="text-sm font-bold text-gray-600 dark:text-gray-300">#{index + 1}</span>
-            </div>
-          </div>
-          <div className="flex-1 min-w-0 space-y-3">
-            <p className="font-medium text-sm leading-relaxed line-clamp-2">{stat.question}</p>
-            <div className="flex items-center gap-3 flex-wrap">
-              <Badge variant="secondary" className={`${config.bgColor} ${config.color} border-0 gap-1`}>
-                <Icon className="h-3 w-3" />
-                {config.label}
-              </Badge>
-              <span className="text-xs text-muted-foreground">
-                {stat.correctCount}/{stat.totalAttempts} correct
-              </span>
-            </div>
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Accuracy</span>
-                <span className={`font-semibold ${
-                  accuracy >= 75 ? 'text-green-600' : accuracy >= 50 ? 'text-amber-600' : 'text-red-600'
-                }`}>{accuracy.toFixed(0)}%</span>
-              </div>
-              <Progress 
-                value={accuracy} 
-                className={`h-2 ${
-                  accuracy >= 75 ? '[&>div]:bg-green-500' : accuracy >= 50 ? '[&>div]:bg-amber-500' : '[&>div]:bg-red-500'
-                }`}
-              />
-            </div>
-          </div>
+    <div className={`flex items-center gap-3 p-3 rounded-lg border-l-3 ${config.borderColor} bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors`}>
+      {/* Question Number */}
+      <div className={`shrink-0 h-8 w-8 rounded-lg ${config.bgColor} flex items-center justify-center`}>
+        <span className="text-xs font-bold text-gray-600 dark:text-gray-300">{index + 1}</span>
+      </div>
+      
+      {/* Question Text */}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium truncate" title={stat.question}>{stat.question}</p>
+        <div className="flex items-center gap-2 mt-0.5">
+          <Icon className={`h-3 w-3 ${config.color}`} />
+          <span className="text-xs text-muted-foreground">{stat.correctCount}/{stat.totalAttempts} correct</span>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+      
+      {/* Accuracy Bar */}
+      <div className="shrink-0 w-32 hidden sm:block">
+        <Progress 
+          value={accuracy} 
+          className={`h-2 ${
+            accuracy >= 75 ? '[&>div]:bg-green-500' : accuracy >= 50 ? '[&>div]:bg-amber-500' : '[&>div]:bg-red-500'
+          }`}
+        />
+      </div>
+      
+      {/* Accuracy Percentage */}
+      <div className={`shrink-0 w-14 text-right font-bold text-sm ${
+        accuracy >= 75 ? 'text-green-600' : accuracy >= 50 ? 'text-amber-600' : 'text-red-600'
+      }`}>
+        {accuracy.toFixed(0)}%
+      </div>
+    </div>
   )
 }
 
@@ -366,6 +362,7 @@ export default function QuizDetailsPage({ params }: { params: Promise<{ id: stri
   const { id } = use(params)
   const router = useRouter()
   const [activeTab, setActiveTab] = useState("overview")
+  const [selectedQuestionIndex, setSelectedQuestionIndex] = useState<number | null>(null)
 
   const { data: quiz, isLoading: quizLoading } = useQuery({
     queryKey: ['quiz', id],
@@ -632,72 +629,144 @@ export default function QuizDetailsPage({ params }: { params: Promise<{ id: stri
                 </CardContent>
               </Card>
             ) : (
-              <>
-                {/* Score Distribution */}
-                <Card className="border-0 shadow-lg">
-                  <CardHeader>
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
-                        <Percent className="h-5 w-5 text-white" />
+              <div className="grid lg:grid-cols-3 gap-6">
+                {/* Left Column - Score Overview & Type Breakdown */}
+                <div className="space-y-6">
+                  {/* Score Overview - Compact */}
+                  <Card className="border-0 shadow-lg">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Percent className="h-4 w-4 text-indigo-500" />
+                        Score Overview
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-green-50 dark:bg-green-950/30">
+                        <div className="flex items-center gap-2">
+                          <TrendingUp className="h-4 w-4 text-green-600" />
+                          <span className="text-sm text-green-700 dark:text-green-300">Highest</span>
+                        </div>
+                        <span className="text-lg font-bold text-green-700 dark:text-green-300">{analytics.summary.highestScore.toFixed(0)}%</span>
                       </div>
-                      <div>
-                        <CardTitle className="text-lg">Score Overview</CardTitle>
-                        <CardDescription>Performance distribution across submissions</CardDescription>
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30">
+                        <div className="flex items-center gap-2">
+                          <Target className="h-4 w-4 text-blue-600" />
+                          <span className="text-sm text-blue-700 dark:text-blue-300">Average</span>
+                        </div>
+                        <span className="text-lg font-bold text-blue-700 dark:text-blue-300">{analytics.summary.averageScore.toFixed(0)}%</span>
                       </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="p-4 rounded-xl bg-green-50 dark:bg-green-950/30 text-center">
-                        <TrendingUp className="h-6 w-6 text-green-600 mx-auto mb-2" />
-                        <p className="text-2xl font-bold text-green-700 dark:text-green-300">{analytics.summary.highestScore.toFixed(0)}%</p>
-                        <p className="text-xs text-green-600">Highest</p>
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-red-50 dark:bg-red-950/30">
+                        <div className="flex items-center gap-2">
+                          <TrendingDown className="h-4 w-4 text-red-600" />
+                          <span className="text-sm text-red-700 dark:text-red-300">Lowest</span>
+                        </div>
+                        <span className="text-lg font-bold text-red-700 dark:text-red-300">{analytics.summary.lowestScore.toFixed(0)}%</span>
                       </div>
-                      <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/30 text-center">
-                        <Target className="h-6 w-6 text-blue-600 mx-auto mb-2" />
-                        <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">{analytics.summary.averageScore.toFixed(0)}%</p>
-                        <p className="text-xs text-blue-600">Average</p>
-                      </div>
-                      <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/30 text-center">
-                        <TrendingDown className="h-6 w-6 text-red-600 mx-auto mb-2" />
-                        <p className="text-2xl font-bold text-red-700 dark:text-red-300">{analytics.summary.lowestScore.toFixed(0)}%</p>
-                        <p className="text-xs text-red-600">Lowest</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
 
-                {/* Question Performance */}
-                <Card className="border-0 shadow-lg">
-                  <CardHeader>
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
-                        <AlertTriangle className="h-5 w-5 text-white" />
+                  {/* Score by Question Type */}
+                  {analytics.summary.averageScoreByType && (
+                    <Card className="border-0 shadow-lg">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <BarChart3 className="h-4 w-4 text-purple-500" />
+                          Score by Type
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        {Object.entries(analytics.summary.averageScoreByType).map(([type, score]) => {
+                          if (score === 0 && analytics.summary.questionTypeBreakdown[type as keyof typeof analytics.summary.questionTypeBreakdown] === 0) return null
+                          const config = questionTypeConfig[type as keyof typeof questionTypeConfig]
+                          if (!config) return null
+                          const Icon = config.icon
+                          return (
+                            <div key={type} className="flex items-center gap-3">
+                              <div className={`h-7 w-7 rounded-md ${config.bgColor} flex items-center justify-center`}>
+                                <Icon className={`h-3.5 w-3.5 ${config.color}`} />
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between text-xs mb-1">
+                                  <span className="text-muted-foreground">{config.label}</span>
+                                  <span className={`font-semibold ${
+                                    score >= 75 ? 'text-green-600' : score >= 50 ? 'text-amber-600' : 'text-red-600'
+                                  }`}>{score.toFixed(0)}%</span>
+                                </div>
+                                <Progress 
+                                  value={score} 
+                                  className={`h-1.5 ${
+                                    score >= 75 ? '[&>div]:bg-green-500' : score >= 50 ? '[&>div]:bg-amber-500' : '[&>div]:bg-red-500'
+                                  }`}
+                                />
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Quick Stats */}
+                  <Card className="border-0 shadow-lg bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30">
+                    <CardContent className="p-4">
+                      <div className="grid grid-cols-2 gap-4 text-center">
+                        <div>
+                          <p className="text-2xl font-bold text-indigo-600">{analytics.summary.totalSubmissions}</p>
+                          <p className="text-xs text-muted-foreground">Submissions</p>
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold text-purple-600">{analytics.totalQuestions}</p>
+                          <p className="text-xs text-muted-foreground">Questions</p>
+                        </div>
                       </div>
-                      <div>
-                        <CardTitle className="text-lg">Question Performance</CardTitle>
-                        <CardDescription>Sorted by accuracy (lowest first)</CardDescription>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Right Column - Question Performance (Compact Table) */}
+                <div className="lg:col-span-2">
+                  <Card className="border-0 shadow-lg h-full">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4 text-amber-500" />
+                          Question Performance
+                        </CardTitle>
+                        <Badge variant="secondary" className="text-xs">
+                          Sorted by accuracy
+                        </Badge>
                       </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {sortedQuestionStats.length === 0 ? (
-                      <p className="text-center text-muted-foreground py-8">No question statistics available yet.</p>
-                    ) : (
-                      <div className="space-y-3">
-                        {sortedQuestionStats.map((stat, i) => (
-                          <QuestionAnalysisCard key={stat.questionId} stat={stat} index={i} />
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </>
+                    </CardHeader>
+                    <CardContent>
+                      {sortedQuestionStats.length === 0 ? (
+                        <p className="text-center text-muted-foreground py-8">No question statistics available yet.</p>
+                      ) : (
+                        <>
+                          {/* Header Row */}
+                          <div className="flex items-center gap-3 px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider border-b mb-2">
+                            <div className="w-8">#</div>
+                            <div className="flex-1">Question</div>
+                            <div className="w-32 hidden sm:block text-center">Progress</div>
+                            <div className="w-14 text-right">Score</div>
+                          </div>
+                          <ScrollArea className="h-[450px] pr-4">
+                            <div className="space-y-2">
+                              {sortedQuestionStats.map((stat, i) => (
+                                <QuestionAnalysisRow key={stat.questionId} stat={stat} index={i} />
+                              ))}
+                            </div>
+                          </ScrollArea>
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
             )}
           </TabsContent>
 
           {/* Questions Tab */}
-          <TabsContent value="questions" className="space-y-4">
+          <TabsContent value="questions">
             {!quiz.questions || quiz.questions.length === 0 ? (
               <Card className="border-2 border-dashed">
                 <CardContent className="py-16 text-center">
@@ -711,10 +780,110 @@ export default function QuizDetailsPage({ params }: { params: Promise<{ id: stri
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-y-4">
-                {quiz.questions.map((question, i) => (
-                  <QuestionCard key={question._id} question={question} index={i} />
-                ))}
+              <div className="flex gap-6">
+                {/* Question Navigator Sidebar */}
+                <Card className="shrink-0 w-64 border-0 shadow-lg hidden lg:block sticky top-4 h-fit">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm flex items-center justify-between">
+                      <span>Questions</span>
+                      <Badge variant="secondary">{quiz.questions.length}</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-2">
+                    <ScrollArea className="h-[400px]">
+                      <div className="grid grid-cols-5 gap-1.5 p-2">
+                        {quiz.questions.map((q, i) => {
+                          const config = questionTypeConfig[q.type as keyof typeof questionTypeConfig] || questionTypeConfig.multipleChoice
+                          return (
+                            <button
+                              key={q._id}
+                              onClick={() => {
+                                setSelectedQuestionIndex(i)
+                                document.getElementById(`question-${i}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                              }}
+                              className={`h-9 w-9 rounded-lg text-xs font-semibold transition-all ${
+                                selectedQuestionIndex === i
+                                  ? 'bg-indigo-600 text-white shadow-lg scale-105'
+                                  : `${config.bgColor} ${config.color} hover:scale-105`
+                              }`}
+                              title={`Q${i + 1}: ${q.question.substring(0, 50)}...`}
+                            >
+                              {i + 1}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      {/* Question Type Legend */}
+                      <div className="mt-4 p-3 border-t space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground mb-2">Question Types</p>
+                        {Object.entries(questionTypeConfig).map(([type, config]) => {
+                          const count = quiz.questions.filter(q => q.type === type).length
+                          if (count === 0) return null
+                          const Icon = config.icon
+                          return (
+                            <div key={type} className="flex items-center gap-2 text-xs">
+                              <div className={`h-5 w-5 rounded ${config.bgColor} flex items-center justify-center`}>
+                                <Icon className={`h-3 w-3 ${config.color}`} />
+                              </div>
+                              <span className="text-muted-foreground">{config.label}</span>
+                              <span className="ml-auto font-medium">{count}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+
+                {/* Questions List */}
+                <div className="flex-1 min-w-0">
+                  {/* Mobile Question Selector */}
+                  <div className="lg:hidden mb-4">
+                    <Card className="border-0 shadow-sm">
+                      <CardContent className="p-3">
+                        <ScrollArea className="w-full">
+                          <div className="flex gap-2 pb-2">
+                            {quiz.questions.map((q, i) => {
+                              const config = questionTypeConfig[q.type as keyof typeof questionTypeConfig] || questionTypeConfig.multipleChoice
+                              return (
+                                <button
+                                  key={q._id}
+                                  onClick={() => {
+                                    setSelectedQuestionIndex(i)
+                                    document.getElementById(`question-${i}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                                  }}
+                                  className={`shrink-0 h-10 w-10 rounded-lg text-sm font-semibold transition-all ${
+                                    selectedQuestionIndex === i
+                                      ? 'bg-indigo-600 text-white shadow-lg'
+                                      : `${config.bgColor} ${config.color}`
+                                  }`}
+                                >
+                                  {i + 1}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </ScrollArea>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Question Cards */}
+                  <div className="space-y-4">
+                    {quiz.questions.map((question, i) => (
+                      <div 
+                        key={question._id} 
+                        id={`question-${i}`}
+                        onClick={() => setSelectedQuestionIndex(i)}
+                        className={`transition-all duration-200 ${
+                          selectedQuestionIndex === i ? 'ring-2 ring-indigo-500 ring-offset-2 rounded-xl' : ''
+                        }`}
+                      >
+                        <QuestionCard question={question} index={i} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
           </TabsContent>

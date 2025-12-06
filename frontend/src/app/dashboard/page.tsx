@@ -1,4 +1,4 @@
-  "use client"
+"use client"
 
 import { useEffect, useMemo } from "react"
 import Link from "next/link"
@@ -18,12 +18,59 @@ import {
   Clock, 
   Trophy,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Target,
+  Timer,
+  TrendingUp,
+  BarChart3,
+  Play,
+  Copy,
+  Trash2,
+  Eye,
+  Share2,
+  Calendar,
+  ArrowUpRight,
+  Sparkles,
+  FileText,
+  Settings
 } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import { quizService } from "@/services/quiz.service"
-import { formatDistanceToNow } from "date-fns"
+import { formatDistanceToNow, format } from "date-fns"
 import { Navbar } from "@/components/navbar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Progress } from "@/components/ui/progress"
+import { Badge } from "@/components/ui/badge"
+
+function StatCard({ icon: Icon, label, value, subValue, gradient }: { 
+  icon: React.ElementType
+  label: string
+  value: string | number
+  subValue?: string
+  gradient: string
+}) {
+  return (
+    <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 group">
+      <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-[0.08] group-hover:opacity-[0.12] transition-opacity`} />
+      <div className="absolute -right-4 -bottom-4 opacity-[0.08] group-hover:opacity-[0.12] transition-opacity">
+        <Icon className="h-32 w-32 text-gray-900 dark:text-white" />
+      </div>
+      <CardContent className="p-5 relative z-10">
+        <div className="space-y-1">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
+          <p className="text-3xl font-bold">{value}</p>
+          {subValue && <p className="text-xs text-muted-foreground">{subValue}</p>}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
 export default function DashboardPage() {
   const { user, logout, isLoading: isAuthLoading, isAuthenticated } = useAuth()
@@ -44,28 +91,38 @@ export default function DashboardPage() {
 
   // Calculate Stats
   const stats = useMemo(() => {
-    if (!quizzes) return [
-      { label: "Total Quizzes", value: "0", icon: BookOpen, color: "text-blue-500" },
-      { label: "Total Plays", value: "0", icon: Users, color: "text-green-500" },
-      { label: "Active Quizzes", value: "0", icon: Zap, color: "text-purple-500" },
-      { label: "Scheduled", value: "0", icon: Clock, color: "text-orange-500" },
-    ]
+    if (!quizzes) return {
+      totalResponses: 0,
+      averageScore: 0,
+      highestScore: 0,
+      avgDuration: 0,
+      totalQuestions: 0,
+      activeQuizzes: 0
+    }
 
-    const totalQuizzes = quizzes.length
-    const totalPlays = quizzes.reduce((acc, quiz) => acc + (quiz.submissionCount || 0), 0)
+    const totalResponses = quizzes.reduce((acc, quiz) => acc + (quiz.submissionCount || 0), 0)
+    const totalQuestions = quizzes.reduce((acc, quiz) => acc + (quiz.questionsPerStudent || 0), 0)
     const activeQuizzes = quizzes.filter(q => q.status === 'active').length
-    const scheduledQuizzes = quizzes.filter(q => q.status === 'scheduled').length
+    const avgDuration = quizzes.length > 0 
+      ? Math.round(quizzes.reduce((acc, quiz) => acc + (quiz.duration || 0), 0) / quizzes.length)
+      : 0
 
-    return [
-      { label: "Total Quizzes", value: totalQuizzes.toString(), icon: BookOpen, color: "text-blue-500" },
-      { label: "Total Plays", value: totalPlays.toString(), icon: Users, color: "text-green-500" },
-      { label: "Active Quizzes", value: activeQuizzes.toString(), icon: Zap, color: "text-purple-500" },
-      { label: "Scheduled", value: scheduledQuizzes.toString(), icon: Clock, color: "text-orange-500" },
-    ]
+    return {
+      totalResponses,
+      averageScore: 0, // Would need analytics data
+      highestScore: 0, // Would need analytics data
+      avgDuration,
+      totalQuestions,
+      activeQuizzes
+    }
   }, [quizzes])
 
   const recentQuizzes = useMemo(() => {
-    return quizzes?.slice(0, 4) || []
+    return quizzes?.slice(0, 5) || []
+  }, [quizzes])
+
+  const upcomingQuizzes = useMemo(() => {
+    return quizzes?.filter(q => q.status === 'scheduled').slice(0, 3) || []
   }, [quizzes])
 
   if (isAuthLoading || isQuizzesLoading) {
@@ -85,199 +142,370 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50/50 dark:bg-gray-950">
-      {/* Top Navigation - Glassmorphism */}
       <Navbar />
 
-      <main className="container mx-auto px-4 py-8 space-y-10">
-        {/* Hero Section */}
-        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-600 p-8 md:p-12 text-white shadow-2xl shadow-indigo-500/25">
-          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
-            <div className="space-y-4 max-w-xl">
-              <div className="inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-xs font-medium backdrop-blur-md border border-white/20">
-                <span className="mr-2 flex h-2 w-2 rounded-full bg-green-400"></span>
-                System Operational
-              </div>
-              <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight">
-                Welcome back, {user.name.split(' ')[0]}!
-              </h1>
-              <p className="text-lg text-indigo-100/90 leading-relaxed">
-                Ready to create engaging quizzes? Your AI assistant is ready.
-              </p>
-              <div className="flex flex-wrap gap-4 pt-2">
-                <Button size="lg" className="bg-white text-indigo-600 hover:bg-indigo-50 border-0 shadow-lg shadow-black/10 transition-transform hover:scale-105">
-                  <Zap className="mr-2 h-4 w-4" />
-                  Generate with AI
-                </Button>
-                <Button size="lg" variant="outline" className="bg-transparent border-white/30 text-white hover:bg-white/10 hover:text-white">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Manually
-                </Button>
-              </div>
-            </div>
-            
-            {/* Abstract Decorative Elements */}
-            <div className="hidden md:block relative">
-               <div className="absolute -top-12 -right-12 h-64 w-64 rounded-full bg-pink-500/30 blur-3xl" />
-               <div className="absolute -bottom-12 -left-12 h-64 w-64 rounded-full bg-blue-500/30 blur-3xl" />
-               <Card className="relative w-72 bg-white/10 backdrop-blur-md border-white/20 text-white shadow-xl rotate-3 transition-transform hover:rotate-0 duration-500">
-                 <CardHeader>
-                   <CardTitle className="flex items-center gap-2">
-                     <CheckCircle2 className="h-5 w-5 text-green-400" />
-                     Ready to Deploy
-                   </CardTitle>
-                 </CardHeader>
-                 <CardContent className="space-y-2">
-                   <div className="h-2 w-3/4 rounded-full bg-white/20" />
-                   <div className="h-2 w-1/2 rounded-full bg-white/20" />
-                   <div className="mt-4 flex gap-2">
-                     <div className="h-8 w-8 rounded-full bg-white/20" />
-                     <div className="h-8 w-8 rounded-full bg-white/20" />
-                     <div className="h-8 w-8 rounded-full bg-white/20" />
-                   </div>
-                 </CardContent>
-               </Card>
-            </div>
+      <main className="container mx-auto px-4 py-8 space-y-8">
+        {/* Welcome Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Welcome back, {user.name.split(' ')[0]}! 👋
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Here's what's happening with your quizzes today.
+            </p>
           </div>
+          <div className="flex gap-3">
+            <Button className="gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700">
+              <Sparkles className="h-4 w-4" />
+              Create with AI
+            </Button>
+          </div>
+        </div>
+
+        {/* Stats Cards - Matching quiz details page design */}
+        <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <StatCard 
+            icon={Users} 
+            label="Total Responses" 
+            value={stats.totalResponses}
+            subValue={`${quizzes?.length || 0} quizzes`}
+            gradient="from-blue-500 to-cyan-600"
+          />
+          <StatCard 
+            icon={Target} 
+            label="Average Score" 
+            value={stats.averageScore > 0 ? `${stats.averageScore}%` : 'N/A'}
+            subValue="across all submissions"
+            gradient="from-green-500 to-emerald-600"
+          />
+          <StatCard 
+            icon={Trophy} 
+            label="Highest Score" 
+            value={stats.highestScore > 0 ? `${stats.highestScore}%` : 'N/A'}
+            subValue="best performance"
+            gradient="from-amber-500 to-orange-600"
+          />
+          <StatCard 
+            icon={Timer} 
+            label="Avg Duration" 
+            value={`${stats.avgDuration} min`}
+            subValue={`${stats.totalQuestions} questions total`}
+            gradient="from-purple-500 to-pink-600"
+          />
         </section>
 
-        {/* Stats Overview */}
-        <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat, i) => (
-            <Card key={i} className="group relative overflow-hidden border-none shadow-sm hover:shadow-md transition-all duration-300 bg-white dark:bg-gray-900">
-              <div className={`absolute inset-0 opacity-0 group-hover:opacity-5 transition-opacity ${stat.color.replace('text-', 'bg-')}`} />
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className={`p-3 rounded-2xl ${stat.color.replace('text-', 'bg-').replace('500', '100')} dark:bg-opacity-10`}>
-                    <stat.icon className={`h-6 w-6 ${stat.color}`} />
-                  </div>
-                  {/* <span className="flex items-center text-xs font-medium text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded-full">
-                    +12%
-                  </span> */}
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-2xl font-bold tracking-tight">{stat.value}</h3>
-                  <p className="text-sm text-muted-foreground font-medium">{stat.label}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        {/* Quick Actions */}
+        <section className="grid gap-4 md:grid-cols-4">
+          <button 
+            onClick={() => router.push('/create-quiz')}
+            className="group flex items-center gap-4 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 transition-all"
+          >
+            <div className="rounded-lg bg-indigo-100 dark:bg-indigo-900/30 p-3 group-hover:bg-indigo-200 dark:group-hover:bg-indigo-900/50 transition-colors">
+              <Plus className="h-5 w-5 text-indigo-600" />
+            </div>
+            <div className="text-left">
+              <p className="font-medium">Create Quiz</p>
+              <p className="text-xs text-muted-foreground">Start from scratch</p>
+            </div>
+          </button>
+
+          <button 
+            onClick={() => router.push('/create-quiz?mode=ai')}
+            className="group flex items-center gap-4 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-950/20 transition-all"
+          >
+            <div className="rounded-lg bg-purple-100 dark:bg-purple-900/30 p-3 group-hover:bg-purple-200 dark:group-hover:bg-purple-900/50 transition-colors">
+              <Sparkles className="h-5 w-5 text-purple-600" />
+            </div>
+            <div className="text-left">
+              <p className="font-medium">AI Generate</p>
+              <p className="text-xs text-muted-foreground">Use AI assistant</p>
+            </div>
+          </button>
+
+          <button 
+            onClick={() => router.push('/quizzes')}
+            className="group flex items-center gap-4 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-all"
+          >
+            <div className="rounded-lg bg-emerald-100 dark:bg-emerald-900/30 p-3 group-hover:bg-emerald-200 dark:group-hover:bg-emerald-900/50 transition-colors">
+              <BarChart3 className="h-5 w-5 text-emerald-600" />
+            </div>
+            <div className="text-left">
+              <p className="font-medium">View Analytics</p>
+              <p className="text-xs text-muted-foreground">Check performance</p>
+            </div>
+          </button>
+
+          <button 
+            className="group flex items-center gap-4 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 hover:border-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-all"
+          >
+            <div className="rounded-lg bg-orange-100 dark:bg-orange-900/30 p-3 group-hover:bg-orange-200 dark:group-hover:bg-orange-900/50 transition-colors">
+              <FileText className="h-5 w-5 text-orange-600" />
+            </div>
+            <div className="text-left">
+              <p className="font-medium">Import Quiz</p>
+              <p className="text-xs text-muted-foreground">From file or URL</p>
+            </div>
+          </button>
         </section>
+
 
         <div className="grid gap-8 lg:grid-cols-3">
           {/* Main Content - Recent Quizzes */}
           <div className="lg:col-span-2 space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold tracking-tight">Recent Quizzes</h2>
-                <p className="text-muted-foreground">Manage and monitor your latest assessments.</p>
+                <h2 className="text-xl font-bold tracking-tight">Recent Quizzes</h2>
+                <p className="text-sm text-muted-foreground">Manage your latest assessments</p>
               </div>
-              <Button variant="outline" className="gap-2" onClick={() => router.push('/quizzes')}>
-                View All <BookOpen className="h-4 w-4" />
+              <Button variant="ghost" size="sm" className="gap-2" onClick={() => router.push('/quizzes')}>
+                View All <ArrowUpRight className="h-4 w-4" />
               </Button>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              {/* Create New Card */}
-              <button className="group relative flex flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 p-8 text-center hover:border-indigo-500/50 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/10 transition-all duration-300">
-                <div className="rounded-full bg-white dark:bg-gray-800 p-4 shadow-sm group-hover:scale-110 transition-transform duration-300 group-hover:text-indigo-600">
-                  <Plus className="h-6 w-6" />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="font-semibold text-lg">Create New Quiz</h3>
-                  <p className="text-sm text-muted-foreground">Start from scratch or use AI</p>
-                </div>
-              </button>
-
-              {/* Quiz Cards */}
-              {recentQuizzes.length === 0 && (
-                 <div className="col-span-full flex flex-col items-center justify-center p-8 text-center text-muted-foreground">
-                   <AlertCircle className="h-8 w-8 mb-2 opacity-50" />
-                   <p>No quizzes found. Create one to get started!</p>
-                 </div>
-              )}
-
-              {recentQuizzes.map((quiz) => (
-                <Card key={quiz._id} className="group cursor-pointer overflow-hidden border-none shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-white dark:bg-gray-900">
-                  <div className={`h-2 w-full bg-gradient-to-r opacity-0 group-hover:opacity-100 transition-opacity ${
-                    quiz.status === 'active' ? 'from-green-500 to-emerald-500' : 
-                    quiz.status === 'expired' ? 'from-gray-500 to-slate-500' :
-                    'from-indigo-500 to-purple-500'
-                  }`} />
-                  <CardHeader className="pb-3">
-                    <div className="flex justify-between items-start">
-                      <div className="space-y-1">
-                        <CardTitle className="text-lg group-hover:text-indigo-600 transition-colors line-clamp-1" title={quiz.title}>
-                          {quiz.title}
-                        </CardTitle>
-                        <CardDescription className="flex items-center gap-2">
-                          <span className={`inline-block h-1.5 w-1.5 rounded-full ${
-                            quiz.status === 'active' ? 'bg-green-500' : 
-                            quiz.status === 'expired' ? 'bg-gray-400' :
-                            'bg-yellow-500'
-                          }`} />
-                          <span className="capitalize">{quiz.status}</span>
-                        </CardDescription>
-                      </div>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity -mr-2">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 gap-4 py-2">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <BookOpen className="h-4 w-4 text-indigo-500/70" />
-                        <span>{quiz.questionsPerStudent} Qs</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Users className="h-4 w-4 text-purple-500/70" />
-                        <span>{quiz.submissionCount} Plays</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                  <div className="px-6 py-4 border-t bg-gray-50/50 dark:bg-gray-900/50 flex items-center justify-between">
-                    <span className="text-xs font-medium text-muted-foreground">
-                      {formatDistanceToNow(new Date(quiz.createdAt), { addSuffix: true })}
-                    </span>
-                    <div className="flex -space-x-2">
-                      {/* Placeholder for student avatars if we had them */}
-                      {[1, 2, 3].map((i) => (
-                        <div key={i} className="h-6 w-6 rounded-full border-2 border-white dark:border-gray-900 bg-gray-200 dark:bg-gray-700 opacity-50" />
-                      ))}
-                    </div>
+            {recentQuizzes.length === 0 ? (
+              <Card className="border-dashed">
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <div className="rounded-full bg-gray-100 dark:bg-gray-800 p-4 mb-4">
+                    <BookOpen className="h-8 w-8 text-muted-foreground" />
                   </div>
-                </Card>
-              ))}
-            </div>
+                  <h3 className="font-semibold mb-1">No quizzes yet</h3>
+                  <p className="text-sm text-muted-foreground mb-4">Create your first quiz to get started</p>
+                  <Button onClick={() => router.push('/create-quiz')}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Quiz
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {recentQuizzes.map((quiz) => (
+                  <Card 
+                    key={quiz._id} 
+                    className="group hover:shadow-md transition-all duration-200 cursor-pointer"
+                    onClick={() => router.push(`/quizzes/${quiz._id}`)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-4 flex-1 min-w-0">
+                          {/* Status Indicator */}
+                          <div className={`mt-1 flex-shrink-0 rounded-lg p-2.5 ${
+                            quiz.status === 'active' 
+                              ? 'bg-emerald-100 dark:bg-emerald-900/30' 
+                              : quiz.status === 'expired' 
+                              ? 'bg-gray-100 dark:bg-gray-800' 
+                              : quiz.status === 'scheduled'
+                              ? 'bg-amber-100 dark:bg-amber-900/30'
+                              : 'bg-blue-100 dark:bg-blue-900/30'
+                          }`}>
+                            {quiz.status === 'active' ? (
+                              <Play className="h-4 w-4 text-emerald-600" />
+                            ) : quiz.status === 'expired' ? (
+                              <Clock className="h-4 w-4 text-gray-500" />
+                            ) : quiz.status === 'scheduled' ? (
+                              <Calendar className="h-4 w-4 text-amber-600" />
+                            ) : (
+                              <FileText className="h-4 w-4 text-blue-600" />
+                            )}
+                          </div>
+
+                          {/* Quiz Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-semibold truncate group-hover:text-indigo-600 transition-colors">
+                                {quiz.title}
+                              </h3>
+                              <Badge variant={
+                                quiz.status === 'active' ? 'default' : 
+                                quiz.status === 'expired' ? 'secondary' : 
+                                'outline'
+                              } className={`text-xs ${
+                                quiz.status === 'active' ? 'bg-emerald-500' : ''
+                              }`}>
+                                {quiz.status}
+                              </Badge>
+                            </div>
+                            
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <BookOpen className="h-3.5 w-3.5" />
+                                {quiz.questionsPerStudent} questions
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Timer className="h-3.5 w-3.5" />
+                                {quiz.duration} min
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Users className="h-3.5 w-3.5" />
+                                {quiz.submissionCount} responses
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3.5 w-3.5" />
+                                {formatDistanceToNow(new Date(quiz.createdAt), { addSuffix: true })}
+                              </span>
+                            </div>
+
+                            {/* Access Code */}
+                            {quiz.accessCode && quiz.status === 'active' && (
+                              <div className="mt-2 inline-flex items-center gap-2 px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 text-xs font-mono">
+                                Code: {quiz.accessCode}
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    navigator.clipboard.writeText(quiz.accessCode)
+                                  }}
+                                  className="hover:text-indigo-600"
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation()
+                              router.push(`/quizzes/${quiz._id}`)
+                            }}>
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation()
+                              router.push(`/quizzes/${quiz._id}/analytics`)
+                            }}>
+                              <BarChart3 className="h-4 w-4 mr-2" />
+                              Analytics
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation()
+                              navigator.clipboard.writeText(`${window.location.origin}/take-quiz?code=${quiz.accessCode}`)
+                            }}>
+                              <Share2 className="h-4 w-4 mr-2" />
+                              Share Link
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
+                              <Copy className="h-4 w-4 mr-2" />
+                              Duplicate
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="text-red-600"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Sidebar Widgets */}
+
+          {/* Sidebar */}
           <div className="space-y-6">
-            <Card className="border-none shadow-sm bg-gradient-to-b from-indigo-50 to-white dark:from-indigo-950/20 dark:to-gray-900">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Trophy className="h-5 w-5 text-yellow-500" />
+            {/* Activity Summary */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-indigo-500" />
+                  Activity Summary
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Active Quizzes</span>
+                    <span className="font-medium">{stats.activeQuizzes}</span>
+                  </div>
+                  <Progress value={quizzes?.length ? (stats.activeQuizzes / quizzes.length) * 100 : 0} className="h-2" />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Response Rate</span>
+                    <span className="font-medium">{stats.totalResponses > 0 ? '100%' : '0%'}</span>
+                  </div>
+                  <Progress value={stats.totalResponses > 0 ? 100 : 0} className="h-2" />
+                </div>
+                <div className="pt-2 border-t">
+                  <div className="grid grid-cols-2 gap-4 text-center">
+                    <div>
+                      <p className="text-2xl font-bold text-indigo-600">{quizzes?.length || 0}</p>
+                      <p className="text-xs text-muted-foreground">Total Quizzes</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-emerald-600">{stats.totalResponses}</p>
+                      <p className="text-xs text-muted-foreground">Total Responses</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Upcoming Quizzes */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-amber-500" />
+                  Scheduled Quizzes
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {upcomingQuizzes.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No scheduled quizzes
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {upcomingQuizzes.map((quiz) => (
+                      <div 
+                        key={quiz._id}
+                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
+                        onClick={() => router.push(`/quizzes/${quiz._id}`)}
+                      >
+                        <div className="h-2 w-2 rounded-full bg-amber-500" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{quiz.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {quiz.startDate ? format(new Date(quiz.startDate), 'MMM d, h:mm a') : 'Not scheduled'}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Top Performers */}
+            <Card className="bg-gradient-to-b from-amber-50 to-white dark:from-amber-950/20 dark:to-gray-900 border-amber-200/50 dark:border-amber-900/50">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Trophy className="h-4 w-4 text-amber-500" />
                   Top Performers
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-sm text-muted-foreground text-center py-4">
-                  No data available yet.
+                  <Trophy className="h-8 w-8 mx-auto mb-2 text-amber-300" />
+                  <p>Complete some quizzes to see top performers!</p>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-sm overflow-hidden">
-              <div className="h-2 bg-gradient-to-r from-pink-500 to-orange-500" />
-              <CardHeader>
-                <CardTitle>Upcoming Schedule</CardTitle>
-              </CardHeader>
-              <CardContent>
-                 <div className="text-sm text-muted-foreground text-center py-4">
-                  No upcoming quizzes.
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </main>
