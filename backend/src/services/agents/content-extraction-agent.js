@@ -62,7 +62,7 @@ class ContentExtractionAgent {
       const subjectContext = options.subjectContext || 'General educational content. Extract key concepts that can be tested.';
       
       // Get formatted prompt from prompt manager
-      const promptData = this.promptManager.getPrompt('content-extraction', {
+      const promptData = await this.promptManager.getPrompt('content-extraction', {
         content: truncatedContent,
         subjectContext: subjectContext
       });
@@ -136,7 +136,7 @@ class ContentExtractionAgent {
 
     try {
       // Get formatted prompt
-      const promptData = this.promptManager.getPrompt('comprehensive-content-analysis', {
+      const promptData = await this.promptManager.getPrompt('comprehensive-content-analysis', {
         content: truncatedContent
       });
 

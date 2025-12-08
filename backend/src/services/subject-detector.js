@@ -142,7 +142,7 @@ class SubjectDetector {
         : content;
 
       // Get subject detection prompt
-      const promptData = this.promptManager.getPrompt('subject-detection', {
+      const promptData = await this.promptManager.getPrompt('subject-detection', {
         content: truncatedContent
       });
 

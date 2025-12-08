@@ -78,7 +78,7 @@ class QuestionGenerationAgent {
       const promptName = options.recommendedPrompt || 'question-generation';
 
       // Get formatted prompt from prompt manager
-      const promptData = this.promptManager.getPrompt(promptName, {
+      const promptData = await this.promptManager.getPrompt(promptName, {
         questionCount: totalQuestions,
         concepts: formattedConcepts,
         difficulty: difficulty,

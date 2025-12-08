@@ -1,1 +1,10 @@
 .kiro/
+
+# Service account keys (NEVER commit these)
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!components.json
+!*.config.json
+edunoai-*.json

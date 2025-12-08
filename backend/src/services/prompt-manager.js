@@ -1,39 +1,33 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { getPromptLoader } from './gcs-prompt-loader.js';
 
 /**
  * PromptManager - Manages AI agent prompts with variable substitution and validation
  * 
+ * Now uses GCS Prompt Loader for cloud-based prompt management.
+ * Falls back to local file if GCS is unavailable.
+ * 
  * Responsibilities:
- * - Load prompts from configuration file
+ * - Load prompts from GCS or local configuration file
  * - Cache loaded prompts for performance
  * - Format prompts with variable substitution
  * - Validate required variables are provided
  */
 class PromptManager {
-  constructor(configPath = null) {
-    this.configPath = configPath || path.join(__dirname, '../../config/ai-prompts.json');
+  constructor() {
     this.prompts = null;
     this.cache = new Map();
+    this._loaderPromise = null;
   }
 
   /**
-   * Load prompts from configuration file
-   * @returns {Object} Loaded prompts configuration
-   * @throws {Error} If config file cannot be loaded or parsed
+   * Load prompts from GCS or local file
+   * @returns {Promise<Object>} Loaded prompts configuration
+   * @throws {Error} If config cannot be loaded or parsed
    */
-  loadPrompts() {
+  async loadPromptsAsync() {
     try {
-      if (!fs.existsSync(this.configPath)) {
-        throw new Error(`Prompts configuration file not found at: ${this.configPath}`);
-      }
-
-      const configContent = fs.readFileSync(this.configPath, 'utf8');
-      const config = JSON.parse(configContent);
+      const loader = getPromptLoader();
+      const config = await loader.loadPrompts();
 
       if (!config.agents || typeof config.agents !== 'object') {
         throw new Error('Invalid prompts configuration: missing "agents" object');
@@ -42,24 +36,39 @@ class PromptManager {
       this.prompts = config.agents;
       return this.prompts;
     } catch (error) {
-      if (error instanceof SyntaxError) {
-        throw new Error(`Failed to parse prompts configuration: ${error.message}`);
-      }
       throw error;
     }
   }
 
   /**
-   * Get a prompt for a specific agent with variable substitution
+   * Synchronous load - for backward compatibility
+   * Uses cached prompts or triggers async load
+   * @returns {Object} Loaded prompts configuration
+   */
+  loadPrompts() {
+    if (this.prompts) {
+      return this.prompts;
+    }
+    
+    // Trigger async load and throw helpful error
+    this.loadPromptsAsync().catch(err => {
+      console.error('[PromptManager] Async load failed:', err.message);
+    });
+    
+    throw new Error('Prompts not loaded yet. Use await promptManager.loadPromptsAsync() first, or call getPrompt() which handles async loading.');
+  }
+
+  /**
+   * Get a prompt for a specific agent with variable substitution (async)
    * @param {string} agentName - Name of the agent (e.g., 'content-extraction')
    * @param {Object} variables - Variables to substitute in the template
-   * @returns {Object} Formatted prompt with system role and user message
+   * @returns {Promise<Object>} Formatted prompt with system role and user message
    * @throws {Error} If agent not found or variables are invalid
    */
-  getPrompt(agentName, variables = {}) {
+  async getPrompt(agentName, variables = {}) {
     // Load prompts if not already loaded
     if (!this.prompts) {
-      this.loadPrompts();
+      await this.loadPromptsAsync();
     }
 
     // Check if agent exists

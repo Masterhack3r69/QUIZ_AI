@@ -54,7 +54,7 @@ class QuestionImprovementAgent {
       });
 
       // Get formatted prompt from prompt manager
-      const promptData = this.promptManager.getPrompt('question-improvement', {
+      const promptData = await this.promptManager.getPrompt('question-improvement', {
         originalQuestion: formattedQuestion,
         validationFeedback: formattedFeedback
       });

@@ -10,9 +10,11 @@ import quizRoutes from './routes/quiz.routes.js';
 import submissionRoutes from './routes/submission.routes.js';
 import templateRoutes from './routes/template.routes.js';
 import adminRoutes from './routes/admin.routes.js';
+import promptsRoutes from './routes/prompts.routes.js';
 import AgenticPipeline from './services/agentic-pipeline.js';
 import aiTaskRouter from './services/ai-task-router.js';
 import PromptManager from './services/prompt-manager.js';
+import { preloadPrompts } from './services/gcs-prompt-loader.js';
 import ContentExtractionAgent from './services/agents/content-extraction-agent.js';
 import QuestionGenerationAgent from './services/agents/question-generation-agent.js';
 import QualityValidationAgent from './services/agents/quality-validation-agent.js';
@@ -21,6 +23,11 @@ import SubjectDetector from './services/subject-detector.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Preload prompts from GCS on startup (non-blocking)
+preloadPrompts().catch(err => {
+  console.warn('[Server] Failed to preload prompts:', err.message);
+});
 
 // Connect to PostgreSQL (for user authentication)
 connectPostgres();
@@ -121,6 +128,7 @@ app.use('/api/quiz', quizRoutes);
 app.use('/api/submission', submissionRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/prompts', promptsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -58,7 +58,7 @@ class QualityValidationAgent {
       const formattedQuestion = this.formatQuestionForPrompt(question);
 
       // Get formatted prompt from prompt manager
-      const promptData = this.promptManager.getPrompt('quality-validation', {
+      const promptData = await this.promptManager.getPrompt('quality-validation', {
         question: formattedQuestion
       });
 
@@ -153,7 +153,7 @@ class QualityValidationAgent {
       const formattedQuestions = this.formatQuestionsForBatchPrompt(questions);
 
       // Get formatted prompt from prompt manager
-      const promptData = this.promptManager.getPrompt('quality-validation', {
+      const promptData = await this.promptManager.getPrompt('quality-validation', {
         questions: formattedQuestions
       });
 
