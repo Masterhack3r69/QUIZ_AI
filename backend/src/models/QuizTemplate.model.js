@@ -2,8 +2,7 @@ import mongoose from 'mongoose';
 
 const quizTemplateSchema = new mongoose.Schema({
   teacher: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    type: String,  // Store PostgreSQL user ID as string for hybrid setup
     required: true
   },
   name: {

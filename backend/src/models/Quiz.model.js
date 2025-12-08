@@ -48,8 +48,7 @@ const quizSchema = new mongoose.Schema({
     trim: true
   },
   teacher: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    type: String,  // Store PostgreSQL user ID as string for hybrid setup
     required: true
   },
   accessCode: {

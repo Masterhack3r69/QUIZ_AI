@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { motion, AnimatePresence } from "framer-motion"
 import { 
   Clock, AlertTriangle, ChevronLeft, ChevronRight, Send, Loader2,
-  ListChecks, ToggleLeft, TextCursorInput, FileText, CheckCircle2
+  ListChecks, ToggleLeft, TextCursorInput, FileText
 } from "lucide-react"
 import api from "@/lib/api"
 import { toast } from "sonner"
@@ -71,7 +71,6 @@ export default function TakeQuizPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSubmitDialog, setShowSubmitDialog] = useState(false)
-  const [showTimeWarning, setShowTimeWarning] = useState(false)
   const [startTime] = useState(Date.now())
   const [matchingSelections, setMatchingSelections] = useState<Map<string, Map<number, number>>>(new Map())
 
@@ -114,7 +113,6 @@ export default function TakeQuizPage() {
         }
         // Show warning at 1 minute
         if (prev === 60) {
-          setShowTimeWarning(true)
           toast.warning("1 minute remaining!", { duration: 5000 })
         }
         return prev - 1

@@ -1,24 +1,18 @@
 "use client"
 
 import { useEffect, useMemo } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/context/AuthContext"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { 
   Loader2, 
-  Zap, 
-  Search, 
-  Bell, 
   Plus, 
   BookOpen, 
   MoreVertical, 
   Users, 
   Clock, 
   Trophy,
-  CheckCircle2,
-  AlertCircle,
   Target,
   Timer,
   TrendingUp,
@@ -31,8 +25,7 @@ import {
   Calendar,
   ArrowUpRight,
   Sparkles,
-  FileText,
-  Settings
+  FileText
 } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import { quizService } from "@/services/quiz.service"
@@ -73,7 +66,7 @@ function StatCard({ icon: Icon, label, value, subValue, gradient }: {
 }
 
 export default function DashboardPage() {
-  const { user, logout, isLoading: isAuthLoading, isAuthenticated } = useAuth()
+  const { user, isLoading: isAuthLoading, isAuthenticated } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
@@ -83,7 +76,7 @@ export default function DashboardPage() {
   }, [isAuthLoading, isAuthenticated, router])
 
   // Fetch Quizzes
-  const { data: quizzes, isLoading: isQuizzesLoading, error } = useQuery({
+  const { data: quizzes, isLoading: isQuizzesLoading } = useQuery({
     queryKey: ['quizzes'],
     queryFn: quizService.getMyQuizzes,
     enabled: isAuthenticated

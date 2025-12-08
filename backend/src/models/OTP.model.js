@@ -1,48 +1,66 @@
-import mongoose from 'mongoose';
+import pool from '../config/postgres.js';
 
-const otpSchema = new mongoose.Schema({
-  email: {
-    type: String,
-    required: true,
-    lowercase: true,
-    index: true
-  },
-  code: {
-    type: String,
-    required: true
-  },
-  expiresAt: {
-    type: Date,
-    required: true,
-    index: true
-  },
-  attempts: {
-    type: Number,
-    default: 0
-  },
-  isUsed: {
-    type: Boolean,
-    default: false
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-    expires: 900 // Auto-delete after 15 minutes (TTL index)
+class OTP {
+  constructor(data) {
+    this.id = data.id;
+    this.email = data.email;
+    this.code = data.code;
+    this.expiresAt = data.expires_at;
+    this.attempts = data.attempts || 0;
+    this.isUsed = data.is_used || false;
+    this.createdAt = data.created_at;
   }
-});
 
-otpSchema.methods.isExpired = function() {
-  return new Date() > this.expiresAt;
-};
+  static async findOne({ email }) {
+    const result = await pool.query(
+      `SELECT * FROM otps 
+       WHERE LOWER(email) = LOWER($1) AND is_used = FALSE
+       ORDER BY created_at DESC LIMIT 1`,
+      [email]
+    );
+    return result.rows[0] ? new OTP(result.rows[0]) : null;
+  }
 
-otpSchema.methods.incrementAttempts = async function() {
-  this.attempts += 1;
-  await this.save();
-};
+  static async create({ email, code, expiresAt }) {
+    const result = await pool.query(
+      `INSERT INTO otps (email, code, expires_at)
+       VALUES (LOWER($1), $2, $3)
+       RETURNING *`,
+      [email, code, expiresAt]
+    );
+    return new OTP(result.rows[0]);
+  }
 
-otpSchema.methods.markAsUsed = async function() {
-  this.isUsed = true;
-  await this.save();
-};
+  static async invalidateAll(email) {
+    await pool.query(
+      'UPDATE otps SET is_used = TRUE WHERE LOWER(email) = LOWER($1)',
+      [email]
+    );
+  }
 
-export default mongoose.model('OTP', otpSchema);
+  static async deleteExpired() {
+    await pool.query('DELETE FROM otps WHERE expires_at < NOW()');
+  }
+
+  isExpired() {
+    return new Date() > new Date(this.expiresAt);
+  }
+
+  async incrementAttempts() {
+    this.attempts += 1;
+    await pool.query(
+      'UPDATE otps SET attempts = $1 WHERE id = $2',
+      [this.attempts, this.id]
+    );
+  }
+
+  async markAsUsed() {
+    this.isUsed = true;
+    await pool.query(
+      'UPDATE otps SET is_used = TRUE WHERE id = $1',
+      [this.id]
+    );
+  }
+}
+
+export default OTP;

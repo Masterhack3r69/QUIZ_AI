@@ -1,0 +1,41 @@
+<svg width="300" height="300" viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="cleanGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#D0E0E3;stop-opacity:1" />
+    </linearGradient>
+    
+    <radialGradient id="eyeGrad" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+      <stop offset="0%" style="stop-color:#4facfe;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00f2fe;stop-opacity:1" />
+    </radialGradient>
+  </defs>
+
+  <ellipse cx="150" cy="280" rx="80" ry="10" fill="#000000" opacity="0.2" />
+
+  <rect x="60" y="80" width="180" height="160" rx="30" ry="30" fill="url(#cleanGrad)" stroke="#4A90E2" stroke-width="2" />
+
+  <circle cx="110" cy="150" r="25" fill="#333333" />
+  <circle cx="190" cy="150" r="25" fill="#333333" />
+  
+  <circle cx="102" cy="142" r="8" fill="#FFFFFF" />
+  <circle cx="182" cy="142" r="8" fill="#FFFFFF" />
+  <circle cx="115" cy="155" r="3" fill="#FFFFFF" />
+  <circle cx="195" cy="155" r="3" fill="#FFFFFF" />
+
+  <ellipse cx="80" cy="180" rx="12" ry="8" fill="#FFB6C1" opacity="0.6" />
+  <ellipse cx="220" cy="180" rx="12" ry="8" fill="#FFB6C1" opacity="0.6" />
+
+  <path d="M 120 185 Q 150 210 180 185" stroke="#333333" stroke-width="4" fill="none" stroke-linecap="round" />
+
+  <path d="M 150 20 L 260 70 L 150 110 L 40 70 Z" fill="#2C3E50" stroke="#2C3E50" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M 110 95 L 190 95 L 150 70 Z" fill="#2C3E50" />
+
+  <circle cx="150" cy="20" r="3" fill="#2C3E50" /> <path d="M 260 70 Q 280 90 275 130" stroke="#F1C40F" stroke-width="3" fill="none" />
+  
+  <circle cx="275" cy="130" r="4" fill="#F1C40F" />
+  <path d="M 275 130 L 265 155" stroke="#F1C40F" stroke-width="2" />
+  <path d="M 275 130 L 275 160" stroke="#F1C40F" stroke-width="2" />
+  <path d="M 275 130 L 285 155" stroke="#F1C40F" stroke-width="2" />
+
+</svg>

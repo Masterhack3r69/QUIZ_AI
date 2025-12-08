@@ -1,10 +1,10 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.model.js';
-import OTP from '../models/OTP.model.js';
 import { protect } from '../middleware/auth.middleware.js';
 import { createOTP, validateOTP, invalidatePreviousOTPs, checkRateLimit } from '../utils/otp.service.js';
 import { sendOTPEmail, sendWelcomeEmail } from '../utils/email.service.js';
+import OTP from '../models/OTP.model.js';
 
 const router = express.Router();
 
@@ -19,25 +19,38 @@ router.post('/register', async (req, res) => {
 
     const userExists = await User.findOne({ email });
     
+    // If user exists and is verified, reject registration
     if (userExists && userExists.isVerified) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
     let user;
     
+    // If user exists but is not verified, update their info and resend OTP
     if (userExists && !userExists.isVerified) {
       user = userExists;
       user.name = name;
-      user.password = password;
+      user.password = password; // This will be hashed by the pre-save hook
       user.failedOTPAttempts = 0;
       user.otpLockedUntil = null;
       await user.save();
+      
+      // Invalidate previous OTPs
       await invalidatePreviousOTPs(email);
     } else {
-      user = await User.create({ name, email, password, isVerified: false });
+      // Create new unverified user account
+      user = await User.create({ 
+        name, 
+        email, 
+        password,
+        isVerified: false 
+      });
     }
 
+    // Generate and store OTP
     const { code } = await createOTP(email);
+
+    // Send OTP via email
     await sendOTPEmail(email, code, name);
 
     res.status(201).json({
@@ -54,19 +67,23 @@ router.post('/verify-otp', async (req, res) => {
   try {
     const { email, code } = req.body;
 
+    // Validate request body
     if (!email || !code) {
       return res.status(400).json({ message: 'Email and code are required' });
     }
 
+    // Find user
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
+    // Check if already verified
     if (user.isVerified) {
       return res.status(400).json({ message: 'Email already verified' });
     }
 
+    // Check rate limit
     const { limited } = await checkRateLimit(email);
     if (limited) {
       return res.status(429).json({ 
@@ -74,14 +91,19 @@ router.post('/verify-otp', async (req, res) => {
       });
     }
 
+    // Validate OTP
     const { valid, otp } = await validateOTP(email, code);
 
     if (!valid) {
+      // Increment failed attempts
       user.failedOTPAttempts += 1;
       await user.save();
 
+      // Increment OTP attempts if OTP exists
       if (otp) {
         await otp.incrementAttempts();
+        
+        // Check if OTP is expired
         if (otp.isExpired()) {
           return res.status(400).json({ message: 'Verification code has expired' });
         }
@@ -90,24 +112,28 @@ router.post('/verify-otp', async (req, res) => {
       return res.status(400).json({ message: 'Invalid verification code' });
     }
 
+    // Mark OTP as used
     await otp.markAsUsed();
 
+    // Mark user as verified
     user.isVerified = true;
     user.verifiedAt = new Date();
     user.failedOTPAttempts = 0;
     user.otpLockedUntil = null;
     await user.save();
 
+    // Send welcome email (non-blocking)
     sendWelcomeEmail(email, user.name).catch(err => {
       console.error('Failed to send welcome email:', err);
     });
 
-    const token = generateToken(user.id);
+    // Generate JWT token
+    const token = generateToken(user._id);
 
     res.json({
       token,
       user: {
-        _id: user.id,
+        _id: user._id,
         name: user.name,
         email: user.email,
         role: 'teacher'
@@ -118,29 +144,34 @@ router.post('/verify-otp', async (req, res) => {
   }
 });
 
-
 // Resend OTP
 router.post('/resend-otp', async (req, res) => {
   try {
     const { email } = req.body;
 
+    // Validate request body
     if (!email) {
       return res.status(400).json({ message: 'Email is required' });
     }
 
+    // Find user
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
+    // Check if already verified
     if (user.isVerified) {
       return res.status(400).json({ message: 'Email already verified' });
     }
 
-    const lastOTP = await OTP.findOne({ email: email.toLowerCase() });
+    // Check for resend cooldown (60 seconds)
+    const lastOTP = await OTP.findOne({ 
+      email: email.toLowerCase() 
+    }).sort({ createdAt: -1 });
 
     if (lastOTP) {
-      const timeSinceLastOTP = Date.now() - new Date(lastOTP.createdAt).getTime();
+      const timeSinceLastOTP = Date.now() - lastOTP.createdAt.getTime();
       const cooldownSeconds = 60;
       
       if (timeSinceLastOTP < cooldownSeconds * 1000) {
@@ -151,11 +182,18 @@ router.post('/resend-otp', async (req, res) => {
       }
     }
 
+    // Invalidate all previous OTPs
     await invalidatePreviousOTPs(email);
+
+    // Generate and store new OTP
     const { code } = await createOTP(email);
+
+    // Send OTP via email
     await sendOTPEmail(email, code, user.name);
 
-    res.json({ message: `New code sent to ${email}` });
+    res.json({
+      message: `New code sent to ${email}`
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -171,6 +209,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
+    // Check if user is verified
     if (!user.isVerified) {
       return res.status(403).json({ 
         message: 'Please verify your email address. Check your inbox or request a new verification code.',
@@ -179,12 +218,12 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    const token = generateToken(user.id);
+    const token = generateToken(user._id);
 
     res.json({
       token,
       user: {
-        _id: user.id,
+        _id: user._id,
         name: user.name,
         email: user.email,
         role: 'teacher'
@@ -195,7 +234,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Update profile
+// Update profile (name)
 router.put('/profile', protect, async (req, res) => {
   try {
     const { name } = req.body;
@@ -204,7 +243,7 @@ router.put('/profile', protect, async (req, res) => {
       return res.status(400).json({ message: 'Name is required' });
     }
 
-    const user = await User.findById(req.user.id || req.user._id);
+    const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -214,7 +253,7 @@ router.put('/profile', protect, async (req, res) => {
 
     res.json({
       user: {
-        _id: user.id,
+        _id: user._id,
         name: user.name,
         email: user.email,
         role: 'teacher'
@@ -238,16 +277,18 @@ router.put('/password', protect, async (req, res) => {
       return res.status(400).json({ message: 'New password must be at least 6 characters' });
     }
 
-    const user = await User.findById(req.user.id || req.user._id);
+    const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
+    // Verify current password
     const isMatch = await user.comparePassword(currentPassword);
     if (!isMatch) {
       return res.status(401).json({ message: 'Current password is incorrect' });
     }
 
+    // Update password
     user.password = newPassword;
     await user.save();
 

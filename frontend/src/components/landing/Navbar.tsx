@@ -1,8 +1,8 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { BrainCircuit } from "lucide-react"
 import { ModeToggle } from "@/components/mode-toggle"
 
 export function Navbar() {
@@ -11,8 +11,15 @@ export function Navbar() {
       <div className="mx-auto flex h-16 max-w-screen-xl items-center justify-between rounded-2xl border border-border/40 bg-background/80 px-4 backdrop-blur-md shadow-sm supports-[backdrop-filter]:bg-background/60">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center space-x-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <BrainCircuit className="h-5 w-5" />
+            <div className="flex h-10 w-10 items-center justify-center flex-shrink-0">
+              <Image
+                src="/logo.svg"
+                alt="Quiz AI Logo"
+                width={40}
+                height={40}
+                priority
+                className="h-10 w-10"
+              />
             </div>
             <span className="hidden font-bold sm:inline-block text-lg tracking-tight">
               Quiz AI

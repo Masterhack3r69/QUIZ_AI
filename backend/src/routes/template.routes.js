@@ -104,7 +104,7 @@ router.post('/', protect, async (req, res) => {
     }
 
     const template = await QuizTemplate.create({
-      teacher: req.user._id,
+      teacher: String(req.user.id),
       name: name.trim(),
       type,
       questionCount,
@@ -132,7 +132,7 @@ router.post('/', protect, async (req, res) => {
 router.get('/', protect, async (req, res) => {
   try {
     // Get custom templates created by the teacher
-    const customTemplates = await QuizTemplate.find({ teacher: req.user._id })
+    const customTemplates = await QuizTemplate.find({ teacher: String(req.user.id) })
       .sort('-createdAt');
 
     // Add predefined templates
@@ -181,7 +181,7 @@ router.get('/:id', protect, async (req, res) => {
     // Get custom template
     const template = await QuizTemplate.findOne({
       _id: id,
-      teacher: req.user._id
+      teacher: String(req.user.id)
     });
 
     if (!template) {
@@ -208,7 +208,7 @@ router.put('/:id', protect, async (req, res) => {
     // Find template and ensure it belongs to the teacher
     const template = await QuizTemplate.findOne({
       _id: id,
-      teacher: req.user._id
+      teacher: String(req.user.id)
     });
 
     if (!template) {
@@ -292,7 +292,7 @@ router.delete('/:id', protect, async (req, res) => {
 
     const template = await QuizTemplate.findOneAndDelete({
       _id: id,
-      teacher: req.user._id
+      teacher: String(req.user.id)
     });
 
     if (!template) {

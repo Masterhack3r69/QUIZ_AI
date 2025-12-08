@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-import OTP from '../models/OTP.model.js';
-import User from '../models/User.model.js';
+import OTP from '../models/OTP.postgres.js';
+import User from '../models/User.postgres.js';
 
 /**
  * Generate a cryptographically secure 6-digit OTP code

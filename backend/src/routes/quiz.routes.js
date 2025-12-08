@@ -457,7 +457,7 @@ router.post('/create', protect, upload.single('file'), async (req, res) => {
 
     const quiz = await Quiz.create({
       title,
-      teacher: req.user._id,
+      teacher: String(req.user.id),
       accessCode,
       questions,
       questionsPerStudent: parseInt(questionsPerStudent) || 10,
@@ -490,7 +490,7 @@ router.post('/create', protect, upload.single('file'), async (req, res) => {
 // Get all quizzes for teacher
 router.get('/my-quizzes', protect, async (req, res) => {
   try {
-    const quizzes = await Quiz.find({ teacher: req.user._id })
+    const quizzes = await Quiz.find({ teacher: String(req.user.id) })
       .select('-questions -sourceContent')
       .sort('-createdAt');
     
@@ -553,7 +553,7 @@ router.get('/:quizId', protect, async (req, res) => {
   try {
     const quiz = await Quiz.findOne({ 
       _id: req.params.quizId, 
-      teacher: req.user._id 
+      teacher: String(req.user.id) 
     });
     
     if (!quiz) {
@@ -847,7 +847,7 @@ router.post('/start', async (req, res) => {
 router.put('/:quizId', protect, async (req, res) => {
   try {
     const quiz = await Quiz.findOneAndUpdate(
-      { _id: req.params.quizId, teacher: req.user._id },
+      { _id: req.params.quizId, teacher: String(req.user.id) },
       req.body,
       { new: true }
     );
@@ -867,7 +867,7 @@ router.delete('/:quizId', protect, async (req, res) => {
   try {
     const quiz = await Quiz.findOneAndDelete({ 
       _id: req.params.quizId, 
-      teacher: req.user._id 
+      teacher: String(req.user.id) 
     });
 
     if (!quiz) {
@@ -885,7 +885,7 @@ router.post('/:quizId/duplicate', protect, async (req, res) => {
   try {
     const originalQuiz = await Quiz.findOne({ 
       _id: req.params.quizId, 
-      teacher: req.user._id 
+      teacher: String(req.user.id) 
     });
 
     if (!originalQuiz) {
@@ -896,7 +896,7 @@ router.post('/:quizId/duplicate', protect, async (req, res) => {
     
     const duplicatedQuiz = await Quiz.create({
       title: `${originalQuiz.title} (Copy)`,
-      teacher: req.user._id,
+      teacher: String(req.user.id),
       accessCode: newAccessCode,
       questions: originalQuiz.questions,
       questionsPerStudent: originalQuiz.questionsPerStudent,
