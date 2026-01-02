@@ -42,6 +42,7 @@ An AI-powered platform that automatically generates high-quality quiz questions 
 - **Anthropic Claude** - Complex reasoning
 - **Groq** - Ultra-fast processing
 - **Ollama** - Local AI development
+- **Google Cloud Platform (GCP)** - Cloud storage for AI agent prompts
 
 ### Content Processing
 - **pdf-parse** - PDF extraction
